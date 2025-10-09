@@ -12,6 +12,7 @@ export default defineConfig({
   server: {
     port: 5200,
     host: true,
+    allowedHosts: ['*.local'],
   },
   build: {
     minify: 'esbuild',
