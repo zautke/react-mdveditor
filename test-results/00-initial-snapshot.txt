@@ -1,0 +1,238 @@
+uid=1_0 RootWebArea "Markdown Editor with Live Preview" url="http://localhost:5200/"
+  uid=1_1 heading "Markdown Input" level="3"
+  uid=1_2 textbox "Enter your markdown here..." multiline value="# React Markdown Demo
+
+This is a **comprehensive** markdown renderer with *full* features:
+
+## Features
+- [x] GitHub Flavored Markdown
+- [x] Syntax highlighting
+- [x] Tables
+- [x] Task lists
+- [x] Strikethrough ~~text~~
+- [x] Auto-linking: https://github.com
+
+## Code Highlighting
+
+```typescript
+interface User {
+  id: number
+  name: string
+  email?: string
+}
+
+const users: User[] = [
+  { id: 1, name: 'John', email: 'john@example.com' },
+  { id: 2, name: 'Jane' }
+]
+
+const getUser = (id: number): User | undefined =>
+  users.find(user => user.id === id)
+```
+
+## Table Example
+
+| Feature | Supported | Notes |
+|---------|-----------|-------|
+| Basic Markdown | ✅ | Full CommonMark |
+| GFM | ✅ | Tables, tasks, etc |
+| Math | ❌ | Can be added |
+| Custom Components | ✅ | Fully customizable |
+
+## Blockquote
+
+> This is a blockquote with **bold** and *italic* text.
+>
+> It can span multiple lines and include other markdown elements.
+
+## Lists
+
+1. Ordered list item
+2. Another item
+   - Nested unordered item
+   - Another nested item
+
+---
+
+**Footnotes**[^1] and other advanced features work seamlessly.
+
+[^1]: This is a footnote example."
+  uid=1_3 heading "Rendered Output" level="3"
+  uid=1_4 heading "React Markdown Demo" level="1"
+  uid=1_5 StaticText "This is a "
+  uid=1_6 StaticText "comprehensive"
+  uid=1_7 StaticText " markdown renderer with "
+  uid=1_8 StaticText "full"
+  uid=1_9 StaticText " features:"
+  uid=1_10 heading "Features" level="2"
+  uid=1_11 checkbox checked disableable disabled
+  uid=1_12 StaticText " GitHub Flavored Markdown"
+  uid=1_13 checkbox checked disableable disabled
+  uid=1_14 StaticText " Syntax highlighting"
+  uid=1_15 checkbox checked disableable disabled
+  uid=1_16 StaticText " Tables"
+  uid=1_17 checkbox checked disableable disabled
+  uid=1_18 StaticText " Task lists"
+  uid=1_19 checkbox checked disableable disabled
+  uid=1_20 StaticText " Strikethrough "
+  uid=1_21 StaticText "text"
+  uid=1_22 checkbox checked disableable disabled
+  uid=1_23 StaticText " Auto-linking: "
+  uid=1_24 link "https://github.com" url="https://github.com/"
+    uid=1_25 StaticText "https://github.com"
+  uid=1_26 heading "Code Highlighting" level="2"
+  uid=1_27 StaticText "interface"
+  uid=1_28 StaticText " "
+  uid=1_29 StaticText "User"
+  uid=1_30 StaticText " "
+  uid=1_31 StaticText "{"
+  uid=1_32 StaticText "
+"
+  uid=1_33 StaticText "  id"
+  uid=1_34 StaticText ":"
+  uid=1_35 StaticText " "
+  uid=1_36 StaticText "number"
+  uid=1_37 StaticText "
+"
+  uid=1_38 StaticText "  name"
+  uid=1_39 StaticText ":"
+  uid=1_40 StaticText " "
+  uid=1_41 StaticText "string"
+  uid=1_42 StaticText "
+"
+  uid=1_43 StaticText "  email"
+  uid=1_44 StaticText "?"
+  uid=1_45 StaticText ":"
+  uid=1_46 StaticText " "
+  uid=1_47 StaticText "string"
+  uid=1_48 StaticText "
+"
+  uid=1_49 StaticText "}"
+  uid=1_50 StaticText "
+"
+  uid=1_51 StaticText "
+"
+  uid=1_52 StaticText "const"
+  uid=1_53 StaticText " users"
+  uid=1_54 StaticText ":"
+  uid=1_55 StaticText " "
+  uid=1_56 StaticText "User"
+  uid=1_57 StaticText "["
+  uid=1_58 StaticText "]"
+  uid=1_59 StaticText " "
+  uid=1_60 StaticText "="
+  uid=1_61 StaticText " "
+  uid=1_62 StaticText "["
+  uid=1_63 StaticText "
+"
+  uid=1_64 StaticText "  "
+  uid=1_65 StaticText "{"
+  uid=1_66 StaticText " id"
+  uid=1_67 StaticText ":"
+  uid=1_68 StaticText " "
+  uid=1_69 StaticText "1"
+  uid=1_70 StaticText ","
+  uid=1_71 StaticText " name"
+  uid=1_72 StaticText ":"
+  uid=1_73 StaticText " "
+  uid=1_74 StaticText "'John'"
+  uid=1_75 StaticText ","
+  uid=1_76 StaticText " email"
+  uid=1_77 StaticText ":"
+  uid=1_78 StaticText " "
+  uid=1_79 StaticText "'john@example.com'"
+  uid=1_80 StaticText " "
+  uid=1_81 StaticText "}"
+  uid=1_82 StaticText ","
+  uid=1_83 StaticText "
+"
+  uid=1_84 StaticText "  "
+  uid=1_85 StaticText "{"
+  uid=1_86 StaticText " id"
+  uid=1_87 StaticText ":"
+  uid=1_88 StaticText " "
+  uid=1_89 StaticText "2"
+  uid=1_90 StaticText ","
+  uid=1_91 StaticText " name"
+  uid=1_92 StaticText ":"
+  uid=1_93 StaticText " "
+  uid=1_94 StaticText "'Jane'"
+  uid=1_95 StaticText " "
+  uid=1_96 StaticText "}"
+  uid=1_97 StaticText "
+"
+  uid=1_98 StaticText "]"
+  uid=1_99 StaticText "
+"
+  uid=1_100 StaticText "
+"
+  uid=1_101 StaticText "const"
+  uid=1_102 StaticText " getUser "
+  uid=1_103 StaticText "="
+  uid=1_104 StaticText " "
+  uid=1_105 StaticText "("
+  uid=1_106 StaticText "id"
+  uid=1_107 StaticText ":"
+  uid=1_108 StaticText " "
+  uid=1_109 StaticText "number"
+  uid=1_110 StaticText ")"
+  uid=1_111 StaticText ":"
+  uid=1_112 StaticText " "
+  uid=1_113 StaticText "User"
+  uid=1_114 StaticText " "
+  uid=1_115 StaticText "|"
+  uid=1_116 StaticText " "
+  uid=1_117 StaticText "undefined"
+  uid=1_118 StaticText " "
+  uid=1_119 StaticText "=>"
+  uid=1_120 StaticText "
+"
+  uid=1_121 StaticText "  users"
+  uid=1_122 StaticText "."
+  uid=1_123 StaticText "find"
+  uid=1_124 StaticText "("
+  uid=1_125 StaticText "user "
+  uid=1_126 StaticText "=>"
+  uid=1_127 StaticText " user"
+  uid=1_128 StaticText "."
+  uid=1_129 StaticText "id"
+  uid=1_130 StaticText " "
+  uid=1_131 StaticText "==="
+  uid=1_132 StaticText " id"
+  uid=1_133 StaticText ")"
+  uid=1_134 heading "Table Example" level="2"
+  uid=1_135 StaticText "Feature"
+  uid=1_136 StaticText "Supported"
+  uid=1_137 StaticText "Notes"
+  uid=1_138 StaticText "Basic Markdown"
+  uid=1_139 StaticText "✅"
+  uid=1_140 StaticText "Full CommonMark"
+  uid=1_141 StaticText "GFM"
+  uid=1_142 StaticText "✅"
+  uid=1_143 StaticText "Tables, tasks, etc"
+  uid=1_144 StaticText "Math"
+  uid=1_145 StaticText "❌"
+  uid=1_146 StaticText "Can be added"
+  uid=1_147 StaticText "Custom Components"
+  uid=1_148 StaticText "✅"
+  uid=1_149 StaticText "Fully customizable"
+  uid=1_150 heading "Blockquote" level="2"
+  uid=1_151 StaticText "This is a blockquote with "
+  uid=1_152 StaticText "bold"
+  uid=1_153 StaticText " and "
+  uid=1_154 StaticText "italic"
+  uid=1_155 StaticText " text."
+  uid=1_156 StaticText "It can span multiple lines and include other markdown elements."
+  uid=1_157 heading "Lists" level="2"
+  uid=1_158 StaticText "Ordered list item"
+  uid=1_159 StaticText "Another item"
+  uid=1_160 StaticText "Nested unordered item"
+  uid=1_161 StaticText "Another nested item"
+  uid=1_162 StaticText "Footnotes"
+  uid=1_163 link "1" description="Footnotes" url="http://localhost:5200/#user-content-fn-1"
+    uid=1_164 StaticText "1"
+  uid=1_165 StaticText " and other advanced features work seamlessly."
+  uid=1_166 heading "Footnotes" level="2"
+  uid=1_167 StaticText "This is a footnote example. "
+  uid=1_168 link "Back to reference 1" url="http://localhost:5200/#user-content-fnref-1"
+    uid=1_169 StaticText "↩"
