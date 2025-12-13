@@ -52,6 +52,19 @@ code {
   font-size: 0.9em;
 }
 
+/* MathJax inline math fix - ensure SVG displays inline */
+.markdown-content mjx-container[jax="SVG"]:not([display="true"]) svg {
+  display: inline-block !important;
+  vertical-align: middle;
+}
+
+/* MathJax display math - keep as block */
+.markdown-content mjx-container[jax="SVG"][display="true"] {
+  display: block;
+  margin: 1em 0;
+  text-align: center;
+}
+
 /* Mexican Menu Theme Styles (for MDRendererTW.tsx) */
 .mexican-menu-container {
   background: linear-gradient(135deg, #fff8f0 0%, #ffffff 50%, #f0fff8 100%);
