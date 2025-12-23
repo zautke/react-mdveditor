@@ -1,9 +1,12 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
+import rehypeMathjax from 'rehype-mathjax'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import MermaidDiagram from './MermaidDiagram'
 
 interface MarkdownRendererProps {
     children: string
@@ -14,11 +17,18 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
     return (
         <div className={`markdown-content ${className}`}>
             <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw, rehypeSlug]}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeSlug, rehypeMathjax, rehypeRaw]}
                 components={{
                     code({ node, inline, className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '')
+                        const codeContent = String(children).replace(/\n$/, '')
+
+                        // Handle mermaid diagrams
+                        if (!inline && match && match[1] === 'mermaid') {
+                            return <MermaidDiagram chart={codeContent} />
+                        }
+
                         return !inline && match ? (
                             <SyntaxHighlighter
                                 style={oneDark}
@@ -26,7 +36,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                                 PreTag="div"
                                 {...props}
                             >
-                                {String(children).replace(/\n$/, '')}
+                                {codeContent}
                             </SyntaxHighlighter>
                         ) : (
                             <code className={className} {...props}>
