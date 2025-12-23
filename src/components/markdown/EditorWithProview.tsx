@@ -1,5 +1,109 @@
-import { useState, DragEvent, memo, useRef, useCallback, useEffect } from 'react'
+import { useState, DragEvent, memo, useRef, useCallback, useEffect, ChangeEvent } from 'react'
 import MarkdownRenderer from './MarkdownRenderer_orig'
+
+// File Upload Button Component with '+' icon and tooltip
+const FileUploadButton = memo(({ onFileContent }: { onFileContent: (content: string) => void }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  const handleClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const content = event.target?.result as string
+      if (content) {
+        onFileContent(content)
+      }
+    }
+    reader.readAsText(file)
+
+    // Reset input so the same file can be uploaded again
+    e.target.value = ''
+  }, [onFileContent])
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.mdx"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
+      <button
+        onClick={handleClick}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        style={{
+          width: '28px',
+          height: '28px',
+          borderRadius: '4px',
+          border: '1px solid #d0d0d0',
+          background: 'white',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          color: '#666',
+          transition: 'all 0.15s ease',
+          marginLeft: '0.5rem',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.background = '#f5f5f5'
+          e.currentTarget.style.borderColor = '#3b82f6'
+          e.currentTarget.style.color = '#3b82f6'
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.background = 'white'
+          e.currentTarget.style.borderColor = '#d0d0d0'
+          e.currentTarget.style.color = '#666'
+        }}
+        aria-label="Upload MD file"
+      >
+        +
+      </button>
+      {showTooltip && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          marginTop: '6px',
+          padding: '6px 10px',
+          background: '#1f2937',
+          color: 'white',
+          fontSize: '12px',
+          borderRadius: '4px',
+          whiteSpace: 'nowrap',
+          zIndex: 1000,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+        }}>
+          Upload MD file
+          <div style={{
+            position: 'absolute',
+            top: '-4px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 0,
+            height: 0,
+            borderLeft: '5px solid transparent',
+            borderRight: '5px solid transparent',
+            borderBottom: '5px solid #1f2937',
+          }} />
+        </div>
+      )}
+    </div>
+  )
+})
+FileUploadButton.displayName = 'FileUploadButton'
 
 const initialMarkdown = `# React Markdown Demo
 
@@ -148,11 +252,13 @@ const InputPane = memo(({
   markdown,
   onMarkdownChange,
   onPaste,
+  onFileUpload,
   isExpanded
 }: {
   markdown: string
   onMarkdownChange: (value: string) => void
   onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void
+  onFileUpload: (content: string) => void
   isExpanded: boolean
 }) => {
   return (
@@ -172,7 +278,14 @@ const InputPane = memo(({
       // Performance: contain layout calculations to this element
       contain: 'layout style' as const
     }}>
-      <h3 style={{ margin: '0 0 1rem 0' }}>Markdown Input</h3>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        margin: '0 0 1rem 0'
+      }}>
+        <h3 style={{ margin: 0 }}>Markdown Input</h3>
+        <FileUploadButton onFileContent={onFileUpload} />
+      </div>
       <textarea
         value={markdown}
         onChange={(e) => onMarkdownChange(e.target.value)}
@@ -457,6 +570,11 @@ function App() {
     setMarkdown(value)
   }, [])
 
+  const handleFileUpload = useCallback((content: string) => {
+    const convertedContent = detectAndConvertLatex(content)
+    setMarkdown(convertedContent)
+  }, [detectAndConvertLatex])
+
   return (
     <div
       style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui', position: 'relative' }}
@@ -469,6 +587,7 @@ function App() {
         markdown={markdown}
         onMarkdownChange={handleMarkdownChange}
         onPaste={handlePaste}
+        onFileUpload={handleFileUpload}
         isExpanded={isExpanded}
       />
       <RenderPane
