@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
+import { AlertCircle } from 'lucide-react'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 interface MermaidDiagramProps {
     chart: string
@@ -52,32 +54,16 @@ function MermaidDiagram({ chart }: MermaidDiagramProps) {
 
     if (error) {
         return (
-            <div
-                style={{
-                    padding: '1rem',
-                    backgroundColor: '#fee2e2',
-                    border: '1px solid #fca5a5',
-                    borderRadius: '4px',
-                    color: '#dc2626',
-                    margin: '1rem 0',
-                    fontFamily: 'monospace',
-                    fontSize: '0.875rem',
-                }}
-            >
-                <strong>Mermaid Error:</strong> {error}
-                <pre
-                    style={{
-                        marginTop: '0.5rem',
-                        padding: '0.5rem',
-                        backgroundColor: '#fef2f2',
-                        borderRadius: '4px',
-                        overflow: 'auto',
-                        whiteSpace: 'pre-wrap',
-                    }}
-                >
-                    {chart}
-                </pre>
-            </div>
+            <Alert variant="destructive" className="my-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Mermaid Error</AlertTitle>
+                <AlertDescription>
+                    <p className="mb-2">{error}</p>
+                    <pre className="mt-2 rounded-sm bg-destructive/10 p-2 font-mono text-xs overflow-auto whitespace-pre-wrap">
+                        {chart}
+                    </pre>
+                </AlertDescription>
+            </Alert>
         )
     }
 

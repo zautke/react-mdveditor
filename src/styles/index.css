@@ -1,6 +1,235 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* Base Styles */
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   shadcn/ui CSS Variables + Mexican Theme
+   ============================================ */
+
+:root {
+  /* ============================================
+     Base shadcn/ui Variables
+     ============================================ */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+
+  /* Mexican Theme Primary: Orange (#ff6b35) */
+  --primary: oklch(0.68 0.19 35);
+  --primary-foreground: oklch(0.985 0 0);
+
+  /* Mexican Theme Secondary: Brown (#d2691e) */
+  --secondary: oklch(0.58 0.14 55);
+  --secondary-foreground: oklch(0.985 0 0);
+
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+
+  /* Mexican Theme Accent: Green (#228b22) */
+  --accent: oklch(0.52 0.14 142);
+  --accent-foreground: oklch(0.985 0 0);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.68 0.19 35);
+
+  --radius: 0.5rem;
+
+  /* Mexican brand colors as custom properties */
+  --mexican-orange: oklch(0.68 0.19 35);
+  --mexican-brown: oklch(0.58 0.14 55);
+  --mexican-green: oklch(0.52 0.14 142);
+  --mexican-green-light: oklch(0.62 0.18 142);
+  --mexican-gold: oklch(0.78 0.12 85);
+
+  /* ============================================
+     Brand Design Tokens (Light Mode)
+     ============================================ */
+
+  /* Brand Accent - Terracotta Orange */
+  --brand-accent: oklab(0.6087 0.1068 0.0867);              /* #c6613f */
+  --brand-accent-light: oklab(0.6064 0.1091 0.0853);        /* #c66040 */
+  --brand-accent-disabled: oklab(0.8007 0.0491 0.0407);     /* #e3b1a0 */
+
+  /* Text Colors */
+  --text-primary: oklab(0.3585 -0.0019 0.0054);             /* #3d3d3a */
+  --text-placeholder: oklab(0.5511 -0.0015 0.0091);         /* #73726c */
+
+  /* Icon Button States */
+  --icon-btn-active-bg: oklab(0.9694 -0.0047 -0.0103);      /* #eff6fc */
+  --icon-btn-active-hover: oklab(0.7278 -0.0350 -0.0928);   /* #75ace3 */
+
+  /* Textarea/Card */
+  --textarea-bg: oklab(1.0 0 0);                            /* #ffffff */
+
+  /* Sidebar */
+  --sidebar-bg: oklab(0.9658 -0.0017 0.0089);               /* #f5f4ed */
+  --sidebar-hover: oklab(0.9485 -0.0010 0.0108);            /* #f0eee6 */
+  --sidebar-dropdown-hover: oklab(0.9234 -0.0019 0.0134);   /* #e8e6dc */
+
+  /* Content Icon Button */
+  --content-btn-hover: oklab(0.9818 -0.0005 0.0054);        /* #faf9f5 */
+
+  /* Alert: Info */
+  --alert-info-text: oklab(0.8807 -0.0773 -0.0546);         /* #8ae8ff */
+  --alert-info-border: oklab(0.8124 -0.1171 -0.0836 / 0.25); /* #00d8fc40 */
+  --alert-info-bg: oklab(0.8222 -0.1201 -0.0799 / 0.15);    /* #00dcfd26 */
+
+  /* Alert: Danger */
+  --alert-danger-text: oklab(0.7407 0.1415 0.0541);         /* #fc8081 */
+  --alert-danger-anchor: oklab(0.7450 0.1424 0.0545);       /* #fe8182 */
+  --alert-danger-bg: oklab(0.3683 0.0892 0.0365);           /* #692627 */
+}
+
+.dark {
+  /* ============================================
+     Base shadcn/ui Variables (Dark Mode)
+     ============================================ */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.68 0.19 35);
+  --primary-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.58 0.14 55);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.52 0.14 142);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.68 0.19 35);
+
+  /* ============================================
+     Brand Design Tokens (Dark Mode)
+     ============================================ */
+
+  /* Text Colors */
+  --text-primary: oklab(0.8066 -0.0018 0.0139);             /* #c2c0b6 */
+  --text-placeholder: oklab(0.6855 -0.0010 0.0117);         /* #9c9a92 */
+
+  /* Icon Button States */
+  --icon-btn-active-bg: oklab(0.3417 -0.0102 -0.0176);      /* #2f3a42 */
+  /* --icon-btn-active-hover stays same in dark mode */
+
+  /* Textarea/Card */
+  --textarea-bg: oklab(0.3086 -0.0010 0.0035);              /* #30302e */
+  --textarea-text: oklab(0.5773 -0.0030 0.0101);            /* #7a7a73 */
+
+  /* Sidebar */
+  --sidebar-bg: oklab(0.2358 0.0009 0.0023);                /* #1f1e1d */
+  --sidebar-hover: oklab(0.2358 0.0009 0.0023);             /* #1f1e1d */
+  --sidebar-dropdown-hover: oklab(0.0 0 0);                 /* #000000 */
+
+  /* Content Icon Button */
+  --content-btn-bg: oklab(0.2679 -0.0011 0.0036);           /* #262624 */
+  --content-btn-hover: oklab(0.2679 -0.0011 0.0036);        /* #262624 */
+}
+
+@theme inline {
+  /* ============================================
+     Base shadcn/ui Color Mappings
+     ============================================ */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Mexican brand colors for Tailwind */
+  --color-mexican-orange: var(--mexican-orange);
+  --color-mexican-brown: var(--mexican-brown);
+  --color-mexican-green: var(--mexican-green);
+  --color-mexican-green-light: var(--mexican-green-light);
+  --color-mexican-gold: var(--mexican-gold);
+
+  /* ============================================
+     Brand Design Token Mappings
+     Usage: bg-brand-accent, text-brand-accent, etc.
+     ============================================ */
+
+  /* Brand Accent Colors */
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-light: var(--brand-accent-light);
+  --color-brand-accent-disabled: var(--brand-accent-disabled);
+
+  /* Text Colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-placeholder: var(--text-placeholder);
+
+  /* Icon Button */
+  --color-icon-btn-active-bg: var(--icon-btn-active-bg);
+  --color-icon-btn-active-hover: var(--icon-btn-active-hover);
+
+  /* Textarea */
+  --color-textarea-bg: var(--textarea-bg);
+  --color-textarea-text: var(--textarea-text, var(--text-primary));
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar-bg);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-dropdown-hover: var(--sidebar-dropdown-hover);
+
+  /* Content Button */
+  --color-content-btn-bg: var(--content-btn-bg, var(--background));
+  --color-content-btn-hover: var(--content-btn-hover);
+
+  /* Alerts: Info */
+  --color-alert-info-text: var(--alert-info-text);
+  --color-alert-info-border: var(--alert-info-border);
+  --color-alert-info-bg: var(--alert-info-bg);
+
+  /* Alerts: Danger */
+  --color-alert-danger-text: var(--alert-danger-text);
+  --color-alert-danger-anchor: var(--alert-danger-anchor);
+  --color-alert-danger-bg: var(--alert-danger-bg);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ============================================
+   Base Styles (preserved)
+   ============================================ */
+
 * {
   margin: 0;
   padding: 0;
