@@ -15,7 +15,9 @@ interface MarkdownRendererProps {
 
 function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
     return (
-        <div className={`markdown-content ${className}`}>
+        <div className={`markdown-content mexican-menu-container ${className}`}>
+            <div className="corner-orange" />
+            <div className="corner-green" />
             <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeSlug, rehypeMathjax, rehypeRaw]}
@@ -46,15 +48,8 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     },
                     table({ children, ...props }) {
                         return (
-                            <div style={{ overflowX: 'auto', margin: '1rem 0' }}>
-                                <table
-                                    style={{
-                                        borderCollapse: 'collapse',
-                                        width: '100%',
-                                        border: '1px solid #e0e0e0'
-                                    }}
-                                    {...props}
-                                >
+                            <div className="mexican-table-wrapper">
+                                <table className="table-mexican" {...props}>
                                     {children}
                                 </table>
                             </div>
@@ -62,44 +57,21 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     },
                     th({ children, ...props }) {
                         return (
-                            <th
-                                style={{
-                                    border: '1px solid #e0e0e0',
-                                    padding: '0.5rem',
-                                    backgroundColor: '#f5f5f5',
-                                    textAlign: 'left'
-                                }}
-                                {...props}
-                            >
+                            <th className="th-mexican" {...props}>
                                 {children}
                             </th>
                         )
                     },
                     td({ children, ...props }) {
                         return (
-                            <td
-                                style={{
-                                    border: '1px solid #e0e0e0',
-                                    padding: '0.5rem'
-                                }}
-                                {...props}
-                            >
+                            <td className="td-mexican hover-lift" {...props}>
                                 {children}
                             </td>
                         )
                     },
                     blockquote({ children, ...props }) {
                         return (
-                            <blockquote
-                                style={{
-                                    borderLeft: '4px solid #007acc',
-                                    paddingLeft: '1rem',
-                                    margin: '1rem 0',
-                                    fontStyle: 'italic',
-                                    backgroundColor: '#f8f9fa'
-                                }}
-                                {...props}
-                            >
+                            <blockquote className="blockquote-mexican" {...props}>
                                 {children}
                             </blockquote>
                         )
@@ -107,11 +79,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     h1({ children, ...props }) {
                         return (
                             <h1
-                                style={{
-                                    borderBottom: '2px solid #e0e0e0',
-                                    paddingBottom: '0.3rem',
-                                    margin: '2rem 0 1rem 0'
-                                }}
+                                className="text-brand-gradient text-responsive-title font-bold text-center my-8 pb-2 border-b-2 border-gray-300 animate-glow"
                                 {...props}
                             >
                                 {children}
@@ -121,11 +89,8 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     h2({ children, ...props }) {
                         return (
                             <h2
-                                style={{
-                                    borderBottom: '1px solid #e0e0e0',
-                                    paddingBottom: '0.2rem',
-                                    margin: '1.5rem 0 0.8rem 0'
-                                }}
+                                className="text-orange-gradient text-responsive-subtitle font-semibold text-center my-6 pb-2 border-b-4"
+                                style={{ borderBottomColor: 'var(--mexican-orange)' }}
                                 {...props}
                             >
                                 {children}
@@ -136,10 +101,8 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                         return (
                             <a
                                 href={href}
-                                style={{
-                                    color: '#007acc',
-                                    textDecoration: 'none'
-                                }}
+                                className="brand-brown font-semibold"
+                                style={{ textDecoration: 'none' }}
                                 onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                                 onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
                                 {...props}
