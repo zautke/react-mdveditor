@@ -69,8 +69,10 @@ Join thousands of teams already using our platform to achieve more.
 
 function App() {
     return (
-        <div className="max-w-4xl mx-auto p-8 min-h-screen">
+        <div className="min-h-screen bg-background text-foreground">
+            <div className="max-w-4xl mx-auto p-8">
             <MarkdownRenderer>{landingPageMarkdown}</MarkdownRenderer>
+            </div>
         </div>
     )
 }

@@ -5,6 +5,7 @@ import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
 import { TabSystem, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/utils'
 import type { TabItem } from '@/components/ui/tabs/types'
 
@@ -390,6 +391,9 @@ function App() {
             <p>Save file</p>
           </TooltipContent>
         </Tooltip>
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
       </div>
 
       {/* Main content area */}

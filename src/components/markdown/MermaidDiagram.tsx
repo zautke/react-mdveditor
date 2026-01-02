@@ -2,26 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import { AlertCircle } from 'lucide-react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { useTheme } from '@/components/ui/theme-toggle'
+import { cn } from '@/lib/utils'
 
 interface MermaidDiagramProps {
     chart: string
 }
 
-// Initialize mermaid with default settings
-mermaid.initialize({
-    startOnLoad: false,
-    theme: 'default',
-    securityLevel: 'loose',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-})
-
 let diagramCounter = 0
 
+/**
+ * MermaidDiagram - Theme-aware Mermaid diagram renderer
+ *
+ * Automatically adjusts diagram theme based on light/dark mode.
+ * Note: Mermaid generates trusted SVG content from the chart DSL.
+ */
 function MermaidDiagram({ chart }: MermaidDiagramProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const [error, setError] = useState<string | null>(null)
     const [svg, setSvg] = useState<string>('')
     const idRef = useRef<string>(`mermaid-${diagramCounter++}`)
+    const { resolvedTheme } = useTheme()
+    const isDark = resolvedTheme === 'dark'
 
     useEffect(() => {
         const renderDiagram = async () => {
@@ -70,14 +72,7 @@ function MermaidDiagram({ chart }: MermaidDiagramProps) {
     return (
         <div
             ref={containerRef}
-            style={{
-                margin: '1rem 0',
-                padding: '1rem',
-                backgroundColor: '#f8fafc',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                overflow: 'auto',
-            }}
+            className="my-4 rounded-md border border-border bg-card p-4 text-card-foreground overflow-auto"
             dangerouslySetInnerHTML={{ __html: svg }}
         />
     )
