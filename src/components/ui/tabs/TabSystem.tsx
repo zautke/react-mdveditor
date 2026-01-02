@@ -295,7 +295,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
         onValueChange={onTabChange}
         orientation={orientation}
         className={cn(
-          "flex",
+          "flex min-h-0",
           orientation === "horizontal" ? "flex-col" : "flex-row",
           className
         )}
@@ -332,8 +332,8 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
           </TabsPrimitive.List>
         </LayoutGroup>
 
-        {/* Tab content area */}
-        <div className="flex-1">
+        {/* Tab content area - must constrain height for scrolling */}
+        <div className="flex-1 overflow-hidden">
           {children}
         </div>
       </TabsPrimitive.Root>
@@ -353,7 +353,7 @@ const TabContent = forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-2 ring-offset-background",
+      "mt-2 ring-offset-background h-full overflow-auto",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className
     )}

@@ -1,7 +1,19 @@
-import { useState, DragEvent, memo, useRef, useCallback, useEffect } from 'react'
+import { useState, DragEvent, memo, useRef, useCallback } from 'react'
+import { FilePlus2, Download } from 'lucide-react'
 import MarkdownRenderer from './MarkdownRenderer_orig'
-import { FileUploadButton } from '@/components/ui/file-upload-button'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
+import { TabSystem, TabContent } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
+import type { TabItem } from '@/components/ui/tabs/types'
+
+// Document type for multi-tab editing
+interface MarkdownDocument {
+  id: string
+  title: string
+  content: string
+}
 
 const initialMarkdown = `# React Markdown Demo
 
@@ -41,78 +53,6 @@ sequenceDiagram
     Bob-->>Alice: Great, thanks!
 \`\`\`
 
-### Class Diagram
-
-\`\`\`mermaid
-classDiagram
-    Animal <|-- Duck
-    Animal <|-- Fish
-    Animal : +int age
-    Animal : +String gender
-    Animal: +isMammal()
-    class Duck{
-        +String beakColor
-        +swim()
-        +quack()
-    }
-    class Fish{
-        -int sizeInFeet
-        -canEat()
-    }
-\`\`\`
-
-### State Diagram
-
-\`\`\`mermaid
-stateDiagram-v2
-    [*] --> Still
-    Still --> [*]
-    Still --> Moving
-    Moving --> Still
-    Moving --> Crash
-    Crash --> [*]
-\`\`\`
-
-### Pie Chart
-
-\`\`\`mermaid
-pie title Pets adopted by volunteers
-    "Dogs" : 386
-    "Cats" : 85
-    "Rats" : 15
-\`\`\`
-
-### Git Graph
-
-\`\`\`mermaid
-gitGraph
-    commit
-    commit
-    branch develop
-    checkout develop
-    commit
-    commit
-    checkout main
-    merge develop
-    commit
-\`\`\`
-
-### Entity Relationship Diagram
-
-\`\`\`mermaid
-erDiagram
-    CUSTOMER ||--o{ ORDER : places
-    ORDER ||--|{ LINE-ITEM : contains
-    CUSTOMER {
-        string name
-        string email
-    }
-    ORDER {
-        int orderNumber
-        date created
-    }
-\`\`\`
-
 ---
 
 ## Math Rendering
@@ -145,191 +85,100 @@ const getUser = (id: number): User | undefined =>
 
 > **Tip:** Drop a \`.md\` file onto this editor to load it!`
 
-// Memoized InputPane - prevents rerenders during RP expand/collapse
+// Memoized InputPane with Tailwind classes
 const InputPane = memo(({
   markdown,
   onMarkdownChange,
   onPaste,
-  onFileUpload,
   isExpanded
 }: {
   markdown: string
   onMarkdownChange: (value: string) => void
   onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void
-  onFileUpload: (content: string) => void
   isExpanded: boolean
 }) => {
   return (
-    <div style={{
-      flex: isExpanded ? 0 : 1,
-      padding: '1rem',
-      borderRight: '1px solid #e0e0e0',
-      overflow: isExpanded ? 'hidden' : 'visible',
-      width: isExpanded ? '0' : 'auto',
-      minWidth: isExpanded ? '0' : 'auto',
-      opacity: isExpanded ? 0 : 1,
-      transition: 'flex 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease',
-      // GPU acceleration hints
-      willChange: 'flex, opacity',
-      transform: 'translateZ(0)',
-      backfaceVisibility: 'hidden' as const,
-      // Performance: contain layout calculations to this element
-      contain: 'layout style' as const
-    }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        margin: '0 0 1rem 0'
-      }}>
-        <h3 style={{ margin: 0 }}>Markdown Input</h3>
-        <FileUploadButton onFileContent={onFileUpload} />
+    <div
+      className={cn(
+        "p-4 border-r border-border transition-all duration-400 ease-out",
+        "will-change-[flex,opacity] transform-gpu backface-hidden",
+        isExpanded
+          ? "flex-[0] w-0 min-w-0 opacity-0 overflow-hidden"
+          : "flex-1 opacity-100"
+      )}
+    >
+      <div className="flex items-center mb-4">
+        <h3 className="m-0 text-lg font-semibold text-foreground">Markdown Input</h3>
       </div>
       <textarea
         value={markdown}
         onChange={(e) => onMarkdownChange(e.target.value)}
         onPaste={onPaste}
-        style={{
-          width: '100%',
-          height: 'calc(100% - 3rem)',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          padding: '0.5rem',
-          fontFamily: 'monospace',
-          fontSize: '14px',
-          resize: 'none'
-        }}
+        className={cn(
+          "w-full h-[calc(100%-3rem)] p-2",
+          "border border-input rounded-md",
+          "font-mono text-sm",
+          "bg-background text-foreground",
+          "resize-none",
+          "focus:outline-none focus:ring-2 focus:ring-ring"
+        )}
         placeholder="Enter your markdown here..."
       />
     </div>
   )
 }, (prevProps, nextProps) => {
-  // Rerender if markdown OR isExpanded changes
-  // isExpanded drives inline style changes for animation
   return prevProps.markdown === nextProps.markdown &&
          prevProps.isExpanded === nextProps.isExpanded
 })
 InputPane.displayName = 'InputPane'
 
-// Memoized RenderPane - debounces content updates during animation
+// Memoized RenderPane with Tailwind classes
 const RenderPane = memo(({
   markdown,
-  isExpanded,
-  isAnimating,
-  arrowOpacity,
-  onToggleExpanded
 }: {
   markdown: string
-  isExpanded: boolean
-  isAnimating: boolean
-  arrowOpacity: number
-  onToggleExpanded: () => void
 }) => {
-  const [displayMarkdown, setDisplayMarkdown] = useState(markdown)
-  const updateTimeoutRef = useRef<NodeJS.Timeout>()
-
-  useEffect(() => {
-    // Debounce markdown updates during animation to prevent expensive rerenders
-    if (isAnimating) {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current)
-      }
-      updateTimeoutRef.current = setTimeout(() => {
-        setDisplayMarkdown(markdown)
-      }, 420) // Slightly longer than animation (400ms)
-    } else {
-      // Not animating, update immediately
-      setDisplayMarkdown(markdown)
-    }
-
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current)
-      }
-    }
-  }, [markdown, isAnimating])
-
   return (
-    <div style={{
-      flex: isExpanded ? 1 : 1,
-      transition: 'flex 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-      position: 'relative',
-      display: 'flex',
-      // GPU acceleration
-      willChange: 'flex',
-      transform: 'translateZ(0)',
-      backfaceVisibility: 'hidden' as const,
-      // Performance: contain layout calculations
-      contain: 'layout style' as const
-    }}>
-      {/* Gutter with toggle button - static, doesn't scroll */}
-      <div style={{
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: '32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(90deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0) 100%)',
-        zIndex: 10,
-        transform: 'translateZ(0)',
-        willChange: 'transform'
-      }}>
-        <ExpandToggleButton
-          isExpanded={isExpanded}
-          onClick={onToggleExpanded}
-          opacity={arrowOpacity}
-        />
-      </div>
-
-      {/* Scrollable render pane */}
-      <div style={{
-        flex: 1,
-        padding: '1rem',
-        paddingLeft: 'calc(1rem + 32px)',
-        overflow: 'auto',
-        // GPU acceleration for scrolling
-        transform: 'translateZ(0)',
-        willChange: 'scroll-position',
-        // Smooth scrolling on supported browsers
-        WebkitOverflowScrolling: 'touch' as const
-      }}>
-        <h3 style={{ margin: '0 0 1rem 0' }}>Rendered Output</h3>
-        <MarkdownRenderer>{displayMarkdown}</MarkdownRenderer>
-      </div>
+    <div className="p-4 transform-gpu">
+      <MarkdownRenderer>{markdown}</MarkdownRenderer>
     </div>
   )
 }, (prevProps, nextProps) => {
-  // Rerender if markdown changes, animation state changes, or arrow opacity changes
-  return prevProps.markdown === nextProps.markdown &&
-         prevProps.isAnimating === nextProps.isAnimating &&
-         prevProps.arrowOpacity === nextProps.arrowOpacity &&
-         prevProps.isExpanded === nextProps.isExpanded
+  return prevProps.markdown === nextProps.markdown
 })
 RenderPane.displayName = 'RenderPane'
 
+// Generate unique ID for new documents
+let docCounter = 1
+const generateDocId = () => `doc-${Date.now()}-${docCounter++}`
+
 function App() {
-  const [markdown, setMarkdown] = useState(initialMarkdown)
+  // Multi-document state
+  const [documents, setDocuments] = useState<MarkdownDocument[]>([
+    { id: 'doc-1', title: 'Untitled-1', content: initialMarkdown }
+  ])
+  const [activeDocId, setActiveDocId] = useState('doc-1')
   const [isExpanded, setIsExpanded] = useState(false)
   const [arrowOpacity, setArrowOpacity] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
-  const [isAnimating, setIsAnimating] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Get active document
+  const activeDoc = documents.find(d => d.id === activeDocId) || documents[0]
+  const markdown = activeDoc?.content || ''
+
+  // Convert documents to TabItems
+  const tabs: TabItem[] = documents.map(doc => ({
+    id: doc.id,
+    label: doc.title,
+    closable: documents.length > 1
+  }))
 
   const toggleExpanded = useCallback(() => {
-    // Start animation state
-    setIsAnimating(true)
     setArrowOpacity(0)
-
-    // After fade out, toggle expansion and fade in new arrow
     setTimeout(() => {
       setIsExpanded(prev => !prev)
       setArrowOpacity(1)
-
-      // End animation after transition completes
-      setTimeout(() => {
-        setIsAnimating(false)
-      }, 400) // Match transition duration
     }, 150)
   }, [])
 
@@ -347,156 +196,253 @@ function App() {
   const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    // Only hide overlay if leaving the main container
     if (e.currentTarget === e.target) {
       setIsDragging(false)
     }
   }, [])
 
   const detectAndConvertLatex = useCallback((text: string): string => {
-    // Check for LaTeX-style equations: \(...\) or \[...\]
     const hasLatexInline = /\\\(.+?\\\)/.test(text)
     const hasLatexBlock = /\\\[.+?\\\]/s.test(text)
-
     if (hasLatexInline || hasLatexBlock) {
       let converted = text
-      // Convert inline LaTeX \(...\) to $...$ (trim whitespace)
-      converted = converted.replace(/\\\((.+?)\\\)/g, (match, equation) => {
-        return '$' + equation.trim() + '$'
-      })
-      // Convert block LaTeX \[...\] to $$...$$ (trim whitespace)
-      converted = converted.replace(/\\\[(.+?)\\\]/gs, (match, equation) => {
-        return '\n$$\n' + equation.trim() + '\n$$\n'
-      })
+      converted = converted.replace(/\\\((.+?)\\\)/g, (_, eq) => '$' + eq.trim() + '$')
+      converted = converted.replace(/\\\[(.+?)\\\]/gs, (_, eq) => '\n$$\n' + eq.trim() + '\n$$\n')
       return converted
     }
-
     return text
   }, [])
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = e.clipboardData.getData('text/plain')
-
-    // Check if pasted text contains LaTeX equations
     const hasLatexInline = /\\\(.+?\\\)/.test(pastedText)
     const hasLatexBlock = /\\\[.+?\\\]/s.test(pastedText)
-
     if (hasLatexInline || hasLatexBlock) {
       e.preventDefault()
-
       const convertedText = detectAndConvertLatex(pastedText)
-
-      // Insert at cursor position
       const textarea = e.currentTarget
       const start = textarea.selectionStart
       const end = textarea.selectionEnd
-      const currentText = markdown
-
-      const newText = currentText.substring(0, start) + convertedText + currentText.substring(end)
-      setMarkdown(newText)
-
-      // Restore cursor position after the pasted content
+      const newText = markdown.substring(0, start) + convertedText + markdown.substring(end)
+      setDocuments(docs => docs.map(d =>
+        d.id === activeDocId ? { ...d, content: newText } : d
+      ))
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + convertedText.length
         textarea.focus()
       }, 0)
     }
-  }, [markdown, detectAndConvertLatex])
+  }, [markdown, activeDocId, detectAndConvertLatex])
 
   const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
-
-    // Handle text drop
     const text = e.dataTransfer.getData('text/plain')
     if (text) {
       const convertedText = detectAndConvertLatex(text)
-      setMarkdown(convertedText)
+      setDocuments(docs => docs.map(d =>
+        d.id === activeDocId ? { ...d, content: convertedText } : d
+      ))
       return
     }
-
-    // Handle file drop
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
       const file = files[0]
-
-      // Only accept markdown files
       if (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.type === 'text/markdown') {
         const reader = new FileReader()
         reader.onload = (event) => {
           const content = event.target?.result as string
           if (content) {
             const convertedContent = detectAndConvertLatex(content)
-            setMarkdown(convertedContent)
+            setDocuments(docs => docs.map(d =>
+              d.id === activeDocId ? { ...d, content: convertedContent, title: file.name.replace(/\.(md|markdown)$/, '') } : d
+            ))
           }
         }
         reader.readAsText(file)
       }
     }
-  }, [detectAndConvertLatex])
+  }, [activeDocId, detectAndConvertLatex])
 
   const handleMarkdownChange = useCallback((value: string) => {
-    setMarkdown(value)
+    setDocuments(docs => docs.map(d =>
+      d.id === activeDocId ? { ...d, content: value } : d
+    ))
+  }, [activeDocId])
+
+  // Tab handlers
+  const handleTabChange = useCallback((tabId: string) => {
+    setActiveDocId(tabId)
   }, [])
 
-  const handleFileUpload = useCallback((content: string) => {
-    const convertedContent = detectAndConvertLatex(content)
-    setMarkdown(convertedContent)
+  const handleNewTab = useCallback(() => {
+    const newId = generateDocId()
+    const newDoc: MarkdownDocument = {
+      id: newId,
+      title: `Untitled-${documents.length + 1}`,
+      content: '# New Document\n\nStart writing...'
+    }
+    setDocuments(docs => [...docs, newDoc])
+    setActiveDocId(newId)
+  }, [documents.length])
+
+  const handleDeleteTab = useCallback((tabId: string) => {
+    if (documents.length <= 1) return
+    const idx = documents.findIndex(d => d.id === tabId)
+    const newDocs = documents.filter(d => d.id !== tabId)
+    setDocuments(newDocs)
+    if (activeDocId === tabId) {
+      const newActiveIdx = Math.min(idx, newDocs.length - 1)
+      setActiveDocId(newDocs[newActiveIdx].id)
+    }
+  }, [documents, activeDocId])
+
+  // Control bar handlers
+  const handleAddFile = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const content = event.target?.result as string
+      if (content) {
+        const convertedContent = detectAndConvertLatex(content)
+        const newId = generateDocId()
+        const newDoc: MarkdownDocument = {
+          id: newId,
+          title: file.name.replace(/\.(md|markdown)$/, ''),
+          content: convertedContent
+        }
+        setDocuments(docs => [...docs, newDoc])
+        setActiveDocId(newId)
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
   }, [detectAndConvertLatex])
+
+  const handleSave = useCallback(() => {
+    const blob = new Blob([markdown], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${activeDoc?.title || 'document'}.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [markdown, activeDoc?.title])
 
   return (
     <div
-      style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui', position: 'relative' }}
+      className="flex flex-col h-screen font-sans relative bg-background text-foreground"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <InputPane
-        markdown={markdown}
-        onMarkdownChange={handleMarkdownChange}
-        onPaste={handlePaste}
-        onFileUpload={handleFileUpload}
-        isExpanded={isExpanded}
+      {/* Hidden file input for Add File */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.mdx,.markdown"
+        onChange={handleFileInputChange}
+        className="hidden"
+        aria-hidden="true"
       />
-      <RenderPane
-        markdown={markdown}
-        isExpanded={isExpanded}
-        isAnimating={isAnimating}
-        arrowOpacity={arrowOpacity}
-        onToggleExpanded={toggleExpanded}
-      />
+
+      {/* Control Bar - top right */}
+      <div className="absolute top-2 right-4 z-50 flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleAddFile}
+              className="h-8 w-8"
+              aria-label="Add file"
+            >
+              <FilePlus2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Add file</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleSave}
+              className="h-8 w-8"
+              aria-label="Save file"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Save file</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* Main content area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Input Pane */}
+        <InputPane
+          markdown={markdown}
+          onMarkdownChange={handleMarkdownChange}
+          onPaste={handlePaste}
+          isExpanded={isExpanded}
+        />
+
+        {/* Render Pane with Tabs */}
+        <div className="flex-1 flex flex-col relative overflow-hidden">
+          {/* Gutter with toggle button */}
+          <div className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center bg-gradient-to-r from-black/[0.02] to-transparent z-10">
+            <ExpandToggleButton
+              isExpanded={isExpanded}
+              onClick={toggleExpanded}
+              opacity={arrowOpacity}
+            />
+          </div>
+
+          {/* Tab System */}
+          <div className="flex-1 pl-8 flex flex-col overflow-hidden">
+            <TabSystem
+              tabs={tabs}
+              activeTab={activeDocId}
+              onTabChange={handleTabChange}
+              onNewTab={handleNewTab}
+              onDeleteTab={handleDeleteTab}
+              variant="chrome"
+              showNewButton
+              showCloseButtons
+              className="flex-1"
+            >
+              {documents.map(doc => (
+                <TabContent key={doc.id} value={doc.id}>
+                  <RenderPane markdown={doc.content} />
+                </TabContent>
+              ))}
+            </TabSystem>
+          </div>
+        </div>
+      </div>
 
       {/* Drag-and-drop overlay */}
       {isDragging && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          border: '3px dashed #3b82f6',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          pointerEvents: 'none'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '2rem 3rem',
-            borderRadius: '8px',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '1rem' }}>📄</div>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-              Drop Markdown Here
-            </div>
-            <div style={{ fontSize: '14px', color: '#666' }}>
+        <div className="absolute inset-0 bg-primary/10 border-3 border-dashed border-primary rounded-lg flex items-center justify-center z-[1000] pointer-events-none">
+          <div className="bg-background p-8 rounded-lg shadow-xl text-center">
+            <div className="text-5xl mb-4">📄</div>
+            <div className="text-xl font-bold mb-2">Drop Markdown Here</div>
+            <div className="text-sm text-muted-foreground">
               Drop markdown text or .md file
             </div>
           </div>
