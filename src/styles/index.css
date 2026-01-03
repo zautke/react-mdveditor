@@ -4,6 +4,31 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================
+   Theme Transition System
+   Smooth color transitions when toggling themes
+   ============================================ */
+
+/* Base transition properties for smooth theme switching */
+:root {
+  --theme-transition-duration: 300ms;
+  --theme-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Apply transitions only during theme change to avoid initial flash */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition:
+    color var(--theme-transition-duration) var(--theme-transition-timing),
+    background-color var(--theme-transition-duration) var(--theme-transition-timing),
+    border-color var(--theme-transition-duration) var(--theme-transition-timing),
+    fill var(--theme-transition-duration) var(--theme-transition-timing),
+    stroke var(--theme-transition-duration) var(--theme-transition-timing),
+    box-shadow var(--theme-transition-duration) var(--theme-transition-timing) !important;
+}
+
+/* ============================================
    shadcn/ui CSS Variables + Mexican Theme
    ============================================ */
 
@@ -48,6 +73,26 @@
   --mexican-green: oklch(0.52 0.14 142);
   --mexican-green-light: oklch(0.62 0.18 142);
   --mexican-gold: oklch(0.78 0.12 85);
+  --mexican-paper-warm: #fff8f0;
+  --mexican-paper-cool: #f0fff8;
+  --mexican-paper-table: #fff8dc;
+  --mexican-paper-quote: #ffeee6;
+  --gradient-mexican-paper: linear-gradient(135deg, var(--mexican-paper-warm) 0%, var(--background) 50%, var(--mexican-paper-cool) 100%);
+  --gradient-mexican-corner-orange: linear-gradient(45deg, var(--mexican-orange), var(--mexican-brown));
+  --gradient-mexican-corner-green: linear-gradient(135deg, var(--mexican-green), var(--mexican-green-light));
+  --gradient-mexican-brand: linear-gradient(135deg, var(--mexican-orange) 0%, var(--mexican-brown) 50%, var(--mexican-green) 100%);
+  --gradient-mexican-orange: linear-gradient(135deg, var(--mexican-brown) 0%, var(--mexican-orange) 100%);
+  --gradient-mexican-table: linear-gradient(135deg, var(--mexican-paper-table) 0%, var(--background) 100%);
+  --gradient-mexican-table-head: linear-gradient(135deg, var(--mexican-orange) 0%, var(--mexican-brown) 100%);
+  --gradient-mexican-quote: linear-gradient(135deg, var(--mexican-paper-warm) 0%, var(--mexican-paper-quote) 100%);
+  --gradient-mexican-hr: linear-gradient(90deg, var(--mexican-orange) 0%, var(--mexican-brown) 50%, var(--mexican-green) 100%);
+  --shadow-mexican-elevated: 0 25px 80px color-mix(in oklab, black 15%, transparent);
+  --shadow-mexican-soft: 0 10px 30px color-mix(in oklab, black 10%, transparent);
+  --shadow-mexican-quote: 0 8px 25px color-mix(in oklab, var(--mexican-orange) 15%, transparent);
+  --shadow-mexican-accent: 0 2px 8px color-mix(in oklab, var(--mexican-orange) 30%, transparent);
+  --shadow-mexican-text: 1px 1px 2px color-mix(in oklab, black 30%, transparent);
+  --shadow-mexican-glow-soft: 0 0 20px color-mix(in oklab, var(--mexican-orange) 50%, transparent);
+  --shadow-mexican-glow-strong: 0 0 30px color-mix(in oklab, var(--mexican-orange) 80%, transparent);
 
   /* ============================================
      Brand Design Tokens (Light Mode)
@@ -136,6 +181,10 @@
   /* Content Icon Button */
   --content-btn-bg: oklab(0.2679 -0.0011 0.0036);           /* #262624 */
   --content-btn-hover: oklab(0.2679 -0.0011 0.0036);        /* #262624 */
+  --mexican-paper-warm: var(--background);
+  --mexican-paper-cool: var(--background);
+  --mexican-paper-table: var(--background);
+  --mexican-paper-quote: var(--background);
 }
 
 @theme inline {
@@ -252,7 +301,7 @@ code {
 /* Markdown Content Styles */
 .markdown-content {
   line-height: 1.6;
-  color: #333;
+  color: var(--text-primary, var(--foreground));
 }
 
 .markdown-content p {
@@ -275,7 +324,9 @@ code {
 }
 
 .markdown-content :not(pre) > code {
-  background-color: #f4f4f4;
+  background-color: var(--muted);
+  border: 1px solid var(--border);
+  color: var(--foreground);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 0.9em;
@@ -296,11 +347,11 @@ code {
 
 /* Mexican Menu Theme Styles (for MDRendererTW.tsx) */
 .mexican-menu-container {
-  background: linear-gradient(135deg, #fff8f0 0%, #ffffff 50%, #f0fff8 100%);
-  border: 2px solid #d4af37;
+  background: var(--gradient-mexican-paper);
+  border: 2px solid var(--mexican-gold);
   border-radius: 20px;
   padding: 3rem;
-  box-shadow: 0 25px 80px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-mexican-elevated);
   position: relative;
   overflow: hidden;
 }
@@ -311,7 +362,7 @@ code {
   left: 10px;
   width: 60px;
   height: 60px;
-  background: linear-gradient(45deg, #ff6b35, #d2691e);
+  background: var(--gradient-mexican-corner-orange);
   clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 
@@ -321,88 +372,88 @@ code {
   right: 10px;
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #228b22, #32cd32);
+  background: var(--gradient-mexican-corner-green);
   clip-path: polygon(100% 0, 100% 100%, 0 0);
 }
 
 .text-brand-gradient {
-  background: linear-gradient(135deg, #ff6b35 0%, #d2691e 50%, #228b22 100%);
+  background: var(--gradient-mexican-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-orange-gradient {
-  background: linear-gradient(135deg, #d2691e 0%, #ff6b35 100%);
+  background: var(--gradient-mexican-orange);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .brand-brown {
-  color: #d2691e;
+  color: var(--mexican-brown);
 }
 
 .brand-orange {
-  color: #ff6b35;
+  color: var(--mexican-orange);
 }
 
 .brand-green {
-  color: #228b22;
+  color: var(--mexican-green);
 }
 
 .brand-green-light {
-  color: #32cd32;
+  color: var(--mexican-green-light);
 }
 
 .mexican-table-wrapper {
   overflow-x: auto;
   margin: 2rem 0;
   border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-mexican-soft);
 }
 
 .table-mexican {
   border-collapse: collapse;
   width: 100%;
-  border: 3px solid #d2691e;
-  background: linear-gradient(135deg, #fff8dc 0%, #ffffff 100%);
+  border: 3px solid var(--mexican-brown);
+  background: var(--gradient-mexican-table);
   border-radius: 15px;
   overflow: hidden;
 }
 
 .th-mexican {
-  border: 2px solid #d2691e;
+  border: 2px solid var(--mexican-brown);
   padding: 1rem;
-  background: linear-gradient(135deg, #ff6b35 0%, #d2691e 100%);
+  background: var(--gradient-mexican-table-head);
   color: white;
   text-align: center;
   font-weight: bold;
   font-size: 1.1em;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  text-shadow: var(--shadow-mexican-text);
 }
 
 .td-mexican {
-  border: 1px solid #deb887;
+  border: 1px solid color-mix(in oklab, var(--mexican-brown) 35%, var(--border));
   padding: 1rem;
   text-align: center;
-  background: rgba(255, 248, 220, 0.5);
+  background: color-mix(in oklab, var(--mexican-paper-table) 50%, transparent);
   transition: all 0.3s ease;
 }
 
 .td-mexican:hover {
-  background: rgba(255, 215, 0, 0.2);
+  background: color-mix(in oklab, var(--mexican-gold) 20%, transparent);
   transform: scale(1.02);
 }
 
 .blockquote-mexican {
-  border-left: 6px solid #ff6b35;
+  border-left: 6px solid var(--mexican-orange);
   padding: 1.5rem 2rem;
   margin: 2rem 0;
   font-style: italic;
-  background: linear-gradient(135deg, #fff8f0 0%, #ffeee6 100%);
+  background: var(--gradient-mexican-quote);
   border-radius: 10px;
-  box-shadow: 0 8px 25px rgba(255, 107, 53, 0.15);
+  box-shadow: var(--shadow-mexican-quote);
   font-size: 1.1em;
   line-height: 1.6;
   position: relative;
@@ -411,10 +462,10 @@ code {
 .hr-mexican {
   border: none;
   height: 4px;
-  background: linear-gradient(90deg, #ff6b35 0%, #d2691e 50%, #228b22 100%);
+  background: var(--gradient-mexican-hr);
   margin: 3rem 0;
   border-radius: 2px;
-  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+  box-shadow: var(--shadow-mexican-accent);
 }
 
 .hover-lift {
@@ -435,10 +486,10 @@ code {
 
 @keyframes glow {
   0%, 100% {
-    text-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+    text-shadow: var(--shadow-mexican-glow-soft);
   }
   50% {
-    text-shadow: 0 0 30px rgba(255, 107, 53, 0.8);
+    text-shadow: var(--shadow-mexican-glow-strong);
   }
 }
 
