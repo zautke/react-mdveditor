@@ -27,7 +27,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw, rehypeSlug]}
                 components={{
-                    code({ node, inline, className, children, ...props }: CodeProps) {
+                    code({ inline, className, children, ...props }: CodeProps) {
                         const match = /language-(\w+)/.exec(className || '')
                         return !inline && match ? (
                             <SyntaxHighlighter
@@ -39,7 +39,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                                 {String(children).replace(/\n$/, '')}
                             </SyntaxHighlighter>
                         ) : (
-                            <code className={`bg-gray-100 px-1 py-0.5 rounded text-sm ${className}`} {...props}>
+                            <code className={`bg-muted text-foreground border border-border/60 px-1 py-0.5 rounded text-sm ${className}`} {...props}>
                                 {children}
                             </code>
                         )
@@ -77,7 +77,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     h1({ children, ...props }) {
                         return (
                             <h1
-                                className="text-brand-gradient text-responsive-title font-bold text-center my-8 pb-2 border-b-2 border-gray-300 font-['Inter'] animate-glow"
+                                className="text-brand-gradient text-responsive-title font-bold text-center my-8 pb-2 border-b-2 border-border font-['Inter'] animate-glow"
                                 {...props}
                             >
                                 {children}
@@ -87,7 +87,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     h2({ children, ...props }) {
                         return (
                             <h2
-                                className="text-orange-gradient text-responsive-subtitle font-semibold text-center my-6 pb-2 border-b-4 border-brand-orange"
+                                className="text-orange-gradient text-responsive-subtitle font-semibold text-center my-6 pb-2 border-b-4 border-mexican-orange"
                                 {...props}
                             >
                                 {children}
@@ -97,7 +97,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     h3({ children, ...props }) {
                         return (
                             <h3
-                                className="brand-green text-xl font-semibold my-6 border-l-4 border-brand-green-light pl-4 bg-gradient-to-r from-green-50 to-transparent py-2 rounded"
+                                className="text-mexican-green text-xl font-semibold my-6 border-l-4 border-mexican-green-light pl-4 bg-gradient-to-r from-mexican-green-light/15 to-transparent py-2 rounded"
                                 {...props}
                             >
                                 {children}
@@ -107,7 +107,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     h4({ children, ...props }) {
                         return (
                             <h4
-                                className="brand-orange text-lg font-semibold my-5 underline decoration-brand-orange decoration-2 underline-offset-4"
+                                className="text-mexican-orange text-lg font-semibold my-5 underline decoration-mexican-orange decoration-2 underline-offset-4"
                                 {...props}
                             >
                                 {children}
@@ -118,7 +118,7 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                         return (
                             <a
                                 href={href}
-                                className="brand-brown font-semibold no-underline border-b-2 border-transparent transition-all duration-300 px-1 py-0.5 rounded hover:border-brand-orange hover:bg-orange-50 hover:-translate-y-0.5"
+                                className="text-mexican-brown font-semibold no-underline border-b-2 border-transparent transition-all duration-300 px-1 py-0.5 rounded hover:border-mexican-orange hover:bg-brand-accent/10 hover:-translate-y-0.5"
                                 {...props}
                             >
                                 {children}
@@ -132,28 +132,28 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                     },
                     strong({ children, ...props }) {
                         return (
-                            <strong className="brand-brown font-bold shadow-sm" {...props}>
+                            <strong className="text-mexican-brown font-bold shadow-sm" {...props}>
                                 {children}
                             </strong>
                         )
                     },
                     em({ children, ...props }) {
                         return (
-                            <em className="brand-green italic font-medium" {...props}>
+                            <em className="text-mexican-green italic font-medium" {...props}>
                                 {children}
                             </em>
                         )
                     },
                     ul({ children, ...props }) {
                         return (
-                            <ul className="my-3 pl-8 list-disc marker:text-brand-orange" {...props}>
+                            <ul className="my-3 pl-8 list-disc marker:text-mexican-orange" {...props}>
                                 {children}
                             </ul>
                         )
                     },
                     ol({ children, ...props }) {
                         return (
-                            <ol className="my-3 pl-8 list-decimal marker:text-brand-green marker:font-bold" {...props}>
+                            <ol className="my-3 pl-8 list-decimal marker:text-mexican-green marker:font-bold" {...props}>
                                 {children}
                             </ol>
                         )
