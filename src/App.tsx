@@ -69,13 +69,10 @@ Join thousands of teams already using our platform to achieve more.
 
 function App() {
     return (
-        <div style={{
-            maxWidth: '800px',
-            margin: '0 auto',
-            padding: '2rem',
-            minHeight: '100vh'
-        }}>
+        <div className="min-h-screen bg-background text-foreground">
+            <div className="mx-auto max-w-[800px] p-8">
             <MarkdownRenderer>{landingPageMarkdown}</MarkdownRenderer>
+            </div>
         </div>
     )
 }

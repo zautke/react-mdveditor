@@ -30,9 +30,9 @@ export function DesignTokenDemo() {
             </div>
             <code className="text-xs text-muted-foreground">#c66040</code>
           </div>
-          <div className="space-y-2">
+            <div className="space-y-2">
             <div className="h-20 rounded-lg bg-brand-accent-disabled flex items-center justify-center">
-              <span className="text-gray-700 font-medium">brand-accent-disabled</span>
+              <span className="text-foreground/70 font-medium">brand-accent-disabled</span>
             </div>
             <code className="text-xs text-muted-foreground">#e3b1a0</code>
           </div>
@@ -43,11 +43,11 @@ export function DesignTokenDemo() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold border-b pb-2">Text Colors</h2>
         <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
+          <div className="p-4 bg-card text-card-foreground rounded-lg border border-border">
             <p className="text-text-primary font-medium">text-primary</p>
             <code className="text-xs text-muted-foreground">#3d3d3a / #c2c0b6 (dark)</code>
           </div>
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
+          <div className="p-4 bg-card text-card-foreground rounded-lg border border-border">
             <p className="text-text-placeholder">text-placeholder</p>
             <code className="text-xs text-muted-foreground">#73726c / #9c9a92 (dark)</code>
           </div>
@@ -138,6 +138,57 @@ export function DesignTokenDemo() {
         </div>
       </section>
 
+      {/* Gradients & Shadows */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-b pb-2">Gradients & Shadows</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold">Gradients</h3>
+            <div className="grid gap-3">
+              {[
+                '--gradient-mexican-paper',
+                '--gradient-mexican-brand',
+                '--gradient-mexican-orange',
+                '--gradient-mexican-table',
+                '--gradient-mexican-table-head',
+                '--gradient-mexican-quote',
+                '--gradient-mexican-hr',
+              ].map((token) => (
+                <div key={token} className="space-y-2">
+                  <div
+                    className="h-16 rounded-lg border"
+                    style={{ background: `var(${token})` }}
+                  />
+                  <code className="text-xs text-muted-foreground">{token}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold">Shadows</h3>
+            <div className="grid gap-3">
+              {[
+                '--shadow-mexican-elevated',
+                '--shadow-mexican-soft',
+                '--shadow-mexican-quote',
+                '--shadow-mexican-accent',
+                '--shadow-mexican-text',
+                '--shadow-mexican-glow-soft',
+                '--shadow-mexican-glow-strong',
+              ].map((token) => (
+                <div key={token} className="space-y-2">
+                  <div
+                    className="h-16 rounded-lg border bg-card"
+                    style={{ boxShadow: `var(${token})` }}
+                  />
+                  <code className="text-xs text-muted-foreground">{token}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* All Tokens Summary */}
       <section className="space-y-4 mt-12">
         <h2 className="text-xl font-semibold border-b pb-2">Token Reference</h2>
@@ -160,6 +211,20 @@ export function DesignTokenDemo() {
           <code>border-alert-info-border</code>
           <code>bg-alert-danger-bg</code>
           <code>text-alert-danger-text</code>
+          <code>--gradient-mexican-paper</code>
+          <code>--gradient-mexican-brand</code>
+          <code>--gradient-mexican-orange</code>
+          <code>--gradient-mexican-table</code>
+          <code>--gradient-mexican-table-head</code>
+          <code>--gradient-mexican-quote</code>
+          <code>--gradient-mexican-hr</code>
+          <code>--shadow-mexican-elevated</code>
+          <code>--shadow-mexican-soft</code>
+          <code>--shadow-mexican-quote</code>
+          <code>--shadow-mexican-accent</code>
+          <code>--shadow-mexican-text</code>
+          <code>--shadow-mexican-glow-soft</code>
+          <code>--shadow-mexican-glow-strong</code>
         </div>
       </section>
     </div>
