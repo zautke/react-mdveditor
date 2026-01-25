@@ -1,4 +1,4 @@
-import { useState, DragEvent, memo, useRef, useCallback } from 'react'
+import { useState, DragEvent, memo, useRef, useCallback, useEffect } from 'react'
 import { FilePlus2, Download } from 'lucide-react'
 import MarkdownRenderer from './MarkdownRenderer_orig'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
@@ -85,6 +85,66 @@ const getUser = (id: number): User | undefined =>
 
 > **Tip:** Drop a \`.md\` file onto this editor to load it!`
 
+type PersistedState = {
+  documents: MarkdownDocument[]
+  activeDocId: string
+  isExpanded: boolean
+}
+
+const STORAGE_KEY = 'mdeditor:state:v1'
+const defaultDocuments: MarkdownDocument[] = [
+  { id: 'doc-1', title: 'Untitled-1', content: initialMarkdown }
+]
+
+const sanitizeDocument = (value: unknown): MarkdownDocument | null => {
+  if (!value || typeof value !== 'object') return null
+  const record = value as { id?: unknown; title?: unknown; content?: unknown }
+  if (typeof record.id !== 'string') return null
+  if (typeof record.title !== 'string') return null
+  if (typeof record.content !== 'string') return null
+  return { id: record.id, title: record.title, content: record.content }
+}
+
+const loadPersistedState = (): PersistedState | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    const record = parsed as {
+      documents?: unknown
+      activeDocId?: unknown
+      isExpanded?: unknown
+    }
+    const documents = Array.isArray(record.documents)
+      ? record.documents
+          .map(sanitizeDocument)
+          .filter((doc): doc is MarkdownDocument => doc !== null)
+      : []
+    if (documents.length === 0) return null
+    const activeDocIdRaw =
+      typeof record.activeDocId === 'string' ? record.activeDocId : documents[0].id
+    const activeDocId = documents.some(doc => doc.id === activeDocIdRaw)
+      ? activeDocIdRaw
+      : documents[0].id
+    const isExpanded = typeof record.isExpanded === 'boolean' ? record.isExpanded : false
+    return { documents, activeDocId, isExpanded }
+  } catch {
+    return null
+  }
+}
+
+const getInitialState = (): PersistedState => {
+  return (
+    loadPersistedState() ?? {
+      documents: defaultDocuments,
+      activeDocId: defaultDocuments[0].id,
+      isExpanded: false
+    }
+  )
+}
+
 // Memoized InputPane with Tailwind classes
 const InputPane = memo(({
   markdown,
@@ -153,12 +213,13 @@ let docCounter = 1
 const generateDocId = () => `doc-${Date.now()}-${docCounter++}`
 
 function App() {
+  const [persistedState] = useState<PersistedState>(() => getInitialState())
   // Multi-document state
   const [documents, setDocuments] = useState<MarkdownDocument[]>([
-    { id: 'doc-1', title: 'Untitled-1', content: initialMarkdown }
+    ...persistedState.documents
   ])
-  const [activeDocId, setActiveDocId] = useState('doc-1')
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [activeDocId, setActiveDocId] = useState(persistedState.activeDocId)
+  const [isExpanded, setIsExpanded] = useState(persistedState.isExpanded)
   const [arrowOpacity, setArrowOpacity] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -336,6 +397,24 @@ function App() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }, [markdown, activeDoc?.title])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const safeActiveDocId = documents.some(doc => doc.id === activeDocId)
+      ? activeDocId
+      : documents[0]?.id
+    if (!safeActiveDocId) return
+    const stateToStore: PersistedState = {
+      documents,
+      activeDocId: safeActiveDocId,
+      isExpanded
+    }
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToStore))
+    } catch {
+      // Ignore storage write failures (quota, private mode, etc.)
+    }
+  }, [documents, activeDocId, isExpanded])
 
   return (
     <div
