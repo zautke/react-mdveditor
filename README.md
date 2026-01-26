@@ -1,236 +1,210 @@
-# Markdown Editor with Live Preview
+<div align="center">
 
-A React-based markdown editor with live preview, syntax highlighting, and multiple styling themes.
+# ✏️ React Markdown Editor
+
+**A feature-rich markdown editor with live preview, built with React 18, Vite 7, and Tailwind CSS 4.**
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.3-61dafb?logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-7.2-646cff?logo=vite&logoColor=white)](https://vite.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1-06b6d4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+[Features](#features) · [Quick Start](#quick-start) · [Architecture](#architecture) · [Customization](#customization) · [Contributing](#contributing)
+
+</div>
+
+---
 
 ## Features
 
-- 📝 **Live Preview** - Real-time markdown rendering as you type
-- 🎨 **Multiple Themes** - Choose from different styling options
-- 💻 **Syntax Highlighting** - Code blocks with syntax highlighting using Prism
-- 📊 **GitHub Flavored Markdown** - Tables, task lists, strikethrough, and more
-- 🔗 **Auto-linking** - Automatic URL detection and linking
-- ⚡ **Fast** - Built with Vite for lightning-fast HMR
+| Feature | Description |
+|---------|-------------|
+| 📝 **Live Preview** | Real-time split-pane rendering as you type |
+| 📑 **Multi-Document Tabs** | Open, create, and switch between multiple documents with smooth animations |
+| 📊 **GitHub Flavored Markdown** | Tables, task lists, strikethrough, footnotes, and auto-linking |
+| 💻 **Syntax Highlighting** | Prism-based code blocks with the oneDark theme and language detection |
+| 📈 **Mermaid Diagrams** | Flowcharts, sequence diagrams, class diagrams, and more — rendered inline |
+| 🧮 **Math Equations** | MathJax support for inline `$...$` and display `$$...$$` math |
+| 📂 **File I/O** | Upload `.md` files via drag-and-drop or button; download your work as `.md` |
+| 🎨 **Multiple Themes** | Three built-in renderers including a Mexican-inspired Tailwind theme |
+| ♿ **Accessible** | Built on Radix UI primitives for keyboard navigation and screen readers |
+| ⚡ **Fast** | Vite HMR, optimized chunking, memoized components |
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js >= 20.0.0
-- pnpm >= 9.0.0
+- [Node.js](https://nodejs.org/) >= 20.0.0
+- [pnpm](https://pnpm.io/) >= 10.28.0
 
 ### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/zautke/react-mdveditor.git
+cd react-mdveditor
+
 # Install dependencies
 pnpm install
 
-# Start development server
+# Start the dev server
 pnpm dev
-
-# Build for production
-pnpm build
-
-# Preview production build
-pnpm preview
 ```
 
-## Project Structure
+Open **http://localhost:5200** to see the editor.
+
+### Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start dev server on port **5200** with HMR |
+| `pnpm build` | Production build with code splitting |
+| `pnpm preview` | Serve the production build locally |
+| `pnpm typecheck` | TypeScript strict-mode type checking |
+| `pnpm lint` | ESLint with zero-warning tolerance |
+
+## Architecture
+
+### Markdown Processing Pipeline
 
 ```
-mdeditor/
-├── src/
-│   ├── components/
-│   │   └── markdown/
-│   │       ├── EditorWithProview.tsx      # Main editor with split-pane view
-│   │       ├── MarkdownRenderer.tsx       # Tailwind-styled renderer (Mexican theme)
-│   │       ├── MDRendererTW.tsx          # Alternative Tailwind renderer
-│   │       └── MarkdownRenderer_orig.tsx  # Original inline-styled renderer
-│   ├── styles/
-│   │   └── index.css                      # Styles and Tailwind imports
-│   ├── App.tsx                            # Demo app (inline styles)
-│   ├── AppTW.tsx                         # Demo app (Tailwind styles)
-│   ├── main.tsx                          # Entry point
-│   ├── index.d.ts                        # Type definitions
-│   └── vite-env.d.ts                     # Vite type definitions
-├── index.html
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-└── README.md
+User Input → react-markdown → remark-gfm (GFM)
+                             → remark-math (equations)
+           → rehype-raw (HTML) → rehype-slug (heading IDs)
+                               → rehype-mathjax (render math)
+           → react-syntax-highlighter (code blocks)
+           → MermaidDiagram (mermaid fenced blocks) → DOM
 ```
 
-## Available Components
+### Project Structure
 
-### EditorWithProview
-
-The main editor component with split-pane view (editor on left, preview on right).
-
-```tsx
-import EditorWithProview from './components/markdown/EditorWithProview'
-
-function App() {
-  return <EditorWithProview />
-}
+```
+src/
+├── components/
+│   ├── markdown/
+│   │   ├── EditorWithProview.tsx   # Main split-pane editor with tabs & file I/O
+│   │   ├── MarkdownRenderer.tsx    # Tailwind renderer (Mexican theme)
+│   │   ├── MarkdownRenderer_orig.tsx # Clean inline-styled renderer
+│   │   ├── MDRendererTW.tsx        # Alternative Tailwind renderer
+│   │   └── MermaidDiagram.tsx      # Mermaid diagram renderer with validation
+│   └── ui/
+│       ├── tabs/                   # Animated tab system (Radix UI + Motion)
+│       ├── alert.tsx               # Error alerts
+│       ├── button.tsx              # Button variants
+│       ├── tooltip.tsx             # Accessible tooltips
+│       ├── expand-toggle-button.tsx
+│       └── file-upload-button.tsx
+├── styles/
+│   └── index.css                   # Tailwind 4 + design tokens + Mexican theme
+├── lib/
+│   └── utils.ts                    # cn() merge utility (clsx + tailwind-merge)
+├── main.tsx                        # Entry point
+└── index.d.ts                      # Global type definitions
 ```
 
-### MarkdownRenderer (Tailwind - Mexican Theme)
+### Build Configuration
 
-A Tailwind-styled markdown renderer with a colorful Mexican-inspired theme.
+Vite is configured with intelligent code splitting for optimal loading:
 
-```tsx
-import MarkdownRenderer from './components/markdown/MarkdownRenderer'
-
-function App() {
-  const markdown = `# Hello World\n\nThis is **bold** text.`
-
-  return <MarkdownRenderer>{markdown}</MarkdownRenderer>
-}
-```
-
-### MDRendererTW (Tailwind - Alternative)
-
-Another Tailwind-styled renderer with utility classes.
-
-```tsx
-import MDRendererTW from './components/markdown/MDRendererTW'
-
-function App() {
-  const markdown = `# Hello World`
-
-  return <MDRendererTW>{markdown}</MDRendererTW>
-}
-```
-
-### MarkdownRenderer_orig (Inline Styles)
-
-A clean renderer using inline styles (no Tailwind dependency).
-
-```tsx
-import MarkdownRenderer from './components/markdown/MarkdownRenderer_orig'
-
-function App() {
-  const markdown = `# Hello World`
-
-  return <MarkdownRenderer>{markdown}</MarkdownRenderer>
-}
-```
-
-## Switching Between Components
-
-By default, the app uses `EditorWithProview`. To use a different component:
-
-1. Open `src/main.tsx`
-2. Change the import and component:
-
-```tsx
-// Option 1: Editor with preview (default)
-import App from './components/markdown/EditorWithProview'
-
-// Option 2: Demo with inline styles
-import App from './App'
-
-// Option 3: Demo with Tailwind styles
-import App from './AppTW'
-```
+| Chunk | Contents |
+|-------|----------|
+| `vendor` | `react`, `react-dom` |
+| `markdown` | `react-markdown`, `react-syntax-highlighter`, `remark-gfm`, `rehype-raw`, `rehype-slug` |
+| `app` | Application code |
 
 ## Customization
 
-### Styling
+### Switching Renderers
 
-The project uses Tailwind CSS 4.1. To customize styles:
-
-1. Edit `src/styles/index.css` for custom CSS
-2. Modify the Tailwind utility classes in the component files
-3. The Mexican theme colors can be customized in the CSS custom properties
-
-### Markdown Plugins
-
-The renderers use the following plugins:
-
-- **remark-gfm**: GitHub Flavored Markdown support
-- **rehype-raw**: HTML in markdown support
-- **rehype-slug**: Auto-generate heading IDs
-
-To add more plugins, install them and add to the renderer components:
+Edit `src/main.tsx` to change the default component:
 
 ```tsx
-import remarkPlugin from 'remark-plugin-name'
+// Split-pane editor with tabs (default)
+import App from './components/markdown/EditorWithProview'
 
-<ReactMarkdown
-  remarkPlugins={[remarkGfm, remarkPlugin]}
-  // ...
->
+// Demo with inline styles
+import App from './App'
+
+// Demo with Tailwind styles
+import App from './AppTW'
 ```
 
-### Code Syntax Highlighting
+### Theming
 
-Syntax highlighting uses `react-syntax-highlighter` with the `oneDark` theme. To change the theme:
+The design system is defined in `src/styles/index.css` using CSS custom properties:
+
+```css
+--brand-orange: #ff6b35;
+--brand-green:  #228b22;
+--brand-brown:  #d2691e;
+--brand-gold:   #ffd700;
+```
+
+Override these variables or modify the Tailwind utility classes in any renderer component to create your own theme.
+
+### Adding Markdown Plugins
+
+Extend the processing pipeline in any renderer:
+
+```tsx
+import remarkPlugin from 'remark-your-plugin'
+
+<ReactMarkdown
+  remarkPlugins={[remarkGfm, remarkMath, remarkPlugin]}
+  rehypePlugins={[rehypeRaw, rehypeSlug, rehypeMathjax]}
+>
+  {markdown}
+</ReactMarkdown>
+```
+
+### Code Theme
+
+Syntax highlighting uses `react-syntax-highlighter` with the Prism `oneDark` theme. Swap themes by importing a different style:
 
 ```tsx
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-
-// In the code component
-<SyntaxHighlighter style={atomDark} language={match[1]} PreTag="div">
 ```
 
-## Scripts
+## Tech Stack
 
-```bash
-# Development
-pnpm dev              # Start dev server on port 5173
-
-# Building
-pnpm build            # Production build
-pnpm preview          # Preview production build
-
-# Code Quality
-pnpm typecheck        # Run TypeScript type checking
-pnpm lint             # Run ESLint
-```
-
-## Dependencies
-
-### Core
-- React 18.3.1
-- React DOM 18.3.1
-- Vite 6.0.1
-
-### Markdown
-- react-markdown 10.1.0
-- react-syntax-highlighter 15.6.1
-- remark-gfm 4.0.1
-- rehype-raw 7.0.0
-- rehype-slug 6.0.0
-
-### Styling
-- Tailwind CSS 4.1.11
-- @tailwindcss/vite 4.1.8
-
-### Development
-- TypeScript 5.6.2
-- ESLint 9.15.0
-- Vite React Plugin 4.3.4
+| Category | Technology | Version |
+|----------|-----------|---------|
+| **UI** | React | 18.3 |
+| **Build** | Vite | 7.2 |
+| **Language** | TypeScript | 5.9 |
+| **Styling** | Tailwind CSS | 4.1 |
+| **Components** | Radix UI | latest |
+| **Animation** | Motion (Framer) | 12.x |
+| **Icons** | Lucide React | 0.562 |
+| **Markdown** | react-markdown | 10.1 |
+| **Diagrams** | Mermaid | 11.12 |
+| **Math** | MathJax (rehype) | 7.1 |
+| **Highlighting** | react-syntax-highlighter | 16.1 |
 
 ## Browser Support
 
-- Chrome >= 111
-- Firefox >= 128
-- Safari >= 16.4
-- Edge >= 111
-
-## License
-
-This project is open source and available under the MIT License.
+| Browser | Minimum Version |
+|---------|----------------|
+| Chrome | 111+ |
+| Edge | 111+ |
+| Firefox | 128+ |
+| Safari | 16.4+ |
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Roadmap
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Ensure code quality passes:
+   ```bash
+   pnpm typecheck && pnpm lint
+   ```
+4. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
 
-- [ ] Add dark mode toggle
-- [ ] Add more markdown themes
-- [ ] Export markdown as PDF
-- [ ] Add markdown templates
-- [ ] Add keyboard shortcuts
-- [ ] Add collaborative editing
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
