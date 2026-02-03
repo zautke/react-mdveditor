@@ -131,3 +131,28 @@ See `AGENT_TEST_EXECUTION_PROTOCOL.md` for complete testing procedures.
 - Components in `src/components/markdown/`
 - Type definitions in `src/index.d.ts`
 - Test results in `test-results/` (not tracked in git)
+
+## Text Expansion Protocol
+
+<text_expansion_protocol>
+Before processing any message, scan for :stub: patterns and expand them using the map below.
+Expansion is recursive - expanded text may contain additional stubs to expand.
+</text_expansion_protocol>
+
+<expansion_map>
+:wc: -> web search and use context7
+</expansion_map>
+
+### Related: CLI & text expansion protocols (other devs)
+
+| Tool / protocol | Format | Scope | Notes |
+|-----------------|--------|-------|-------|
+| **Espanso** | YAML: `trigger` → `replace`; optional `:prefix` (e.g. `:now`) | System‑wide, cross‑platform | [espanso.org/docs](https://espanso.org/docs/matches/basics/). Variables `{{name}}`, extensions (date, script, forms), cursor `$\|$`, multiline `\|` / `>`. |
+| **snippet_cli** (Ruby) | Writes Espanso YAML | CLI to add Espanso snippets | [github.com/ajmarkow/snippet_cli](https://github.com/ajmarkow/snippet_cli). `snippet_cli` adds matches into Espanso config. |
+| **Fish `abbr`** | `abbr --add NAME EXPANSION`; `--set-cursor=MARKER`, `--regex`, `--function` | Fish shell command line | [fishshell.com/docs](https://fishshell.com/docs/current/cmds/abbr.html). `gco` → `git checkout`; expand on space/enter. |
+| **Alfred** | Snippets: keyword → text; `{date}`, `{time}`, `{clipboard}` | macOS, Powerpack | [alfredapp.com/help/features/snippets](https://alfredapp.com/help/features/snippets). Auto‑expand by keyword. |
+| **TextExpander** | Abbreviation + expansion fields | macOS/Windows | Abbreviation → replacement; placeholders, fill‑in fields. |
+| **Snipt** (Rust) | Prefix (e.g. `:`) + shortcut → expansion | System‑wide | Parameterized snippets, clipboard, scripts. |
+| **VS Code / Neovim** | `snippets` in JSON/Lua; `$1`, `$0`, `\${1:label}` | Editor‑local | Editor snippets, not a shared `:stub:` protocol. |
+
+There is no single standard; our `:stub: -> expansion` in `<expansion_map>` is closest in spirit to Espanso’s `trigger`/`replace` and Fish `abbr --add`.

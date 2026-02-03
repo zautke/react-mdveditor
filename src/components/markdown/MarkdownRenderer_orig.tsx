@@ -20,21 +20,20 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeSlug, rehypeMathjax, rehypeRaw]}
                 components={{
-                    code({ node, inline, className, children, ...props }) {
+                    code({ className, children, node: _node, ...props }) {
                         const match = /language-(\w+)/.exec(className || '')
                         const codeContent = String(children).replace(/\n$/, '')
 
                         // Handle mermaid diagrams
-                        if (!inline && match && match[1] === 'mermaid') {
+                        if (match && match[1] === 'mermaid') {
                             return <MermaidDiagram chart={codeContent} />
                         }
 
-                        return !inline && match ? (
+                        return match ? (
                             <SyntaxHighlighter
                                 style={oneDark}
                                 language={match[1]}
                                 PreTag="div"
-                                {...props}
                             >
                                 {codeContent}
                             </SyntaxHighlighter>

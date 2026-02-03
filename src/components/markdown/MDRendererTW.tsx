@@ -1,19 +1,14 @@
-import ReactMarkdown, { ExtraProps } from 'react-markdown'
+import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { ClassAttributes } from 'react'
-import { HTMLAttributes } from 'react'
+import MermaidDiagram from './MermaidDiagram'
 
 interface MarkdownRendererProps {
     children: string
     className?: string
-}
-
-type CodeProps = ClassAttributes<HTMLElement> & HTMLAttributes<HTMLElement> & ExtraProps & {
-    inline: boolean
 }
 
 function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
@@ -27,16 +22,21 @@ function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw, rehypeSlug]}
                 components={{
-                    code({ node, inline, className, children, ...props }: CodeProps) {
+                    code({ className, children, node: _node, ...props }) {
                         const match = /language-(\w+)/.exec(className || '')
-                        return !inline && match ? (
+                        const codeContent = String(children).replace(/\n$/, '')
+
+                        if (match && match[1] === 'mermaid') {
+                            return <MermaidDiagram chart={codeContent} />
+                        }
+
+                        return match ? (
                             <SyntaxHighlighter
                                 style={oneDark}
                                 language={match[1]}
                                 PreTag="div"
-                                {...props}
                             >
-                                {String(children).replace(/\n$/, '')}
+                                {codeContent}
                             </SyntaxHighlighter>
                         ) : (
                             <code className={`bg-gray-100 px-1 py-0.5 rounded text-sm ${className}`} {...props}>

@@ -15,39 +15,41 @@ mermaid.initialize({
     fontFamily: 'system-ui, -apple-system, sans-serif',
 })
 
+let diagramCounter = 0
+
 function MermaidDiagram({ chart }: MermaidDiagramProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const [error, setError] = useState<string | null>(null)
     const [svg, setSvg] = useState<string>('')
-    const renderIdRef = useRef(0)
+    const idRef = useRef<string>(`mermaid-${diagramCounter++}`)
 
     useEffect(() => {
-        let cancelled = false
-
         const renderDiagram = async () => {
             if (!chart.trim()) {
                 setError('Empty diagram')
-                setSvg('')
                 return
             }
 
-            setError(null)
-
             try {
-                await mermaid.parse(chart)
-                const id = `mermaid-${renderIdRef.current++}-${Date.now()}`
-                const { svg: renderedSvg } = await mermaid.render(id, chart)
-                if (!cancelled) setSvg(renderedSvg)
-            } catch (err) {
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : 'Failed to render diagram')
-                    setSvg('')
+                // Validate the diagram first
+                const isValid = await mermaid.parse(chart)
+                if (!isValid) {
+                    setError('Invalid mermaid syntax')
+                    return
                 }
+
+                // Render the diagram
+                const { svg: renderedSvg } = await mermaid.render(idRef.current, chart)
+                setSvg(renderedSvg)
+                setError(null)
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'Failed to render diagram'
+                setError(errorMessage)
+                setSvg('')
             }
         }
 
         renderDiagram()
-        return () => { cancelled = true }
     }, [chart])
 
     if (error) {

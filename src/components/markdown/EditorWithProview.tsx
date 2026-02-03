@@ -1,4 +1,4 @@
-import { useState, DragEvent, memo, useRef, useCallback } from 'react'
+import { useState, useEffect, DragEvent, memo, useRef, useCallback } from 'react'
 import { FilePlus2, Download } from 'lucide-react'
 import MarkdownRenderer from './MarkdownRenderer_orig'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
@@ -6,6 +6,7 @@ import { TabSystem, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { loadState, saveState } from '@/lib/storage'
 import type { TabItem } from '@/components/ui/tabs/types'
 
 // Document type for multi-tab editing
@@ -153,15 +154,37 @@ let docCounter = 1
 const generateDocId = () => `doc-${Date.now()}-${docCounter++}`
 
 function App() {
-  // Multi-document state
-  const [documents, setDocuments] = useState<MarkdownDocument[]>([
-    { id: 'doc-1', title: 'Untitled-1', content: initialMarkdown }
-  ])
-  const [activeDocId, setActiveDocId] = useState('doc-1')
-  const [isExpanded, setIsExpanded] = useState(false)
+  // Multi-document state — restored from localStorage
+  const [documents, setDocuments] = useState<MarkdownDocument[]>(() => {
+    const saved = loadState<MarkdownDocument[]>('documents', [])
+    return saved.length > 0 ? saved : [{ id: 'doc-1', title: 'Untitled-1', content: initialMarkdown }]
+  })
+  const [activeDocId, setActiveDocId] = useState(() => {
+    const saved = loadState<string>('activeDocId', '')
+    return saved || 'doc-1'
+  })
+  const [isExpanded, setIsExpanded] = useState(() =>
+    loadState<boolean>('isExpanded', false)
+  )
   const [arrowOpacity, setArrowOpacity] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Persist documents to localStorage (debounced for keystroke performance)
+  useEffect(() => {
+    const timer = setTimeout(() => saveState('documents', documents), 500)
+    return () => clearTimeout(timer)
+  }, [documents])
+
+  // Persist active tab immediately
+  useEffect(() => {
+    saveState('activeDocId', activeDocId)
+  }, [activeDocId])
+
+  // Persist expanded state immediately
+  useEffect(() => {
+    saveState('isExpanded', isExpanded)
+  }, [isExpanded])
 
   // Get active document
   const activeDoc = documents.find(d => d.id === activeDocId) || documents[0]
