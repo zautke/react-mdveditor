@@ -40,6 +40,7 @@ export type {
   CloseButtonPosition,
   CloseButtonShape,
   CloseButtonVisibility,
+  NewTabMenuItem,
   TabGroupConfig,
   TabGroup,
 } from "./types"
