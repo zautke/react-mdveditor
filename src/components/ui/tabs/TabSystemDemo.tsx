@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useState, useCallback } from "react"
 import { FileText, Settings, User, Bell, Home } from "lucide-react"
+import { Copy, FileText as FeatherFileText, GitBranch, Upload } from "react-feather"
 
 import { TabSystem, TabContent } from "./TabSystem"
 import type { TabItem, TabVariant, TabOrientation } from "./types"
@@ -39,6 +40,36 @@ export function TabSystemDemo() {
     setActiveTab(newId)
   }, [])
 
+  const handleNewMermaidTab = useCallback(() => {
+    const newId = `tab-${Date.now()}`
+    setTabs((prev) => [
+      ...prev,
+      {
+        id: newId,
+        label: `Mermaid ${prev.length + 1}`,
+        icon: <GitBranch className="h-4 w-4" />,
+      },
+    ])
+    setActiveTab(newId)
+  }, [])
+
+  const handleDuplicateTab = useCallback(() => {
+    setTabs((prev) => {
+      const current = prev.find((tab) => tab.id === activeTab)
+      if (!current) return prev
+      const newId = `tab-${Date.now()}`
+      setActiveTab(newId)
+      return [
+        ...prev,
+        {
+          ...current,
+          id: newId,
+          label: `${current.label} Copy`,
+        },
+      ]
+    })
+  }, [activeTab])
+
   const handleDeleteTab = useCallback(
     (tabId: string) => {
       setTabs((prev) => {
@@ -54,6 +85,32 @@ export function TabSystemDemo() {
   )
 
   const variants: TabVariant[] = ["chrome", "underline", "pills", "boxed", "minimal"]
+  const menuItems = [
+    {
+      id: "new-markdown",
+      label: "New Markdown",
+      icon: <FeatherFileText className="h-4 w-4" />,
+      onSelect: handleNewTab,
+    },
+    {
+      id: "new-mermaid",
+      label: "New Mermaid Diagram",
+      icon: <GitBranch className="h-4 w-4" />,
+      onSelect: handleNewMermaidTab,
+    },
+    {
+      id: "duplicate-tab",
+      label: "Duplicate Tab",
+      icon: <Copy className="h-4 w-4" />,
+      onSelect: handleDuplicateTab,
+    },
+    {
+      id: "import-markdown",
+      label: "Import Markdown File",
+      icon: <Upload className="h-4 w-4" />,
+      onSelect: () => console.info("Import action triggered"),
+    },
+  ]
 
   return (
     <div className="p-8 space-y-8 max-w-4xl mx-auto">
@@ -131,6 +188,7 @@ export function TabSystemDemo() {
           showNewButton={showNewButton}
           showCloseButtons={showCloseButtons}
           onNewTab={handleNewTab}
+          newTabMenuItems={menuItems}
           onDeleteTab={handleDeleteTab}
           closeButtonVisibility="hover"
           closeButtonShape="circle"

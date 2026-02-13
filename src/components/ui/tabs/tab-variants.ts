@@ -15,7 +15,8 @@ export const tabListVariants = cva(
   {
     variants: {
       variant: {
-        chrome: "bg-muted/50 p-1 rounded-t-lg relative",
+        chrome:
+          "bg-[color:var(--tabs-bar-bg)] p-1 rounded-t-lg relative border border-[color:var(--tabs-bar-border)] border-t-[color:var(--tabs-bar-border-strong)] border-r-[color:var(--tabs-bar-border-strong)] backdrop-blur-md shadow-sm overflow-visible",
         underline: "border-b border-border gap-4",
         pills: "bg-muted p-1 rounded-lg gap-1",
         boxed: "border border-border rounded-lg p-1 gap-1",
@@ -37,6 +38,11 @@ export const tabListVariants = cva(
         variant: "chrome",
         orientation: "vertical",
         className: "rounded-t-none rounded-l-lg",
+      },
+      {
+        variant: "chrome",
+        orientation: "horizontal",
+        className: "items-end pb-0",
       },
     ],
     defaultVariants: {
@@ -65,43 +71,44 @@ export const tabTriggerVariants = cva(
         chrome: [
           // Chrome-style curved tabs with overlapping effect
           "px-4 py-2 min-w-[120px]",
-          "bg-muted/70 text-muted-foreground",
+          "bg-[color:var(--tab-bg)] text-[color:var(--tab-text)]",
           "rounded-t-lg",
+          "-mb-px",
           // Chrome tab shape via clip-path (trapezoid)
           "[clip-path:polygon(8px_0%,calc(100%-8px)_0%,100%_100%,0%_100%)]",
           "-ml-2 first:ml-0",
-          "hover:bg-muted",
-          "data-[state=active]:bg-background data-[state=active]:text-foreground",
-          "data-[state=active]:shadow-[0_-2px_10px_rgba(0,0,0,0.1)]",
+          "hover:bg-[color:var(--tab-hover-bg)]",
+          "data-[state=active]:bg-[color:var(--tab-active-bg)] data-[state=active]:text-[color:var(--tab-active-text)]",
+          "data-[state=active]:shadow-[var(--tab-shadow)]",
           "data-[state=active]:z-10",
         ],
         underline: [
           "px-4 py-2",
-          "text-muted-foreground",
+          "text-[color:var(--tab-text)]",
           "border-b-2 border-transparent -mb-px",
-          "hover:text-foreground hover:border-border",
-          "data-[state=active]:text-foreground data-[state=active]:border-primary",
+          "hover:text-[color:var(--tab-active-text)] hover:border-border",
+          "data-[state=active]:text-[color:var(--tab-active-text)] data-[state=active]:border-primary",
         ],
         pills: [
           "px-4 py-2 rounded-md",
-          "text-muted-foreground",
-          "hover:bg-background/50 hover:text-foreground",
-          "data-[state=active]:bg-background data-[state=active]:text-foreground",
+          "text-[color:var(--tab-text)]",
+          "hover:bg-[color:var(--tab-hover-bg)] hover:text-[color:var(--tab-active-text)]",
+          "data-[state=active]:bg-[color:var(--tab-active-bg)] data-[state=active]:text-[color:var(--tab-active-text)]",
           "data-[state=active]:shadow-sm",
         ],
         boxed: [
           "px-4 py-2 rounded-md",
           "border border-transparent",
-          "text-muted-foreground",
-          "hover:bg-accent/50 hover:text-accent-foreground",
-          "data-[state=active]:bg-background data-[state=active]:border-border",
-          "data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+          "text-[color:var(--tab-text)]",
+          "hover:bg-[color:var(--tab-hover-bg)] hover:text-[color:var(--tab-active-text)]",
+          "data-[state=active]:bg-[color:var(--tab-active-bg)] data-[state=active]:border-border",
+          "data-[state=active]:text-[color:var(--tab-active-text)] data-[state=active]:shadow-sm",
         ],
         minimal: [
           "px-2 py-1",
-          "text-muted-foreground",
-          "hover:text-foreground",
-          "data-[state=active]:text-foreground",
+          "text-[color:var(--tab-text)]",
+          "hover:text-[color:var(--tab-active-text)]",
+          "data-[state=active]:text-[color:var(--tab-active-text)]",
           "data-[state=active]:font-semibold",
         ],
       },
@@ -183,23 +190,23 @@ export const newTabButtonVariants = cva(
   [
     "inline-flex items-center justify-center",
     "h-8 w-8 rounded-md",
-    "text-muted-foreground",
+    "text-[color:var(--tab-text)]",
     "transition-colors duration-150",
-    "hover:bg-accent hover:text-accent-foreground",
+    "hover:bg-[color:var(--tab-hover-bg)] hover:text-[color:var(--tab-active-text)]",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
   ],
   {
     variants: {
       variant: {
-        chrome: "bg-muted/30 hover:bg-muted",
+        chrome: "bg-[color:var(--tab-bg)] hover:bg-[color:var(--tab-hover-bg)]",
         underline: "border border-dashed border-border hover:border-solid",
         pills: "bg-muted/50 hover:bg-muted",
         boxed: "border border-dashed border-border hover:border-solid",
         minimal: "hover:bg-muted/50",
       },
       orientation: {
-        horizontal: "ml-1",
-        vertical: "mt-1 w-full",
+        horizontal: "",
+        vertical: "w-full",
       },
     },
     defaultVariants: {

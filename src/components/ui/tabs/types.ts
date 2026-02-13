@@ -11,6 +11,14 @@ export interface TabItem {
   closable?: boolean
 }
 
+export interface NewTabMenuItem {
+  id: string
+  label: string
+  icon: React.ReactNode
+  onSelect: () => void
+  disabled?: boolean
+}
+
 export type TabOrientation = "horizontal" | "vertical"
 
 export type TabVariant = "chrome" | "underline" | "pills" | "boxed" | "minimal"
@@ -58,6 +66,9 @@ export interface TabSystemProps {
 
   /** Show the new tab button */
   showNewButton?: boolean
+
+  /** Optional dropdown menu items for the new tab control */
+  newTabMenuItems?: NewTabMenuItem[]
 
   /** Show close buttons on tabs */
   showCloseButtons?: boolean
