@@ -68,13 +68,11 @@ function MermaidDiagram({ chart }: MermaidDiagramProps) {
     return (
         <div
             ref={containerRef}
+            className="my-4 rounded-lg border p-4 overflow-auto"
             style={{
-                margin: '1rem 0',
-                padding: '1rem',
-                backgroundColor: '#f8fafc',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                overflow: 'auto',
+                backgroundColor: 'var(--card)',
+                borderColor: 'var(--border)',
+                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.08)',
             }}
             dangerouslySetInnerHTML={{ __html: svg }}
         />

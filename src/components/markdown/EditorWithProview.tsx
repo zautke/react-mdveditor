@@ -1,6 +1,8 @@
 import { useState, useEffect, DragEvent, memo, useRef, useCallback } from 'react'
 import { FilePlus2, Download } from 'lucide-react'
+import { Copy, FileText, GitBranch, Upload } from 'react-feather'
 import MarkdownRenderer from './MarkdownRenderer_orig'
+import MermaidDiagram from './MermaidDiagram'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
 import { TabSystem, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -9,11 +11,18 @@ import { cn } from '@/lib/utils'
 import { loadState, saveState } from '@/lib/storage'
 import type { TabItem } from '@/components/ui/tabs/types'
 
+type MarkdownDocumentKind = 'markdown' | 'mermaid'
+
 // Document type for multi-tab editing
 interface MarkdownDocument {
   id: string
   title: string
   content: string
+  kind: MarkdownDocumentKind
+}
+
+type StoredMarkdownDocument = Omit<MarkdownDocument, 'kind'> & {
+  kind?: MarkdownDocumentKind
 }
 
 const initialMarkdown = `# React Markdown Demo
@@ -86,6 +95,36 @@ const getUser = (id: number): User | undefined =>
 
 > **Tip:** Drop a \`.md\` file onto this editor to load it!`
 
+const mermaidStarters = [
+  'flowchart',
+  'graph',
+  'sequencediagram',
+  'classdiagram',
+  'statediagram',
+  'erdiagram',
+  'gantt',
+  'journey',
+  'pie',
+  'mindmap',
+  'timeline',
+  'sankey',
+  'xychart',
+  'blockdiagram',
+  'quadrantchart',
+]
+
+const isMermaidText = (text: string) => {
+  if (text.includes('```')) return false
+  const firstLine = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean)
+
+  if (!firstLine) return false
+  const normalized = firstLine.replace(/\s+/g, ' ').toLowerCase()
+  return mermaidStarters.some((starter) => normalized.startsWith(starter))
+}
+
 // Memoized InputPane with Tailwind classes
 const InputPane = memo(({
   markdown,
@@ -136,16 +175,22 @@ InputPane.displayName = 'InputPane'
 // Memoized RenderPane with Tailwind classes
 const RenderPane = memo(({
   markdown,
+  kind,
 }: {
   markdown: string
+  kind: MarkdownDocumentKind
 }) => {
   return (
     <div className="p-4 transform-gpu">
-      <MarkdownRenderer>{markdown}</MarkdownRenderer>
+      {kind === 'mermaid' ? (
+        <MermaidDiagram chart={markdown} />
+      ) : (
+        <MarkdownRenderer>{markdown}</MarkdownRenderer>
+      )}
     </div>
   )
 }, (prevProps, nextProps) => {
-  return prevProps.markdown === nextProps.markdown
+  return prevProps.markdown === nextProps.markdown && prevProps.kind === nextProps.kind
 })
 RenderPane.displayName = 'RenderPane'
 
@@ -156,8 +201,21 @@ const generateDocId = () => `doc-${Date.now()}-${docCounter++}`
 function App() {
   // Multi-document state — restored from localStorage
   const [documents, setDocuments] = useState<MarkdownDocument[]>(() => {
-    const saved = loadState<MarkdownDocument[]>('documents', [])
-    return saved.length > 0 ? saved : [{ id: 'doc-1', title: 'Untitled-1', content: initialMarkdown }]
+    const saved = loadState<StoredMarkdownDocument[]>('documents', [])
+    if (saved.length > 0) {
+      return saved.map((doc) => ({
+        ...doc,
+        kind: doc.kind ?? (isMermaidText(doc.content) ? 'mermaid' : 'markdown'),
+      }))
+    }
+    return [
+      {
+        id: 'doc-1',
+        title: 'Untitled-1',
+        content: initialMarkdown,
+        kind: 'markdown',
+      },
+    ]
   })
   const [activeDocId, setActiveDocId] = useState(() => {
     const saved = loadState<string>('activeDocId', '')
@@ -194,6 +252,7 @@ function App() {
   const tabs: TabItem[] = documents.map(doc => ({
     id: doc.id,
     label: doc.title,
+    icon: doc.kind === 'mermaid' ? <GitBranch className="h-4 w-4" /> : undefined,
     closable: documents.length > 1
   }))
 
@@ -238,12 +297,29 @@ function App() {
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = e.clipboardData.getData('text/plain')
+    const textarea = e.currentTarget
+    const selectionCoversAll =
+      textarea.selectionStart === 0 && textarea.selectionEnd === markdown.length
+    const isEmpty = markdown.trim().length === 0
+
+    if ((isEmpty || selectionCoversAll) && isMermaidText(pastedText)) {
+      e.preventDefault()
+      const newText = pastedText.trimEnd()
+      setDocuments(docs => docs.map(d =>
+        d.id === activeDocId ? { ...d, content: newText, kind: 'mermaid' } : d
+      ))
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = newText.length
+        textarea.focus()
+      }, 0)
+      return
+    }
+
     const hasLatexInline = /\\\(.+?\\\)/.test(pastedText)
     const hasLatexBlock = /\\\[.+?\\\]/s.test(pastedText)
     if (hasLatexInline || hasLatexBlock) {
       e.preventDefault()
       const convertedText = detectAndConvertLatex(pastedText)
-      const textarea = e.currentTarget
       const start = textarea.selectionStart
       const end = textarea.selectionEnd
       const newText = markdown.substring(0, start) + convertedText + markdown.substring(end)
@@ -263,9 +339,14 @@ function App() {
     setIsDragging(false)
     const text = e.dataTransfer.getData('text/plain')
     if (text) {
-      const convertedText = detectAndConvertLatex(text)
+      const isMermaid = isMermaidText(text)
+      const convertedText = isMermaid ? text : detectAndConvertLatex(text)
       setDocuments(docs => docs.map(d =>
-        d.id === activeDocId ? { ...d, content: convertedText } : d
+        d.id === activeDocId ? {
+          ...d,
+          content: convertedText,
+          kind: isMermaid ? 'mermaid' : 'markdown',
+        } : d
       ))
       return
     }
@@ -277,9 +358,15 @@ function App() {
         reader.onload = (event) => {
           const content = event.target?.result as string
           if (content) {
-            const convertedContent = detectAndConvertLatex(content)
+            const isMermaid = isMermaidText(content)
+            const convertedContent = isMermaid ? content : detectAndConvertLatex(content)
             setDocuments(docs => docs.map(d =>
-              d.id === activeDocId ? { ...d, content: convertedContent, title: file.name.replace(/\.(md|markdown)$/, '') } : d
+              d.id === activeDocId ? {
+                ...d,
+                content: convertedContent,
+                title: file.name.replace(/\.(md|markdown)$/, ''),
+                kind: isMermaid ? 'mermaid' : 'markdown',
+              } : d
             ))
           }
         }
@@ -304,11 +391,36 @@ function App() {
     const newDoc: MarkdownDocument = {
       id: newId,
       title: `Untitled-${documents.length + 1}`,
-      content: '# New Document\n\nStart writing...'
+      content: '# New Document\n\nStart writing...',
+      kind: 'markdown',
     }
     setDocuments(docs => [...docs, newDoc])
     setActiveDocId(newId)
   }, [documents.length])
+
+  const handleNewMermaidTab = useCallback(() => {
+    const newId = generateDocId()
+    const newDoc: MarkdownDocument = {
+      id: newId,
+      title: `Mermaid-${documents.length + 1}`,
+      content: 'flowchart TD\n  A --> B',
+      kind: 'mermaid',
+    }
+    setDocuments(docs => [...docs, newDoc])
+    setActiveDocId(newId)
+  }, [documents.length])
+
+  const handleDuplicateTab = useCallback(() => {
+    if (!activeDoc) return
+    const newId = generateDocId()
+    const newDoc: MarkdownDocument = {
+      ...activeDoc,
+      id: newId,
+      title: `${activeDoc.title} (copy)`,
+    }
+    setDocuments(docs => [...docs, newDoc])
+    setActiveDocId(newId)
+  }, [activeDoc])
 
   const handleDeleteTab = useCallback((tabId: string) => {
     if (documents.length <= 1) return
@@ -333,12 +445,14 @@ function App() {
     reader.onload = (event) => {
       const content = event.target?.result as string
       if (content) {
-        const convertedContent = detectAndConvertLatex(content)
+        const isMermaid = isMermaidText(content)
+        const convertedContent = isMermaid ? content : detectAndConvertLatex(content)
         const newId = generateDocId()
         const newDoc: MarkdownDocument = {
           id: newId,
           title: file.name.replace(/\.(md|markdown)$/, ''),
-          content: convertedContent
+          content: convertedContent,
+          kind: isMermaid ? 'mermaid' : 'markdown',
         }
         setDocuments(docs => [...docs, newDoc])
         setActiveDocId(newId)
@@ -360,9 +474,37 @@ function App() {
     URL.revokeObjectURL(url)
   }, [markdown, activeDoc?.title])
 
+  const newTabMenuItems = [
+    {
+      id: 'new-markdown',
+      label: 'New Markdown',
+      icon: <FileText className="h-4 w-4" />,
+      onSelect: handleNewTab,
+    },
+    {
+      id: 'new-mermaid',
+      label: 'New Mermaid Diagram',
+      icon: <GitBranch className="h-4 w-4" />,
+      onSelect: handleNewMermaidTab,
+    },
+    {
+      id: 'duplicate-tab',
+      label: 'Duplicate Tab',
+      icon: <Copy className="h-4 w-4" />,
+      onSelect: handleDuplicateTab,
+      disabled: !activeDoc,
+    },
+    {
+      id: 'import-markdown',
+      label: 'Import Markdown File',
+      icon: <Upload className="h-4 w-4" />,
+      onSelect: handleAddFile,
+    },
+  ]
+
   return (
     <div
-      className="flex flex-col h-screen font-sans relative bg-background text-foreground"
+      className="app-shell flex flex-col h-screen font-sans relative text-foreground"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -443,6 +585,7 @@ function App() {
               activeTab={activeDocId}
               onTabChange={handleTabChange}
               onNewTab={handleNewTab}
+              newTabMenuItems={newTabMenuItems}
               onDeleteTab={handleDeleteTab}
               variant="chrome"
               showNewButton
@@ -451,7 +594,7 @@ function App() {
             >
               {documents.map(doc => (
                 <TabContent key={doc.id} value={doc.id}>
-                  <RenderPane markdown={doc.content} />
+                  <RenderPane markdown={doc.content} kind={doc.kind} />
                 </TabContent>
               ))}
             </TabSystem>
