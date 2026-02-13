@@ -1,144 +1,543 @@
+@import url('https://fonts.googleapis.com/css2?family=Rethink+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================
-   shadcn/ui CSS Variables + Mexican Theme
+   Terracotta Theme (Design System)
    ============================================ */
-
 :root {
+  /* ═══════════════════════════════════════════
+     BASE PALETTE - Light Mode
+     ═══════════════════════════════════════════ */
+
+  /* ─── Terracotta Family (Brand) ─── */
+  /* Punchy, vibrant terracotta with high chroma */
+  --color-terracotta:         oklch(0.58 0.185 32);    /* Rich terracotta - primary */
+  --color-terracotta-hover:   oklch(0.52 0.195 30);    /* Deeper for hover */
+  --color-terracotta-light:   oklch(0.68 0.12 35);     /* Lighter variant */
+  --color-terracotta-muted:   oklch(0.72 0.08 38);     /* Soft/disabled */
+  --color-terracotta-wash:    oklch(0.96 0.025 35);    /* Very light wash */
+
+  /* ─── Warm Neutrals (Light Surfaces) ─── */
+  --color-white:              oklch(1 0 0);             /* Pure white */
+  --color-cream:              oklch(0.985 0.008 85);    /* Warm off-white bg */
+  --color-linen:              oklch(0.97 0.01 75);      /* Warm surface */
+  --color-parchment:          oklch(0.955 0.012 70);    /* Hover surface */
+  --color-sand:               oklch(0.94 0.015 65);     /* Active surface */
+  --color-bone:               oklch(0.965 0.01 80);     /* Secondary surface */
+
+  /* ─── Warm Neutrals (Text & Borders) ─── */
+  --color-charcoal:           oklch(0.25 0.015 60);     /* Primary text - deep */
+  --color-charcoal-soft:      oklch(0.35 0.012 65);     /* Softer text */
+  --color-stone:              oklch(0.50 0.015 70);     /* Muted text */
+  --color-fog:                oklch(0.88 0.01 75);      /* Border/input */
+  --color-mist:               oklch(0.92 0.008 80);     /* Lighter border */
+
+  /* ─── Accent Colors ─── */
+  --color-amber:              oklch(0.78 0.16 75);      /* Warm accent */
+  --color-gold:               oklch(0.82 0.12 85);      /* Light gold */
+
+  /* ─── Status Colors ─── */
+  --color-ruby:               oklch(0.55 0.22 25);      /* Destructive red */
+  --color-ruby-light:         oklch(0.62 0.18 25);      /* Lighter destructive */
+  --color-emerald:            oklch(0.65 0.18 155);     /* Success green */
+  --color-amber-warn:         oklch(0.75 0.16 70);      /* Warning */
+  --color-sky:                oklch(0.70 0.12 230);     /* Info blue */
+
+  /* ═══════════════════════════════════════════
+     SEMANTIC TOKENS - Light Mode
+     shadcn/ui SOP compliant
+     ═══════════════════════════════════════════ */
+
+  /* ─── Base ─── */
+  --background:               oklch(0.99 0.005 85);     /* Warm white background */
+  --foreground:               oklch(0.18 0.015 55);     /* Rich dark text */
+
+  /* ─── Card ─── */
+  --card:                     oklch(1 0 0);             /* Pure white cards */
+  --card-foreground:          oklch(0.18 0.015 55);
+
+  /* ─── Popover ─── */
+  --popover:                  oklch(1 0 0);
+  --popover-foreground:       oklch(0.18 0.015 55);
+
+  /* ─── Primary (Terracotta) ─── */
+  --primary:                  oklch(0.58 0.185 32);     /* Vibrant terracotta */
+  --primary-foreground:       oklch(0.98 0.01 35);      /* Cream on terracotta */
+
+  /* ─── Secondary ─── */
+  --secondary:                oklch(0.965 0.01 80);     /* Warm bone */
+  --secondary-foreground:     oklch(0.25 0.015 60);
+
+  /* ─── Muted ─── */
+  --muted:                    oklch(0.955 0.012 75);    /* Soft parchment */
+  --muted-foreground:         oklch(0.48 0.015 65);     /* Medium gray-warm */
+
+  /* ─── Accent ─── */
+  --accent:                   oklch(0.96 0.03 35);      /* Light terracotta wash */
+  --accent-foreground:        oklch(0.52 0.18 32);      /* Terracotta text */
+
+  /* ─── Destructive ─── */
+  --destructive:              oklch(0.55 0.22 25);      /* Punchy red */
+  --destructive-foreground:   oklch(0.98 0.01 25);      /* Light on red */
+
+  /* ─── Border & Input ─── */
+  --border:                   oklch(0.90 0.01 75);      /* Warm border */
+  --input:                    oklch(0.90 0.01 75);
+  --ring:                     oklch(0.58 0.185 32);     /* Terracotta focus */
+
+  /* ─── Chart Colors (Warm palette) ─── */
+  --chart-1:                  oklch(0.58 0.185 32);     /* Terracotta */
+  --chart-2:                  oklch(0.68 0.16 50);      /* Orange */
+  --chart-3:                  oklch(0.62 0.14 25);      /* Rust */
+  --chart-4:                  oklch(0.75 0.13 75);      /* Gold */
+  --chart-5:                  oklch(0.70 0.10 95);      /* Ochre */
+
+  /* ─── Sidebar ─── */
+  --sidebar:                  oklch(0.975 0.008 80);    /* Very light warm */
+  --sidebar-foreground:       oklch(0.25 0.015 60);
+  --sidebar-primary:          oklch(0.58 0.185 32);     /* Terracotta */
+  --sidebar-primary-foreground: oklch(0.98 0.01 35);
+  --sidebar-accent:           oklch(0.96 0.03 35);      /* Light terracotta */
+  --sidebar-accent-foreground: oklch(0.52 0.18 32);
+  --sidebar-border:           oklch(0.90 0.01 75);
+  --sidebar-ring:             oklch(0.58 0.185 32);
+
+  /* ═══════════════════════════════════════════
+     EXTENDED TOKENS (Non-SOP but useful)
+     ═══════════════════════════════════════════ */
+
+  /* ─── Primary States ─── */
+  --primary-hover:            oklch(0.52 0.195 30);     /* Darker hover */
+  --primary-disabled:         oklch(0.72 0.08 38);      /* Muted disabled */
+
+  /* ─── Status Colors ─── */
+  --success:                  oklch(0.65 0.18 155);
+  --success-foreground:       oklch(0.98 0.01 155);
+  --warning:                  oklch(0.75 0.16 70);
+  --warning-foreground:       oklch(0.22 0.03 70);
+  --info:                     oklch(0.70 0.12 230);
+  --info-foreground:          oklch(0.98 0.01 230);
+  --info-bg:                  oklch(0.95 0.03 230);
+  --info-border:              oklch(0.80 0.08 230);
+
+  /* ─── Danger (Alias) ─── */
+  --danger:                   var(--destructive);
+  --danger-foreground:        var(--destructive-foreground);
+  --danger-bg:                oklch(0.95 0.03 25);
+
+  /* ─── Sidebar Extended ─── */
+  --sidebar-hover:            oklch(0.96 0.012 78);
+  --sidebar-active:           oklch(0.94 0.02 35);
+  --sidebar-active-foreground: oklch(0.20 0.02 35);
+
+  /* ─── Icon Buttons ─── */
+  --icon-button:              oklch(0.98 0.005 80);
+  --icon-button-hover:        oklch(0.96 0.01 78);
+  --icon-button-active:       oklch(0.94 0.02 35);
+  --icon-button-active-foreground: oklch(0.52 0.18 32);
+
+  /* ═══════════════════════════════════════════
+     TERRACOTTA GRADIENTS & SHADOWS
+     ═══════════════════════════════════════════ */
+
+  --mexican-orange:           var(--primary);
+  --mexican-brown:            var(--primary-hover);
+  --mexican-green:            var(--success);
+  --mexican-green-light:      color-mix(in oklab, var(--success) 70%, var(--background));
+  --mexican-gold:             var(--color-gold);
+  --mexican-paper-warm:       var(--color-cream);
+  --mexican-paper-cool:       var(--color-linen);
+  --mexican-paper-table:      var(--color-bone);
+  --mexican-paper-quote:      var(--color-parchment);
+
+  --gradient-mexican-paper:   linear-gradient(135deg, var(--mexican-paper-warm) 0%, var(--background) 50%, var(--mexican-paper-cool) 100%);
+  --gradient-mexican-corner-orange: linear-gradient(45deg, var(--mexican-orange), var(--mexican-brown));
+  --gradient-mexican-corner-green: linear-gradient(135deg, var(--mexican-green), var(--mexican-green-light));
+  --gradient-mexican-brand:   linear-gradient(135deg, var(--mexican-orange) 0%, var(--mexican-brown) 50%, var(--mexican-green) 100%);
+  --gradient-mexican-orange:  linear-gradient(135deg, var(--mexican-brown) 0%, var(--mexican-orange) 100%);
+  --gradient-mexican-table:   linear-gradient(135deg, var(--mexican-paper-table) 0%, var(--background) 100%);
+  --gradient-mexican-table-head: linear-gradient(135deg, var(--mexican-orange) 0%, var(--mexican-brown) 100%);
+  --gradient-mexican-quote:   linear-gradient(135deg, var(--mexican-paper-warm) 0%, var(--mexican-paper-quote) 100%);
+  --gradient-mexican-hr:      linear-gradient(90deg, var(--mexican-orange) 0%, var(--mexican-brown) 50%, var(--mexican-green) 100%);
+
+  --shadow-mexican-elevated:  0 25px 80px color-mix(in oklab, black 15%, transparent);
+  --shadow-mexican-soft:      0 10px 30px color-mix(in oklab, black 10%, transparent);
+  --shadow-mexican-quote:     0 8px 25px color-mix(in oklab, var(--mexican-orange) 15%, transparent);
+  --shadow-mexican-accent:    0 2px 8px color-mix(in oklab, var(--mexican-orange) 30%, transparent);
+  --shadow-mexican-text:      1px 1px 2px color-mix(in oklab, black 30%, transparent);
+  --shadow-mexican-glow-soft: 0 0 20px color-mix(in oklab, var(--mexican-orange) 50%, transparent);
+  --shadow-mexican-glow-strong: 0 0 30px color-mix(in oklab, var(--mexican-orange) 80%, transparent);
+
+  /* ═══════════════════════════════════════════
+     TYPOGRAPHY TOKENS
+     ═══════════════════════════════════════════ */
+
+  /* ─── Font Families ─── */
+  --font-sans: 'Rethink Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+  /* ─── Font Weights ─── */
+  --font-weight-light:        300;
+  --font-weight-normal:       400;
+  --font-weight-medium:       500;
+  --font-weight-semibold:     600;
+  --font-weight-bold:         700;
+
+  /* ─── Font Sizes ─── */
+  --font-size-xs:             0.75rem;
+  --font-size-sm:             0.875rem;
+  --font-size-base:           1rem;
+  --font-size-lg:             1.125rem;
+  --font-size-xl:             1.25rem;
+  --font-size-2xl:            1.5rem;
+  --font-size-3xl:            1.875rem;
+  --font-size-4xl:            2.25rem;
+
+  /* ─── Line Heights ─── */
+  --line-height-tight:        1.25;
+  --line-height-snug:         1.375;
+  --line-height-normal:       1.5;
+  --line-height-relaxed:      1.75;
+  --line-height-loose:        2;
+
+  /* ═══════════════════════════════════════════
+     SPACING & SIZING
+     ═══════════════════════════════════════════ */
+
+  /* ─── Base Spacing Unit (SOP required) ─── */
+  --spacing:                  0.25rem;
+
+  /* ─── Border Radius (SOP pattern) ─── */
+  --radius:                   0.625rem;                 /* 10px base */
+
+  /* ═══════════════════════════════════════════
+     SHADOW SYSTEM (SOP compliant)
+     ═══════════════════════════════════════════ */
+
+  --shadow-2xs:               0 1px 2px 0px oklch(0 0 0 / 0.03);
+  --shadow-xs:                0 1px 2px 0px oklch(0 0 0 / 0.05);
+  --shadow-sm:                0 1px 3px 0px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08);
+  --shadow:                   0 2px 4px 0px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08);
+  --shadow-md:                0 4px 6px -1px oklch(0 0 0 / 0.08), 0 2px 4px -2px oklch(0 0 0 / 0.06);
+  --shadow-lg:                0 10px 15px -3px oklch(0 0 0 / 0.08), 0 4px 6px -4px oklch(0 0 0 / 0.06);
+  --shadow-xl:                0 20px 25px -5px oklch(0 0 0 / 0.08), 0 8px 10px -6px oklch(0 0 0 / 0.06);
+  --shadow-2xl:               0 25px 50px -12px oklch(0 0 0 / 0.20);
+
+  /* ═══════════════════════════════════════════
+     Z-INDEX SCALE
+     ═══════════════════════════════════════════ */
+
+  --z-dropdown:               50;
+  --z-sticky:                 100;
+  --z-fixed:                  150;
+  --z-modal:                  200;
+  --z-popover:                300;
+  --z-tooltip:                400;
+  --z-toast:                  500;
+
+  /* ═══════════════════════════════════════════
+     ANIMATION TOKENS
+     ═══════════════════════════════════════════ */
+
+  --duration-instant:         75ms;
+  --duration-fast:            150ms;
+  --duration-base:            250ms;
+  --duration-slow:            400ms;
+  --duration-slower:          600ms;
+
+  --ease-linear:              linear;
+  --ease-in:                  cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:                 cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out:              cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce:              cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ─── Spring Physics ─── */
+  --spring-smooth:            linear(
+    0, 0.006, 0.025, 0.056, 0.098, 0.151,
+    0.215, 0.288, 0.371, 0.462, 0.56,
+    0.664, 0.771, 0.88, 0.988, 1.094,
+    1.194, 1.286, 1.368, 1.439, 1.497,
+    1.541, 1.571, 1.588, 1.592, 1.586,
+    1.571, 1.548, 1.519, 1.486, 1.451,
+    1.414, 1.378, 1.343, 1.31, 1.28,
+    1.253, 1.229, 1.209, 1.192, 1.179,
+    1.169, 1.162, 1.157, 1.154, 1.152,
+    1.151, 1.151, 1.15, 1.15, 1.15, 1
+  );
+  --spring-bouncy:            linear(
+    0, 0.006, 0.025 2.8%, 0.101, 0.539,
+    1.057 10.7%, 1.172, 1.263, 1.332,
+    1.383, 1.421, 1.45, 1.471, 1.485,
+    1.496, 1.503, 1.508, 1.511, 1.513,
+    1.514 20%, 1.515 22.5%, 1.514, 1.512,
+    1.509, 1.505, 1.5 27.5%, 1
+  );
+
+
   /* ============================================
-     Base shadcn/ui Variables
+     Brand Design Tokens (Terracotta mapping)
      ============================================ */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --brand-accent:            var(--color-terracotta);
+  --brand-accent-light:      var(--color-terracotta-light);
+  --brand-accent-disabled:   var(--primary-disabled);
 
-  /* Mexican Theme Primary: Orange (#ff6b35) */
-  --primary: oklch(0.68 0.19 35);
-  --primary-foreground: oklch(0.985 0 0);
+  --text-primary:            var(--color-charcoal);
+  --text-placeholder:        var(--color-stone);
 
-  /* Mexican Theme Secondary: Brown (#d2691e) */
-  --secondary: oklch(0.58 0.14 55);
-  --secondary-foreground: oklch(0.985 0 0);
+  --icon-btn-active-bg:      var(--icon-button-active);
+  --icon-btn-active-hover:   var(--icon-button-hover);
 
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --textarea-bg:             var(--card);
+  --textarea-text:           var(--foreground);
 
-  /* Mexican Theme Accent: Green (#228b22) */
-  --accent: oklch(0.52 0.14 142);
-  --accent-foreground: oklch(0.985 0 0);
+  --sidebar-bg:              var(--sidebar);
+  --sidebar-hover:           var(--sidebar-hover);
+  --sidebar-dropdown-hover:  var(--sidebar-active);
 
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
+  --content-btn-bg:          var(--icon-button);
+  --content-btn-hover:       var(--icon-button-hover);
 
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.68 0.19 35);
+  --alert-info-text:         var(--info);
+  --alert-info-border:       var(--info-border);
+  --alert-info-bg:           var(--info-bg);
 
-  --radius: 0.5rem;
-
-  /* Mexican brand colors as custom properties */
-  --mexican-orange: oklch(0.68 0.19 35);
-  --mexican-brown: oklch(0.58 0.14 55);
-  --mexican-green: oklch(0.52 0.14 142);
-  --mexican-green-light: oklch(0.62 0.18 142);
-  --mexican-gold: oklch(0.78 0.12 85);
+  --alert-danger-text:       var(--danger);
+  --alert-danger-anchor:     var(--danger);
+  --alert-danger-bg:         var(--danger-bg);
 
   /* ============================================
-     Brand Design Tokens (Light Mode)
+     Tabs + Menu Surfaces (Terracotta Light)
+     Tri-tone: bar (back), tab (fore), hover
      ============================================ */
+  --app-bg:                  var(--tab-bg);
+  --tabs-bar-bg:             var(--color-fog);
+  --tabs-bar-border:         var(--color-fog);
+  --tabs-bar-border-strong:  color-mix(in oklab, var(--color-charcoal) 35%, var(--color-fog));
+  --tab-bg:                  var(--color-cream);
+  --tab-hover-bg:            var(--color-parchment);
+  --tab-active-bg:           var(--color-cream);
+  --tab-text:                var(--foreground);
+  --tab-active-text:         var(--foreground);
+  --tab-shadow:              var(--shadow-mexican-soft);
+  --menu-bg:                 var(--card);
+  --menu-border:             var(--border);
+  --menu-shadow:             var(--shadow-mexican-elevated);
 
-  /* Brand Accent - Terracotta Orange */
-  --brand-accent: oklab(0.6087 0.1068 0.0867);              /* #c6613f */
-  --brand-accent-light: oklab(0.6064 0.1091 0.0853);        /* #c66040 */
-  --brand-accent-disabled: oklab(0.8007 0.0491 0.0407);     /* #e3b1a0 */
-
-  /* Text Colors */
-  --text-primary: oklab(0.3585 -0.0019 0.0054);             /* #3d3d3a */
-  --text-placeholder: oklab(0.5511 -0.0015 0.0091);         /* #73726c */
-
-  /* Icon Button States */
-  --icon-btn-active-bg: oklab(0.9694 -0.0047 -0.0103);      /* #eff6fc */
-  --icon-btn-active-hover: oklab(0.7278 -0.0350 -0.0928);   /* #75ace3 */
-
-  /* Textarea/Card */
-  --textarea-bg: oklab(1.0 0 0);                            /* #ffffff */
-
-  /* Sidebar */
-  --sidebar-bg: oklab(0.9658 -0.0017 0.0089);               /* #f5f4ed */
-  --sidebar-hover: oklab(0.9485 -0.0010 0.0108);            /* #f0eee6 */
-  --sidebar-dropdown-hover: oklab(0.9234 -0.0019 0.0134);   /* #e8e6dc */
-
-  /* Content Icon Button */
-  --content-btn-hover: oklab(0.9818 -0.0005 0.0054);        /* #faf9f5 */
-
-  /* Alert: Info */
-  --alert-info-text: oklab(0.8807 -0.0773 -0.0546);         /* #8ae8ff */
-  --alert-info-border: oklab(0.8124 -0.1171 -0.0836 / 0.25); /* #00d8fc40 */
-  --alert-info-bg: oklab(0.8222 -0.1201 -0.0799 / 0.15);    /* #00dcfd26 */
-
-  /* Alert: Danger */
-  --alert-danger-text: oklab(0.7407 0.1415 0.0541);         /* #fc8081 */
-  --alert-danger-anchor: oklab(0.7450 0.1424 0.0545);       /* #fe8182 */
-  --alert-danger-bg: oklab(0.3683 0.0892 0.0365);           /* #692627 */
 }
 
 .dark {
-  /* ============================================
-     Base shadcn/ui Variables (Dark Mode)
-     ============================================ */
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.68 0.19 35);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.58 0.14 55);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.52 0.14 142);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.68 0.19 35);
+  /* ═══════════════════════════════════════════
+     BASE PALETTE - Dark Mode
+     Higher contrast and vibrancy for dark backgrounds
+     ═══════════════════════════════════════════ */
+
+  /* ─── Terracotta Family (Brighter for dark) ─── */
+  --color-terracotta:         oklch(0.65 0.18 33);      /* Brighter terracotta */
+  --color-terracotta-hover:   oklch(0.70 0.19 35);      /* Even brighter hover */
+  --color-terracotta-muted:   oklch(0.45 0.08 35);      /* Dark muted */
+  --color-terracotta-wash:    oklch(0.22 0.04 35);      /* Dark wash */
+
+  /* ─── Dark Surfaces ─── */
+  --color-obsidian:           oklch(0.14 0.008 55);     /* Deep warm black */
+  --color-charcoal-dark:      oklch(0.18 0.01 55);      /* Card background */
+  --color-slate-dark:         oklch(0.22 0.012 55);     /* Elevated surface */
+  --color-ash:                oklch(0.26 0.01 55);      /* Border/input */
+
+  /* ─── Light Text (High contrast) ─── */
+  --color-cream-bright:       oklch(0.95 0.008 75);     /* Primary text */
+  --color-cream-soft:         oklch(0.80 0.01 70);      /* Secondary text */
+  --color-silver:             oklch(0.65 0.01 65);      /* Muted text */
+
+  /* ═══════════════════════════════════════════
+     SEMANTIC TOKENS - Dark Mode
+     ═══════════════════════════════════════════ */
+
+  /* ─── Base ─── */
+  --background:               oklch(0.14 0.008 55);     /* Warm dark bg */
+  --foreground:               oklch(0.95 0.008 75);     /* Bright cream text */
+
+  /* ─── Card ─── */
+  --card:                     oklch(0.18 0.01 55);      /* Elevated dark */
+  --card-foreground:          oklch(0.95 0.008 75);
+
+  /* ─── Popover ─── */
+  --popover:                  oklch(0.20 0.012 55);
+  --popover-foreground:       oklch(0.95 0.008 75);
+
+  /* ─── Primary (Brighter terracotta) ─── */
+  --primary:                  oklch(0.65 0.18 33);      /* Vibrant in dark */
+  --primary-foreground:       oklch(0.12 0.02 35);      /* Dark on terracotta */
+
+  /* ─── Secondary ─── */
+  --secondary:                oklch(0.26 0.012 55);     /* Dark elevated */
+  --secondary-foreground:     oklch(0.95 0.008 75);
+
+  /* ─── Muted ─── */
+  --muted:                    oklch(0.22 0.01 55);
+  --muted-foreground:         oklch(0.65 0.01 65);
+
+  /* ─── Accent ─── */
+  --accent:                   oklch(0.25 0.04 35);      /* Dark terracotta tint */
+  --accent-foreground:        oklch(0.75 0.14 35);      /* Bright terracotta */
+
+  /* ─── Destructive ─── */
+  --destructive:              oklch(0.62 0.20 25);      /* Brighter red */
+  --destructive-foreground:   oklch(0.95 0.01 25);
+
+  /* ─── Border & Input ─── */
+  --border:                   oklch(0.28 0.012 55);     /* Visible border */
+  --input:                    oklch(0.30 0.012 55);     /* Slightly lighter */
+  --ring:                     oklch(0.65 0.18 33);      /* Terracotta focus */
+
+  /* ─── Chart Colors (Brighter for dark) ─── */
+  --chart-1:                  oklch(0.68 0.18 33);      /* Terracotta */
+  --chart-2:                  oklch(0.72 0.16 55);      /* Orange */
+  --chart-3:                  oklch(0.65 0.15 28);      /* Rust */
+  --chart-4:                  oklch(0.78 0.14 80);      /* Gold */
+  --chart-5:                  oklch(0.72 0.11 100);     /* Ochre */
+
+  /* ─── Sidebar ─── */
+  --sidebar:                  oklch(0.16 0.01 55);
+  --sidebar-foreground:       oklch(0.92 0.008 75);
+  --sidebar-primary:          oklch(0.65 0.18 33);
+  --sidebar-primary-foreground: oklch(0.12 0.02 35);
+  --sidebar-accent:           oklch(0.25 0.04 35);
+  --sidebar-accent-foreground: oklch(0.80 0.12 35);
+  --sidebar-border:           oklch(0.26 0.01 55);
+  --sidebar-ring:             oklch(0.65 0.18 33);
+
+  /* ─── Extended States ─── */
+  --primary-hover:            oklch(0.70 0.19 35);
+  --primary-disabled:         oklch(0.45 0.08 35);
+
+  /* ─── Status Colors ─── */
+  --success:                  oklch(0.70 0.18 155);
+  --success-foreground:       oklch(0.12 0.02 155);
+  --warning:                  oklch(0.78 0.16 75);
+  --warning-foreground:       oklch(0.15 0.02 75);
+  --info:                     oklch(0.72 0.12 230);
+  --info-foreground:          oklch(0.12 0.02 230);
+  --info-bg:                  oklch(0.20 0.03 230);
+  --info-border:              oklch(0.35 0.08 230);
+
+  /* ─── Danger ─── */
+  --danger-bg:                oklch(0.22 0.04 25);
+
+  /* ─── Sidebar Extended ─── */
+  --sidebar-hover:            oklch(0.20 0.012 55);
+  --sidebar-active:           oklch(0.24 0.035 35);
+  --sidebar-active-foreground: oklch(0.92 0.01 35);
+
+  /* ─── Icon Buttons ─── */
+  --icon-button:              oklch(0.20 0.01 55);
+  --icon-button-hover:        oklch(0.24 0.012 55);
+  --icon-button-active:       oklch(0.26 0.04 35);
+  --icon-button-active-foreground: oklch(0.75 0.14 35);
+
+  /* ═══════════════════════════════════════════
+     TERRACOTTA GRADIENTS & SHADOWS
+     ═══════════════════════════════════════════ */
+
+  --mexican-orange:           var(--primary);
+  --mexican-brown:            var(--primary-hover);
+  --mexican-green:            var(--success);
+  --mexican-green-light:      color-mix(in oklab, var(--success) 65%, var(--background));
+  --mexican-gold:             var(--color-gold);
+  --mexican-paper-warm:       var(--card);
+  --mexican-paper-cool:       var(--secondary);
+  --mexican-paper-table:      var(--secondary);
+  --mexican-paper-quote:      var(--muted);
+
+  --gradient-mexican-paper:   linear-gradient(135deg, var(--mexican-paper-warm) 0%, var(--background) 50%, var(--mexican-paper-cool) 100%);
+  --gradient-mexican-corner-orange: linear-gradient(45deg, var(--mexican-orange), var(--mexican-brown));
+  --gradient-mexican-corner-green: linear-gradient(135deg, var(--mexican-green), var(--mexican-green-light));
+  --gradient-mexican-brand:   linear-gradient(135deg, var(--mexican-orange) 0%, var(--mexican-brown) 50%, var(--mexican-green) 100%);
+  --gradient-mexican-orange:  linear-gradient(135deg, var(--mexican-brown) 0%, var(--mexican-orange) 100%);
+  --gradient-mexican-table:   linear-gradient(135deg, var(--mexican-paper-table) 0%, var(--background) 100%);
+  --gradient-mexican-table-head: linear-gradient(135deg, var(--mexican-orange) 0%, var(--mexican-brown) 100%);
+  --gradient-mexican-quote:   linear-gradient(135deg, var(--mexican-paper-warm) 0%, var(--mexican-paper-quote) 100%);
+  --gradient-mexican-hr:      linear-gradient(90deg, var(--mexican-orange) 0%, var(--mexican-brown) 50%, var(--mexican-green) 100%);
+
+  --shadow-mexican-elevated:  0 25px 80px color-mix(in oklab, black 35%, transparent);
+  --shadow-mexican-soft:      0 10px 30px color-mix(in oklab, black 25%, transparent);
+  --shadow-mexican-quote:     0 8px 25px color-mix(in oklab, var(--mexican-orange) 25%, transparent);
+  --shadow-mexican-accent:    0 2px 8px color-mix(in oklab, var(--mexican-orange) 45%, transparent);
+  --shadow-mexican-text:      1px 1px 2px color-mix(in oklab, black 55%, transparent);
+  --shadow-mexican-glow-soft: 0 0 20px color-mix(in oklab, var(--mexican-orange) 55%, transparent);
+  --shadow-mexican-glow-strong: 0 0 30px color-mix(in oklab, var(--mexican-orange) 85%, transparent);
+
+  /* ─── Shadows (Darker for dark mode) ─── */
+  --shadow-2xs:               0 1px 2px 0px oklch(0 0 0 / 0.15);
+  --shadow-xs:                0 1px 2px 0px oklch(0 0 0 / 0.25);
+  --shadow-sm:                0 1px 3px 0px oklch(0 0 0 / 0.35), 0 1px 2px -1px oklch(0 0 0 / 0.30);
+  --shadow:                   0 2px 4px 0px oklch(0 0 0 / 0.35), 0 1px 2px -1px oklch(0 0 0 / 0.30);
+  --shadow-md:                0 4px 6px -1px oklch(0 0 0 / 0.40), 0 2px 4px -2px oklch(0 0 0 / 0.30);
+  --shadow-lg:                0 10px 15px -3px oklch(0 0 0 / 0.45), 0 4px 6px -4px oklch(0 0 0 / 0.35);
+  --shadow-xl:                0 20px 25px -5px oklch(0 0 0 / 0.50), 0 8px 10px -6px oklch(0 0 0 / 0.40);
+  --shadow-2xl:               0 25px 50px -12px oklch(0 0 0 / 0.65);
+
 
   /* ============================================
-     Brand Design Tokens (Dark Mode)
+     Brand Design Tokens (Terracotta mapping)
      ============================================ */
+  --brand-accent:            var(--color-terracotta);
+  --brand-accent-light:      var(--primary-hover);
+  --brand-accent-disabled:   var(--primary-disabled);
 
-  /* Text Colors */
-  --text-primary: oklab(0.8066 -0.0018 0.0139);             /* #c2c0b6 */
-  --text-placeholder: oklab(0.6855 -0.0010 0.0117);         /* #9c9a92 */
+  --text-primary:            var(--color-cream-bright);
+  --text-placeholder:        var(--color-silver);
 
-  /* Icon Button States */
-  --icon-btn-active-bg: oklab(0.3417 -0.0102 -0.0176);      /* #2f3a42 */
-  /* --icon-btn-active-hover stays same in dark mode */
+  --icon-btn-active-bg:      var(--icon-button-active);
+  --icon-btn-active-hover:   var(--icon-button-hover);
 
-  /* Textarea/Card */
-  --textarea-bg: oklab(0.3086 -0.0010 0.0035);              /* #30302e */
-  --textarea-text: oklab(0.5773 -0.0030 0.0101);            /* #7a7a73 */
+  --textarea-bg:             var(--card);
+  --textarea-text:           var(--foreground);
 
-  /* Sidebar */
-  --sidebar-bg: oklab(0.2358 0.0009 0.0023);                /* #1f1e1d */
-  --sidebar-hover: oklab(0.2358 0.0009 0.0023);             /* #1f1e1d */
-  --sidebar-dropdown-hover: oklab(0.0 0 0);                 /* #000000 */
+  --sidebar-bg:              var(--sidebar);
+  --sidebar-hover:           var(--sidebar-hover);
+  --sidebar-dropdown-hover:  var(--sidebar-active);
 
-  /* Content Icon Button */
-  --content-btn-bg: oklab(0.2679 -0.0011 0.0036);           /* #262624 */
-  --content-btn-hover: oklab(0.2679 -0.0011 0.0036);        /* #262624 */
+  --content-btn-bg:          var(--icon-button);
+  --content-btn-hover:       var(--icon-button-hover);
+
+  --alert-info-text:         var(--info);
+  --alert-info-border:       var(--info-border);
+  --alert-info-bg:           var(--info-bg);
+
+  --alert-danger-text:       var(--destructive);
+  --alert-danger-anchor:     var(--destructive);
+  --alert-danger-bg:         var(--danger-bg);
+
+  /* ============================================
+     Tabs + Menu Surfaces (Terracotta Dark)
+     Tri-tone: bar (back), tab (fore), hover
+     ============================================ */
+  --app-bg:                  var(--tab-bg);
+  --tabs-bar-bg:             var(--color-obsidian);
+  --tabs-bar-border:         var(--border);
+  --tabs-bar-border-strong:  color-mix(in oklab, var(--color-obsidian) 70%, black);
+  --tab-bg:                  var(--color-slate-dark);
+  --tab-hover-bg:            var(--color-ash);
+  --tab-active-bg:           var(--color-slate-dark);
+  --tab-text:                var(--color-cream-bright);
+  --tab-active-text:         var(--color-cream-bright);
+  --tab-shadow:              var(--shadow-mexican-soft);
+  --menu-bg:                 var(--popover);
+  --menu-border:             var(--border);
+  --menu-shadow:             var(--shadow-mexican-elevated);
+
 }
 
 @theme inline {
+  /* Fonts */
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+
   /* ============================================
      Base shadcn/ui Color Mappings
      ============================================ */
@@ -237,12 +636,16 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.app-shell {
+  background: var(--app-bg);
+  color: var(--foreground);
+}
+
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
@@ -252,7 +655,7 @@ code {
 /* Markdown Content Styles */
 .markdown-content {
   line-height: 1.6;
-  color: #333;
+  color: var(--foreground);
 }
 
 .markdown-content p {
@@ -275,7 +678,9 @@ code {
 }
 
 .markdown-content :not(pre) > code {
-  background-color: #f4f4f4;
+  background-color: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 0.9em;
