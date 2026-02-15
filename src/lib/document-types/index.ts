@@ -17,6 +17,8 @@ export type { DocumentTypePlugin, RendererProps } from './types'
 import { register } from './registry'
 import { markdownPlugin } from './plugins/markdown'
 import { mermaidPlugin } from './plugins/mermaid'
+import { htmlPlugin } from './plugins/html'
 
 register(markdownPlugin)
 register(mermaidPlugin)
+register(htmlPlugin)
