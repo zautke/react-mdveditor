@@ -280,23 +280,28 @@ function App() {
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = e.clipboardData.getData('text/plain')
     const converted = convertLatexDelimiters(pastedText)
-    if (converted !== pastedText) {
-      // LaTeX was detected and converted — insert manually
+
+    // Always compute the resulting full text and detect document kind.
+    // This enables auto-detection when pasting HTML/mermaid into an empty doc.
+    const textarea = e.currentTarget
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const resultingText = activeContent.substring(0, start) + converted + activeContent.substring(end)
+    const detectedKind = documentTypeRegistry.detect(resultingText)
+
+    if (converted !== pastedText || detectedKind !== activeKind) {
+      // Either LaTeX was converted OR document kind changed — handle manually
       e.preventDefault()
-      const textarea = e.currentTarget
-      const start = textarea.selectionStart
-      const end = textarea.selectionEnd
-      const newText = activeContent.substring(0, start) + converted + activeContent.substring(end)
-      const detectedKind = documentTypeRegistry.detect(newText)
       setDocuments(docs => docs.map(d =>
-        d.id === activeDocId ? { ...d, content: newText, kind: detectedKind } : d
+        d.id === activeDocId ? { ...d, content: resultingText, kind: detectedKind } : d
       ))
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + converted.length
         textarea.focus()
       }, 0)
     }
-  }, [activeContent, activeDocId])
+    // Otherwise: no LaTeX and same kind — let browser handle paste normally
+  }, [activeContent, activeDocId, activeKind])
 
   const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
