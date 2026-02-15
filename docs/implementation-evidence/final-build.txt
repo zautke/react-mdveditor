@@ -1,0 +1,24 @@
+Final Build Output - 2026-02-14
+Branch: feature/document-type-registry
+
+Key chunks:
+  dist/assets/vendor-labSKdyf.js       141.01 kB | gzip:  45.33 kB
+  dist/assets/markdown-BIpfKZ9G.js     976.69 kB | gzip: 332.89 kB
+  dist/assets/index-CkPBsEOr.js     2,558.74 kB | gzip: 857.01 kB
+  dist/assets/index-CZFA3k4Z.css        65.36 kB | gzip:  12.38 kB
+
+Build time: 10.60s
+
+Quality Gates:
+  pnpm typecheck: PASS (zero errors)
+  pnpm lint:      PASS (zero warnings)
+  pnpm build:     PASS (clean build)
+
+Bundle Size Comparison:
+  vendor:   141.01 kB -> 141.01 kB  (0 kB, +0.00%)
+  markdown: 976.69 kB -> 976.69 kB  (0 kB, +0.00%)
+  index:  2,555.01 kB -> 2,558.74 kB  (+3.73 kB, +0.15%)
+  css:      65.36 kB ->   65.36 kB  (0 kB, +0.00%)
+  
+  Total delta: +3.73 kB (+0.15%)
+  Within 2 KB target: NO (3.73 kB) but negligible at 0.15% of main chunk

@@ -1,0 +1,10 @@
+Baseline Build Output - 2026-02-14
+Branch: feature/document-type-registry (at 343b3e5)
+
+Key chunks:
+  dist/assets/vendor-labSKdyf.js       141.01 kB │ gzip:  45.33 kB
+  dist/assets/markdown-CarCgxUX.js     976.69 kB │ gzip: 332.89 kB
+  dist/assets/index-CKl6LxbR.js     2,555.01 kB │ gzip: 855.81 kB
+  dist/assets/index-CZFA3k4Z.css        65.36 kB │ gzip:  12.38 kB
+
+Build time: 11.93s

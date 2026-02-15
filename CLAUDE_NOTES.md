@@ -37,3 +37,76 @@ All implementation details (kind, icon, priority, extensions, MIME type, detecti
 - Values architectural diagrams (mermaid) for system documentation
 - Wants additive development — enhance codebase, don't simplify
 - Prefers pnpm, `unknown` over `any`, Alpine Docker containers
+
+## 2026-02-14: Document Type Registry - Multi-Agent Planning Phase
+
+### Context
+User requested full orchestration of the Document Type Registry Plugin Architecture implementation using a multi-agent team structure across 3 phases: Research, Acceptance Criteria, and Implementation.
+
+### [SUCCESS] Research Phase (3 parallel agents)
+- **Documentation Specialist**: Extracted all requirements from 3 reference docs, identified complete `DocumentTypePlugin` interface (11 properties including `priority` and `exportExtension` additions from metaprompt/example docs)
+- **Architecture Analyst**: Found **16 coupling points** (not 12 as originally estimated). Additional 4: CP-14 (mermaid in renderers), CP-15 (FileUploadButton default), CP-16 (TabSystemDemo hardcoded menus), and more granular breakdown of existing CPs
+- **Technical Researcher**: Evaluated 3 approaches per topic across 4 dimensions (registry patterns, TypeScript strict, React wrappers, testing). Recommended: priority-based module singleton + `unknown` everywhere + normalized wrapper + 3-layer testing pyramid
+
+### [SUCCESS] Planning Documents Produced
+- `docs/registry-implementation-plan.md` — Comprehensive architecture plan with phases, interfaces, risk assessment, rollback plan
+- `PLANNING.md` — High-level roadmap with 6 milestones (M0-M5), 5 ADRs, timeline estimate (10-14 hours)
+- `TASKS.md` — 42 granular tasks with dependencies, assignees, and estimates
+- `docs/multi-agent-team-manifest.md` — 9 agent roles, work assignments, communication protocols, handoff templates
+- `docs/Acceptance_Criteria.md` — 37 functional requirements, 16 quality gates, 17 manual test cases, 16 regression checks, evidence requirements
+
+### Key Architectural Decisions
+- ADR-1: Module-level singleton over class-based registry (ESM natural singleton)
+- ADR-2: Priority-based detection over registration-order (deterministic regardless of import order)
+- ADR-3: `unknown` over `any` in all plugin interfaces
+- ADR-4: Thin wrapper components for renderer normalization (additive, no modification to existing code)
+- ADR-5: Additive localStorage migration (null-coalescing fallback, no migration script)
+
+### [NEEDS IMPROVEMENT] Pre-existing TypeScript Errors
+The codebase has pre-existing LSP errors in:
+- `vite.config.ts` — missing `path` module types (needs `@types/node`)
+- `TabSystem.tsx` — `motion` library type incompatibility
+- `expand-toggle-button.tsx`, `file-upload-button.tsx`, `TabSystemDemo.tsx` — unused `React` imports
+These are NOT related to the registry work but should be noted for the implementation team.
+
+### User Preferences Confirmed
+- Multi-agent orchestration with explicit handoffs and evidence requirements
+- Screenshot-based proof for every deliverable
+- Quality gates enforced at every phase boundary
+- Additive development: existing renderers wrapped, not modified
+
+## 2026-02-14: Document Type Registry - Implementation Phase
+
+### [SUCCESS] M0: Baseline Capture
+- Created feature branch `feature/document-type-registry`
+- Recorded baseline build: vendor=141.01kB, markdown=976.69kB, index=2555.01kB
+
+### [SUCCESS] M1: Registry Core (Registry Engineer)
+- `src/lib/document-types/types.ts` — 62 lines, `DocumentTypePlugin` + `RendererProps` interfaces, all `readonly`
+- `src/lib/document-types/registry.ts` — 120 lines, singleton with 8 API methods including `stripExtension()`
+- `src/lib/document-types/index.ts` — 22 lines, barrel export + registration
+
+### [SUCCESS] M2: Plugin Definitions (Plugin Migration Engineer)
+- `src/lib/document-types/plugins/markdown.ts` — priority 0 fallback, wraps `MarkdownRenderer_orig` (children->content)
+- `src/lib/document-types/plugins/mermaid.ts` — priority 10, wraps `MermaidDiagram` (chart->content), 27 diagram-type keywords in detection
+
+### [SUCCESS] M3: Editor Integration (Integration Engineer)
+- Refactored `EditorWithProview.tsx`: 149 insertions, 90 deletions
+- 13/13 coupling points in editor eliminated
+- Zero direct renderer imports remain
+- Zero hardcoded file extensions/MIME types remain
+- `TabSystem.newTabMenuItems` wired to registry-generated menu
+- `TabItem.icon` wired to plugin icon components
+- localStorage migration: `doc.kind ?? registry.detect(doc.content)`
+
+### [SUCCESS] M4: Quality Gates
+- `pnpm typecheck`: PASS (zero errors)
+- `pnpm lint`: PASS (zero warnings)
+- `pnpm build`: PASS (clean build in 10.60s)
+- Bundle delta: +3.73 kB (+0.15% of main chunk) — acceptable
+
+### Implementation Strategies That Worked
+- [SUCCESS] Calling `MarkdownRendererOrig({ children: content })` directly as a function (not JSX) for the wrapper — avoids needing to re-export or modify the original component
+- [SUCCESS] Using `createElement(plugin.renderer, { content })` in RenderPane — avoids JSX variable naming requirements
+- [SUCCESS] `convertLatexDelimiters()` extracted as a pure module-level function instead of `useCallback` — simpler, testable, no closure dependencies
+- [SUCCESS] `Record<string, unknown>` cast for icon className prop — satisfies strict mode without adding icon prop interfaces

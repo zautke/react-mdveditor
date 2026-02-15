@@ -1,22 +1,30 @@
-import { useState, useEffect, DragEvent, memo, useRef, useCallback } from 'react'
+import { useState, useEffect, DragEvent, memo, useRef, useCallback, createElement } from 'react'
 import { FilePlus2, Download } from 'lucide-react'
-import MarkdownRenderer from './MarkdownRenderer_orig'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
 import { TabSystem, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { loadState, saveState } from '@/lib/storage'
-import type { TabItem } from '@/components/ui/tabs/types'
+import { documentTypeRegistry } from '@/lib/document-types'
+import type { TabItem, NewTabMenuItem } from '@/components/ui/tabs/types'
 
-// Document type for multi-tab editing
-interface MarkdownDocument {
+// ── Document model ──────────────────────────────────────────────────
+// `kind` links each document to a registered plugin via the registry.
+
+interface EditorDocument {
   id: string
   title: string
   content: string
+  kind: string
 }
 
-const initialMarkdown = `# React Markdown Demo
+// ── Initial content ─────────────────────────────────────────────────
+// Used only on first launch (no localStorage).  Delegates to the
+// markdown plugin's default content if the registry is loaded;
+// otherwise uses a hard-wired fallback (shouldn't happen in practice).
+
+const initialContent = `# React Markdown Demo
 
 This is a **comprehensive** markdown renderer with *full* features:
 
@@ -84,17 +92,18 @@ const getUser = (id: number): User | undefined =>
 | Mermaid | ✅ | 7 diagram types! |
 | Math | ✅ | MathJax support |
 
-> **Tip:** Drop a \`.md\` file onto this editor to load it!`
+> **Tip:** Drop a file onto this editor to load it!`
 
-// Memoized InputPane with Tailwind classes
+// ── Memoized sub-components ─────────────────────────────────────────
+
 const InputPane = memo(({
-  markdown,
-  onMarkdownChange,
+  content,
+  onContentChange,
   onPaste,
-  isExpanded
+  isExpanded,
 }: {
-  markdown: string
-  onMarkdownChange: (value: string) => void
+  content: string
+  onContentChange: (value: string) => void
   onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void
   isExpanded: boolean
 }) => {
@@ -109,11 +118,11 @@ const InputPane = memo(({
       )}
     >
       <div className="flex items-center mb-4">
-        <h3 className="m-0 text-lg font-semibold text-foreground">Markdown Input</h3>
+        <h3 className="m-0 text-lg font-semibold text-foreground">Editor</h3>
       </div>
       <textarea
-        value={markdown}
-        onChange={(e) => onMarkdownChange(e.target.value)}
+        value={content}
+        onChange={(e) => onContentChange(e.target.value)}
         onPaste={onPaste}
         className={cn(
           "w-full h-[calc(100%-3rem)] p-2",
@@ -123,41 +132,70 @@ const InputPane = memo(({
           "resize-none",
           "focus:outline-none focus:ring-2 focus:ring-ring"
         )}
-        placeholder="Enter your markdown here..."
+        placeholder="Start typing..."
       />
     </div>
   )
 }, (prevProps, nextProps) => {
-  return prevProps.markdown === nextProps.markdown &&
+  return prevProps.content === nextProps.content &&
          prevProps.isExpanded === nextProps.isExpanded
 })
 InputPane.displayName = 'InputPane'
 
-// Memoized RenderPane with Tailwind classes
+// Dynamic RenderPane — resolves renderer from the registry
 const RenderPane = memo(({
-  markdown,
+  content,
+  kind,
 }: {
-  markdown: string
+  content: string
+  kind: string
 }) => {
+  const plugin = documentTypeRegistry.get(kind)
   return (
     <div className="p-4 transform-gpu">
-      <MarkdownRenderer>{markdown}</MarkdownRenderer>
+      {createElement(plugin.renderer, { content })}
     </div>
   )
 }, (prevProps, nextProps) => {
-  return prevProps.markdown === nextProps.markdown
+  return prevProps.content === nextProps.content &&
+         prevProps.kind === nextProps.kind
 })
 RenderPane.displayName = 'RenderPane'
 
-// Generate unique ID for new documents
+// ── Helpers ─────────────────────────────────────────────────────────
+
 let docCounter = 1
 const generateDocId = () => `doc-${Date.now()}-${docCounter++}`
 
+/**
+ * Detect LaTeX delimiters and convert to markdown-compatible math.
+ * Pure function — no side effects.
+ */
+function convertLatexDelimiters(text: string): string {
+  const hasInline = /\\\(.+?\\\)/.test(text)
+  const hasBlock = /\\\[.+?\\\]/s.test(text)
+  if (!hasInline && !hasBlock) return text
+
+  let converted = text
+  converted = converted.replace(/\\\((.+?)\\\)/g, (_, eq: string) => '$' + eq.trim() + '$')
+  converted = converted.replace(/\\\[(.+?)\\\]/gs, (_, eq: string) => '\n$$\n' + eq.trim() + '\n$$\n')
+  return converted
+}
+
+// ── Main component ──────────────────────────────────────────────────
+
 function App() {
   // Multi-document state — restored from localStorage
-  const [documents, setDocuments] = useState<MarkdownDocument[]>(() => {
-    const saved = loadState<MarkdownDocument[]>('documents', [])
-    return saved.length > 0 ? saved : [{ id: 'doc-1', title: 'Untitled-1', content: initialMarkdown }]
+  const [documents, setDocuments] = useState<EditorDocument[]>(() => {
+    const saved = loadState<EditorDocument[]>('documents', [])
+    if (saved.length > 0) {
+      // Migration: add `kind` to documents saved before the registry existed
+      return saved.map(doc => ({
+        ...doc,
+        kind: doc.kind ?? documentTypeRegistry.detect(doc.content),
+      }))
+    }
+    return [{ id: 'doc-1', title: 'Untitled-1', content: initialContent, kind: 'markdown' }]
   })
   const [activeDocId, setActiveDocId] = useState(() => {
     const saved = loadState<string>('activeDocId', '')
@@ -170,32 +208,47 @@ function App() {
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Persist documents to localStorage (debounced for keystroke performance)
+  // ── Persistence ─────────────────────────────────────────────────
+
   useEffect(() => {
     const timer = setTimeout(() => saveState('documents', documents), 500)
     return () => clearTimeout(timer)
   }, [documents])
 
-  // Persist active tab immediately
   useEffect(() => {
     saveState('activeDocId', activeDocId)
   }, [activeDocId])
 
-  // Persist expanded state immediately
   useEffect(() => {
     saveState('isExpanded', isExpanded)
   }, [isExpanded])
 
-  // Get active document
-  const activeDoc = documents.find(d => d.id === activeDocId) || documents[0]
-  const markdown = activeDoc?.content || ''
+  // ── Derived values ──────────────────────────────────────────────
 
-  // Convert documents to TabItems
-  const tabs: TabItem[] = documents.map(doc => ({
-    id: doc.id,
-    label: doc.title,
-    closable: documents.length > 1
+  const activeDoc = documents.find(d => d.id === activeDocId) || documents[0]
+  const activeContent = activeDoc?.content || ''
+  const activeKind = activeDoc?.kind || 'markdown'
+
+  // Tabs — include plugin icon for each document
+  const tabs: TabItem[] = documents.map(doc => {
+    const plugin = documentTypeRegistry.get(doc.kind)
+    return {
+      id: doc.id,
+      label: doc.title,
+      icon: createElement(plugin.icon, { className: 'h-3.5 w-3.5' } as Record<string, unknown>),
+      closable: documents.length > 1,
+    }
+  })
+
+  // New-tab dropdown menu — one item per registered document type
+  const newTabMenuItems: NewTabMenuItem[] = documentTypeRegistry.all().map(plugin => ({
+    id: `new-${plugin.kind}`,
+    label: `New ${plugin.label}`,
+    icon: createElement(plugin.icon, { className: 'h-4 w-4' } as Record<string, unknown>),
+    onSelect: () => handleNewTab(plugin.kind),
   }))
+
+  // ── Event handlers ──────────────────────────────────────────────
 
   const toggleExpanded = useCallback(() => {
     setArrowOpacity(0)
@@ -224,87 +277,85 @@ function App() {
     }
   }, [])
 
-  const detectAndConvertLatex = useCallback((text: string): string => {
-    const hasLatexInline = /\\\(.+?\\\)/.test(text)
-    const hasLatexBlock = /\\\[.+?\\\]/s.test(text)
-    if (hasLatexInline || hasLatexBlock) {
-      let converted = text
-      converted = converted.replace(/\\\((.+?)\\\)/g, (_, eq) => '$' + eq.trim() + '$')
-      converted = converted.replace(/\\\[(.+?)\\\]/gs, (_, eq) => '\n$$\n' + eq.trim() + '\n$$\n')
-      return converted
-    }
-    return text
-  }, [])
-
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = e.clipboardData.getData('text/plain')
-    const hasLatexInline = /\\\(.+?\\\)/.test(pastedText)
-    const hasLatexBlock = /\\\[.+?\\\]/s.test(pastedText)
-    if (hasLatexInline || hasLatexBlock) {
+    const converted = convertLatexDelimiters(pastedText)
+    if (converted !== pastedText) {
+      // LaTeX was detected and converted — insert manually
       e.preventDefault()
-      const convertedText = detectAndConvertLatex(pastedText)
       const textarea = e.currentTarget
       const start = textarea.selectionStart
       const end = textarea.selectionEnd
-      const newText = markdown.substring(0, start) + convertedText + markdown.substring(end)
+      const newText = activeContent.substring(0, start) + converted + activeContent.substring(end)
+      const detectedKind = documentTypeRegistry.detect(newText)
       setDocuments(docs => docs.map(d =>
-        d.id === activeDocId ? { ...d, content: newText } : d
+        d.id === activeDocId ? { ...d, content: newText, kind: detectedKind } : d
       ))
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + convertedText.length
+        textarea.selectionStart = textarea.selectionEnd = start + converted.length
         textarea.focus()
       }, 0)
     }
-  }, [markdown, activeDocId, detectAndConvertLatex])
+  }, [activeContent, activeDocId])
 
   const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
+
+    // Plain text drop
     const text = e.dataTransfer.getData('text/plain')
     if (text) {
-      const convertedText = detectAndConvertLatex(text)
+      const converted = convertLatexDelimiters(text)
+      const detectedKind = documentTypeRegistry.detect(converted)
       setDocuments(docs => docs.map(d =>
-        d.id === activeDocId ? { ...d, content: convertedText } : d
+        d.id === activeDocId ? { ...d, content: converted, kind: detectedKind } : d
       ))
       return
     }
+
+    // File drop
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
       const file = files[0]
-      if (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.type === 'text/markdown') {
+      const ext = file.name.includes('.') ? `.${file.name.split('.').pop() ?? ''}` : ''
+      const pluginByExt = documentTypeRegistry.getByExtension(ext)
+      if (pluginByExt || file.type.startsWith('text/')) {
         const reader = new FileReader()
         reader.onload = (event) => {
           const content = event.target?.result as string
           if (content) {
-            const convertedContent = detectAndConvertLatex(content)
+            const converted = convertLatexDelimiters(content)
+            const kind = pluginByExt?.kind ?? documentTypeRegistry.detect(converted)
+            const title = documentTypeRegistry.stripExtension(file.name)
             setDocuments(docs => docs.map(d =>
-              d.id === activeDocId ? { ...d, content: convertedContent, title: file.name.replace(/\.(md|markdown)$/, '') } : d
+              d.id === activeDocId ? { ...d, content: converted, kind, title } : d
             ))
           }
         }
         reader.readAsText(file)
       }
     }
-  }, [activeDocId, detectAndConvertLatex])
+  }, [activeDocId])
 
-  const handleMarkdownChange = useCallback((value: string) => {
+  const handleContentChange = useCallback((value: string) => {
     setDocuments(docs => docs.map(d =>
       d.id === activeDocId ? { ...d, content: value } : d
     ))
   }, [activeDocId])
 
-  // Tab handlers
   const handleTabChange = useCallback((tabId: string) => {
     setActiveDocId(tabId)
   }, [])
 
-  const handleNewTab = useCallback(() => {
+  const handleNewTab = useCallback((kind: string = 'markdown') => {
+    const plugin = documentTypeRegistry.get(kind)
     const newId = generateDocId()
-    const newDoc: MarkdownDocument = {
+    const newDoc: EditorDocument = {
       id: newId,
-      title: `Untitled-${documents.length + 1}`,
-      content: '# New Document\n\nStart writing...'
+      title: plugin.defaultTitle(documents.length + 1),
+      content: plugin.defaultContent,
+      kind: plugin.kind,
     }
     setDocuments(docs => [...docs, newDoc])
     setActiveDocId(newId)
@@ -321,7 +372,6 @@ function App() {
     }
   }, [documents, activeDocId])
 
-  // Control bar handlers
   const handleAddFile = useCallback(() => {
     fileInputRef.current?.click()
   }, [])
@@ -333,12 +383,16 @@ function App() {
     reader.onload = (event) => {
       const content = event.target?.result as string
       if (content) {
-        const convertedContent = detectAndConvertLatex(content)
+        const converted = convertLatexDelimiters(content)
+        const ext = file.name.includes('.') ? `.${file.name.split('.').pop() ?? ''}` : ''
+        const pluginByExt = documentTypeRegistry.getByExtension(ext)
+        const kind = pluginByExt?.kind ?? documentTypeRegistry.detect(converted)
         const newId = generateDocId()
-        const newDoc: MarkdownDocument = {
+        const newDoc: EditorDocument = {
           id: newId,
-          title: file.name.replace(/\.(md|markdown)$/, ''),
-          content: convertedContent
+          title: documentTypeRegistry.stripExtension(file.name),
+          content: converted,
+          kind,
         }
         setDocuments(docs => [...docs, newDoc])
         setActiveDocId(newId)
@@ -346,19 +400,25 @@ function App() {
     }
     reader.readAsText(file)
     e.target.value = ''
-  }, [detectAndConvertLatex])
+  }, [])
 
   const handleSave = useCallback(() => {
-    const blob = new Blob([markdown], { type: 'text/markdown' })
+    const plugin = documentTypeRegistry.get(activeKind)
+    const blob = new Blob([activeContent], { type: plugin.exportMimeType })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${activeDoc?.title || 'document'}.md`
+    a.download = `${activeDoc?.title || 'document'}${plugin.exportExtension}`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-  }, [markdown, activeDoc?.title])
+  }, [activeContent, activeKind, activeDoc?.title])
+
+  // ── Render ──────────────────────────────────────────────────────
+
+  // Build the file-accept string from all registered extensions
+  const acceptExtensions = documentTypeRegistry.allExtensions().join(',')
 
   return (
     <div
@@ -368,17 +428,17 @@ function App() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Hidden file input for Add File */}
+      {/* Hidden file input — accepts all registered extensions */}
       <input
         ref={fileInputRef}
         type="file"
-        accept=".md,.mdx,.markdown"
+        accept={acceptExtensions}
         onChange={handleFileInputChange}
         className="hidden"
         aria-hidden="true"
       />
 
-      {/* Control Bar - top right */}
+      {/* Control Bar */}
       <div className="absolute top-2 right-4 z-50 flex items-center gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -417,15 +477,13 @@ function App() {
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Input Pane */}
         <InputPane
-          markdown={markdown}
-          onMarkdownChange={handleMarkdownChange}
+          content={activeContent}
+          onContentChange={handleContentChange}
           onPaste={handlePaste}
           isExpanded={isExpanded}
         />
 
-        {/* Render Pane with Tabs */}
         <div className="flex-1 flex flex-col relative overflow-hidden">
           {/* Gutter with toggle button */}
           <div className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center bg-gradient-to-r from-black/[0.02] to-transparent z-10">
@@ -436,13 +494,14 @@ function App() {
             />
           </div>
 
-          {/* Tab System */}
+          {/* Tab System with dynamic new-tab menu */}
           <div className="flex-1 pl-8 flex flex-col overflow-hidden">
             <TabSystem
               tabs={tabs}
               activeTab={activeDocId}
               onTabChange={handleTabChange}
-              onNewTab={handleNewTab}
+              onNewTab={() => handleNewTab('markdown')}
+              newTabMenuItems={newTabMenuItems}
               onDeleteTab={handleDeleteTab}
               variant="chrome"
               showNewButton
@@ -451,7 +510,7 @@ function App() {
             >
               {documents.map(doc => (
                 <TabContent key={doc.id} value={doc.id}>
-                  <RenderPane markdown={doc.content} />
+                  <RenderPane content={doc.content} kind={doc.kind} />
                 </TabContent>
               ))}
             </TabSystem>
@@ -464,9 +523,9 @@ function App() {
         <div className="absolute inset-0 bg-primary/10 border-3 border-dashed border-primary rounded-lg flex items-center justify-center z-[1000] pointer-events-none">
           <div className="bg-background p-8 rounded-lg shadow-xl text-center">
             <div className="text-5xl mb-4">📄</div>
-            <div className="text-xl font-bold mb-2">Drop Markdown Here</div>
+            <div className="text-xl font-bold mb-2">Drop File Here</div>
             <div className="text-sm text-muted-foreground">
-              Drop markdown text or .md file
+              Drop a text file to open it
             </div>
           </div>
         </div>
