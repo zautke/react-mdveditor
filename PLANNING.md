@@ -101,3 +101,100 @@ Transform mdeditor from a markdown-only editor into an extensible multi-document
 - **Icons**: `lucide-react` (preferred) or `react-feather` (already in project)
 - **No new runtime dependencies** for the registry core
 - **Additive development**: Never simplify or regress existing functionality
+
+---
+
+## React Component Document Type Plugin (feat/react-document-type)
+
+### Vision
+
+Add a React/JSX/TSX document type to the editor, allowing users to write React components in the textarea and see them rendered live in the preview pane. Two rendering modes: **shared** (in-tree, inherits Tailwind) and **isolated** (sandboxed iframe).
+
+### Architectural Decisions
+
+#### ADR-6: react-runner over react-live
+**Decision**: Use `react-runner` (v1.0.5, ~38KB) instead of `react-live` (~50-60KB).
+**Rationale**: Native `import` statement support via scope-mapped import resolution. Same Sucrase transpiler internally. BYO editor model fits our existing textarea. `useRunner` hook is the right abstraction — returns `{ element, error }`.
+
+#### ADR-7: Dual rendering modes with UI toggle
+**Decision**: ReactPreview supports two modes switchable via a toggle button:
+- **Shared mode** (default): `useRunner()` renders the component in the same React tree. Component inherits Tailwind classes, design tokens, and app CSS.
+- **Isolated mode**: Sandboxed iframe (`sandbox="allow-scripts"`) with React loaded from CDN. Component renders in complete CSS/JS isolation.
+**Rationale**: User wants both. Shared mode is fast and lightweight; isolated mode prevents CSS bleed for testing standalone components.
+
+#### ADR-8: Centralized scope configuration
+**Decision**: All import-mappable packages defined in a single `src/lib/react-preview/scope.ts` file.
+**Rationale**: Single extension point. Want framer-motion available? Add one line. No code changes to the renderer or plugin — just the scope map.
+
+#### ADR-9: Priority 8 with multi-signal detection
+**Decision**: React plugin at priority 8 (above HTML=5, below Mermaid=10). Detection requires ≥1 strong signal OR ≥2 medium signals.
+**Rationale**: JSX is syntactically similar to HTML — must avoid false positives on HTML documents. Import statements and PascalCase components are unambiguous React signals that HTML lacks.
+
+#### ADR-10: .tsx as default export extension
+**Decision**: Export as `.tsx` (not `.jsx`), MIME `text/javascript`.
+**Rationale**: TypeScript is the project standard. Sucrase strips types transparently — no cost to defaulting to TSX.
+
+### Detection Heuristic
+
+| Signal | Weight | Pattern |
+|--------|--------|---------|
+| `import ... from 'react'` | Strong | `/import\s+.*from\s+['"]react['"]/` |
+| `import ... from` (any) + JSX | Strong | Import statement + angle-bracket JSX |
+| `export default function` | Medium | `/export\s+default\s+function/` |
+| `export default () =>` | Medium | `/export\s+default\s+\(?\)\s*=>/` |
+| PascalCase JSX component | Medium | `/<[A-Z][a-zA-Z0-9]+[\s/>]/` |
+| React hooks | Medium | `/(useState|useEffect|useRef|useMemo|useCallback|useContext)\s*\(/` |
+| Arrow function returning JSX | Weak | `/=>\s*\(?<[a-z]/` |
+
+**Rule**: ≥1 strong OR ≥2 medium signals → detected as React.
+
+### File Manifest
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/lib/react-preview/scope.ts` | **Create** | Scope config — React globals + import map |
+| `src/components/markdown/ReactPreview.tsx` | **Create** | Dual-mode renderer (shared + isolated) |
+| `src/lib/document-types/plugins/react-component.ts` | **Create** | Plugin definition (kind='react', priority=8) |
+| `src/lib/document-types/index.ts` | **Modify** | +2 lines (import + register) |
+| `vite.config.ts` | **Modify** | +1 chunk entry ('react-preview': ['react-runner']) |
+
+### Dependency
+
+```
+pnpm add react-runner
+```
+
+- react-runner v1.0.5 — ~38KB min+gzip
+- Transitive: sucrase (JSX/TS transpiler)
+- MIT license
+
+### Test Matrix (17 points)
+
+| # | Test | Evidence |
+|---|------|----------|
+| 1 | New React tab via "+" menu | Screenshot |
+| 2 | Default content renders in shared mode | Screenshot |
+| 3 | Toggle to isolated mode — same content renders in iframe | Screenshot |
+| 4 | Toggle back to shared mode | Screenshot |
+| 5 | Paste JSX → auto-detects as `react` kind | Screenshot |
+| 6 | Paste plain markdown → stays `markdown` kind | Screenshot |
+| 7 | Paste HTML → stays `html` kind | Screenshot |
+| 8 | Mermaid diagram → still detected as `mermaid` | Screenshot |
+| 9 | Syntax error in JSX → error panel shown (not crash) | Screenshot |
+| 10 | Import statement works (e.g. `import { useState } from 'react'`) | Screenshot |
+| 11 | Hooks work (useState counter increments) | Screenshot |
+| 12 | Empty content → placeholder shown | Screenshot |
+| 13 | Tab icon shows Atom icon | Screenshot |
+| 14 | Persistence after reload (localStorage) | Screenshot |
+| 15 | File drop `.tsx` → opens as React tab | Screenshot |
+| 16 | Save/export produces `.tsx` file | Screenshot |
+| 17 | Existing markdown/mermaid/HTML tabs unaffected | Screenshot |
+
+### Risks
+
+| Risk | Mitigation |
+|------|------------|
+| react-runner Sucrase uses classic JSX runtime; Vite uses automatic | Ensure `React` is in scope as a global for classic `React.createElement` calls |
+| Isolated mode requires network (CDN) | Graceful fallback — show message if CDN unreachable; shared mode works offline |
+| Detection false-positives on HTML with `<Component>` | Require import statement OR multiple medium signals; HTML lacks imports |
+| Bundle size increase (~38KB) | Code-split into `react-preview` chunk via manualChunks |

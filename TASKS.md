@@ -107,3 +107,85 @@ M0-5 ─┘
 | M4: Verification | 18 | 175 min |
 | M5: Documentation | 5 | 115 min |
 | **Total** | **42 tasks** | **~14 hours** |
+
+---
+---
+
+# React Component Document Type Plugin — Task Breakdown
+
+## Task Dependency Graph
+
+```
+R0-1 → R0-2 → R1-1 → R1-2 → R1-3 → R1-4 → R1-5 → R1-6 → R2-1 → R2-2 → R2-3 → R3-*
+```
+
+---
+
+## R0: Setup
+
+| ID | Task | Est. | Status | Depends |
+|----|------|------|--------|---------|
+| R0-1 | Create feature branch `feat/react-document-type` from `development` | 2 min | Pending | — |
+| R0-2 | Install `react-runner` via `pnpm add react-runner` | 3 min | Pending | R0-1 |
+
+---
+
+## R1: Implementation
+
+| ID | Task | Est. | Status | Depends |
+|----|------|------|--------|---------|
+| R1-1 | Create `src/lib/react-preview/scope.ts` — React globals + import map for react-runner | 15 min | Pending | R0-2 |
+| R1-2 | Create `src/components/markdown/ReactPreview.tsx` — dual-mode renderer (shared via useRunner + isolated via sandboxed iframe) with mode toggle UI | 60 min | Pending | R1-1 |
+| R1-3 | Create `src/lib/document-types/plugins/react-component.ts` — plugin definition with `isReactText()` detection heuristic, priority=8, Atom icon | 30 min | Pending | R1-2 |
+| R1-4 | Update `src/lib/document-types/index.ts` — import + register reactComponentPlugin | 5 min | Pending | R1-3 |
+| R1-5 | Update `vite.config.ts` — add `'react-preview': ['react-runner']` to manualChunks | 5 min | Pending | R1-4 |
+| R1-6 | Run quality gates: `pnpm typecheck` + `pnpm lint` + `pnpm build` — all must pass | 10 min | Pending | R1-5 |
+
+---
+
+## R2: Verification (Browser Testing)
+
+| ID | Test Case | Est. | Status | Depends |
+|----|-----------|------|--------|---------|
+| R2-1 | Pre-flight: verify dev server running, navigate to localhost:5200, take baseline screenshot | 5 min | Pending | R1-6 |
+| R2-2 | Clear localStorage + reload for clean baseline | 3 min | Pending | R2-1 |
+| R2-3 | Test 1: New React tab via "+" menu — verify Atom icon, default content | 5 min | Pending | R2-2 |
+| R2-4 | Test 2: Default content renders in shared mode (useState counter visible) | 5 min | Pending | R2-3 |
+| R2-5 | Test 3: Toggle to isolated mode — content renders in iframe | 5 min | Pending | R2-4 |
+| R2-6 | Test 4: Toggle back to shared mode — component re-renders correctly | 3 min | Pending | R2-5 |
+| R2-7 | Test 5: Paste JSX → auto-detects as `react` kind | 5 min | Pending | R2-6 |
+| R2-8 | Test 6: Paste plain markdown → stays `markdown` kind | 3 min | Pending | R2-7 |
+| R2-9 | Test 7: Paste HTML → stays `html` kind | 3 min | Pending | R2-8 |
+| R2-10 | Test 8: Mermaid diagram → still detected as `mermaid` | 3 min | Pending | R2-9 |
+| R2-11 | Test 9: Syntax error in JSX → error panel shown, no crash | 5 min | Pending | R2-10 |
+| R2-12 | Test 10: Import statement works (`import { useState } from 'react'`) | 5 min | Pending | R2-11 |
+| R2-13 | Test 11: Hooks work — useState counter increments on click | 5 min | Pending | R2-12 |
+| R2-14 | Test 12: Empty content → placeholder shown | 3 min | Pending | R2-13 |
+| R2-15 | Test 13: Tab icon shows Atom icon from lucide-react | 3 min | Pending | R2-14 |
+| R2-16 | Test 14: Reload page → React tab preserved (localStorage persistence) | 5 min | Pending | R2-15 |
+| R2-17 | Test 15: File drop `.tsx` → opens as React tab | 5 min | Pending | R2-16 |
+| R2-18 | Test 16: Save/export produces `.tsx` file with correct MIME | 5 min | Pending | R2-17 |
+| R2-19 | Test 17: Existing markdown/mermaid/HTML tabs all still work | 5 min | Pending | R2-18 |
+
+---
+
+## R3: Finalize
+
+| ID | Task | Est. | Status | Depends |
+|----|------|------|--------|---------|
+| R3-1 | Compile all screenshots into `test-results/react-plugin/` | 10 min | Pending | R2-19 |
+| R3-2 | Commit feature code + test evidence | 5 min | Pending | R3-1 |
+| R3-3 | Push `feat/react-document-type` to origin | 2 min | Pending | R3-2 |
+| R3-4 | Merge into `development` and push | 5 min | Pending | R3-3 |
+
+---
+
+## Summary
+
+| Phase | Tasks | Estimated Total |
+|-------|-------|----------------|
+| R0: Setup | 2 | 5 min |
+| R1: Implementation | 6 | 125 min |
+| R2: Verification | 19 | 84 min |
+| R3: Finalize | 4 | 22 min |
+| **Total** | **31 tasks** | **~4 hours** |
