@@ -18,7 +18,9 @@ import { register } from './registry'
 import { markdownPlugin } from './plugins/markdown'
 import { mermaidPlugin } from './plugins/mermaid'
 import { htmlPlugin } from './plugins/html'
+import { reactComponentPlugin } from './plugins/react-component'
 
 register(markdownPlugin)
 register(mermaidPlugin)
 register(htmlPlugin)
+register(reactComponentPlugin)
