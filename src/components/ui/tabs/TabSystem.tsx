@@ -1,20 +1,32 @@
 "use client"
 
 import * as React from "react"
-import { forwardRef, useCallback, useEffect, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { AnimatePresence, motion, LayoutGroup } from "motion/react"
-import { X } from "lucide-react"
 import { ChevronDown, Plus } from "react-feather"
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  useSortable,
+  horizontalListSortingStrategy,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 import { cn } from "@/lib/utils"
 import { IconLabel } from "@/components/ui/icon-label"
-import {
-  tabListVariants,
-  tabTriggerVariants,
-  closeButtonVariants,
-  newTabButtonVariants,
-} from "./tab-variants"
+import { TabName } from "./tab-name"
+import { TabCloseButton } from "./tab-close-button"
+import { ScrollArrow } from "./scroll-arrow"
+import { tabSystem } from "./tab-system.variants"
+import { useTabOverflow } from "./hooks/use-tab-overflow"
+import { useWheelScroll } from "./hooks/use-wheel-scroll"
+import { useDragReorder } from "./hooks/use-drag-reorder"
 import type {
   TabSystemProps,
   TabItem,
@@ -26,19 +38,8 @@ import type {
   NewTabMenuItem,
 } from "./types"
 
-/**
- * ★ Insight ─────────────────────────────────────
- * TabSystem Architecture:
- * 1. Uses Radix UI Tabs for accessibility (ARIA roles, keyboard nav)
- * 2. Motion's AnimatePresence with popLayout for smooth exit animations
- * 3. LayoutGroup coordinates animations across all tabs
- * ─────────────────────────────────────────────────
- */
+// ── Animation configuration ─────────────────────────────────────────
 
-/**
- * Unified animation configuration
- * Both enter and exit use identical timing for perfect mirroring
- */
 const ANIMATION_DURATION = 0.2
 const ANIMATION_DISTANCE = 30
 
@@ -46,95 +47,35 @@ const getTabAnimations = (orientation: TabOrientation) => {
   const axis = orientation === "horizontal" ? "x" : "y"
 
   return {
-    // Enter: slide in from the right/bottom (positive direction)
     initial: {
       opacity: 0,
       scale: 0.8,
       [axis]: ANIMATION_DISTANCE,
     },
-    // Resting state
     animate: {
       opacity: 1,
       scale: 1,
       [axis]: 0,
       transition: {
         duration: ANIMATION_DURATION,
-        ease: [0.4, 0, 0.2, 1], // ease-out (CSS ease-out equivalent)
+        ease: [0.4, 0, 0.2, 1],
       },
     },
-    // Exit: slide out to the left/top (negative direction) - mirrors enter
     exit: {
       opacity: 0,
       scale: 0.8,
       [axis]: -ANIMATION_DISTANCE,
       transition: {
         duration: ANIMATION_DURATION,
-        ease: [0.4, 0, 1, 1], // ease-in (CSS ease-in equivalent)
+        ease: [0.4, 0, 1, 1],
       },
     },
   }
 }
 
-/**
- * TabCloseButton - Configurable close button for tabs
- */
-interface TabCloseButtonProps {
-  tabId: string
-  onDelete: (tabId: string) => void
-  position: CloseButtonPosition
-  shape: CloseButtonShape
-  visibility: CloseButtonVisibility
-  disabled?: boolean
-}
+// ── SortableTab ─────────────────────────────────────────────────────
 
-const TabCloseButton = forwardRef<HTMLSpanElement, TabCloseButtonProps>(
-  ({ tabId, onDelete, position, shape, visibility, disabled }, ref) => {
-    const handleClick = useCallback(
-      (e: React.MouseEvent) => {
-        e.stopPropagation()
-        e.preventDefault()
-        onDelete(tabId)
-      },
-      [tabId, onDelete]
-    )
-
-    const handleKeyDown = useCallback(
-      (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.stopPropagation()
-          e.preventDefault()
-          onDelete(tabId)
-        }
-      },
-      [tabId, onDelete]
-    )
-
-    if (shape === "none") return null
-
-    // Using span with role="button" to avoid invalid button-in-button nesting
-    // (Radix TabsTrigger renders as a button)
-    return (
-      <span
-        ref={ref}
-        role="button"
-        tabIndex={disabled ? -1 : 0}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        aria-disabled={disabled}
-        className={cn(closeButtonVariants({ position, shape, visibility }))}
-        aria-label="Close tab"
-      >
-        <X className="h-3 w-3" />
-      </span>
-    )
-  }
-)
-TabCloseButton.displayName = "TabCloseButton"
-
-/**
- * AnimatedTab - Single tab with enter/exit animations
- */
-interface AnimatedTabProps {
+interface SortableTabProps {
   tab: TabItem
   orientation: TabOrientation
   variant: TabVariant
@@ -144,46 +85,90 @@ interface AnimatedTabProps {
   closeButtonVisibility: CloseButtonVisibility
   onDelete?: (tabId: string) => void
   isNew?: boolean
+  triggerClassName: string
+  isDndEnabled: boolean
 }
 
-const AnimatedTab = forwardRef<HTMLButtonElement, AnimatedTabProps>(
+const SortableTab = forwardRef<HTMLButtonElement, SortableTabProps>(
   (
     {
       tab,
       orientation,
-      variant,
+      variant: _variant,
       showCloseButton,
       closeButtonPosition,
       closeButtonShape,
       closeButtonVisibility,
       onDelete,
       isNew,
+      triggerClassName,
+      isDndEnabled,
     },
     ref
   ) => {
     const animations = getTabAnimations(orientation)
 
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: tab.id,
+      disabled: !isDndEnabled || tab.disabled,
+    })
+
+    const sortableStyle: React.CSSProperties = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 50 : undefined,
+      containerType: "inline-size" as React.CSSProperties["containerType"],
+      // Responsive width clamping via CSS custom properties
+      flex: "1 1 0",
+      minWidth: "var(--tab-min-width, 5rem)",
+      maxWidth: "var(--tab-max-width, 15rem)",
+      position: "relative" as const,
+    }
+
     return (
       <motion.div
-        layout
+        ref={setNodeRef}
+        layout={!isDragging}
         layoutId={`tab-${tab.id}`}
         initial={isNew ? animations.initial : false}
         animate={animations.animate}
         exit={animations.exit}
-        className="relative"
-        style={{ position: "relative" }}
+        className="relative min-w-0"
+        style={sortableStyle}
+        {...attributes}
+        {...listeners}
       >
         <TabsPrimitive.Trigger
           ref={ref}
           value={tab.id}
           disabled={tab.disabled}
-          className={cn(
-            tabTriggerVariants({ variant, orientation }),
-            "group relative"
-          )}
+          className={cn(triggerClassName, "group relative w-full")}
+          style={
+            tab.color
+              ? ({ "--tab-accent": tab.color } as React.CSSProperties)
+              : undefined
+          }
+          data-tab-color={tab.color ? "" : undefined}
         >
-          {tab.icon && <span className="shrink-0">{tab.icon}</span>}
-          <span className="truncate">{tab.label}</span>
+          <TabName
+            icon={tab.icon}
+            label={tab.label}
+            iconColor={
+              tab.color
+                ? {
+                    color: `color-mix(in oklch, ${tab.color} 75%, black)`,
+                  }
+                : undefined
+            }
+          />
           {showCloseButton && tab.closable !== false && onDelete && (
             <TabCloseButton
               tabId={tab.id}
@@ -199,26 +184,59 @@ const AnimatedTab = forwardRef<HTMLButtonElement, AnimatedTabProps>(
     )
   }
 )
-AnimatedTab.displayName = "AnimatedTab"
+SortableTab.displayName = "SortableTab"
 
-/**
- * NewTabButton - Button to add new tabs
- */
+// ── TabDragOverlay ──────────────────────────────────────────────────
+
+interface TabOverlayProps {
+  tab: TabItem
+  triggerClassName: string
+}
+
+const TabDragOverlayContent = ({ tab, triggerClassName }: TabOverlayProps) => (
+  <div
+    className="shadow-lg rounded-md opacity-90 pointer-events-none"
+    style={{ containerType: "inline-size" as React.CSSProperties["containerType"] }}
+  >
+    <div
+      className={cn(triggerClassName, "w-full")}
+      style={
+        tab.color
+          ? ({ "--tab-accent": tab.color } as React.CSSProperties)
+          : undefined
+      }
+      data-tab-color={tab.color ? "" : undefined}
+      data-state="active"
+    >
+      <TabName
+        icon={tab.icon}
+        label={tab.label}
+        iconColor={
+          tab.color
+            ? { color: `color-mix(in oklch, ${tab.color} 75%, black)` }
+            : undefined
+        }
+      />
+    </div>
+  </div>
+)
+TabDragOverlayContent.displayName = "TabDragOverlayContent"
+
+// ── NewTabButton ────────────────────────────────────────────────────
+
 interface NewTabButtonProps {
   onClick: () => void
-  variant: TabVariant
-  orientation: TabOrientation
   className?: string
 }
 
 const NewTabButton = forwardRef<HTMLButtonElement, NewTabButtonProps>(
-  ({ onClick, variant, orientation, className }, ref) => {
+  ({ onClick, className }, ref) => {
     return (
       <motion.button
         ref={ref}
         type="button"
         onClick={onClick}
-        className={cn(newTabButtonVariants({ variant, orientation }), className)}
+        className={className}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         aria-label="Add new tab"
@@ -230,19 +248,21 @@ const NewTabButton = forwardRef<HTMLButtonElement, NewTabButtonProps>(
 )
 NewTabButton.displayName = "NewTabButton"
 
+// ── NewTabControl ───────────────────────────────────────────────────
+
 interface NewTabControlProps {
   onNewTab: () => void
-  variant: TabVariant
-  orientation: TabOrientation
   menuItems: NewTabMenuItem[]
+  newButtonClassName: string
+  orientation: TabOrientation
   className?: string
 }
 
 const NewTabControl = ({
   onNewTab,
-  variant,
-  orientation,
   menuItems,
+  newButtonClassName,
+  orientation,
   className,
 }: NewTabControlProps) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -283,7 +303,9 @@ const NewTabControl = ({
   }, [])
 
   const menuPositionClass =
-    orientation === "horizontal" ? "left-0 top-full mt-2" : "left-full top-0 ml-2"
+    orientation === "horizontal"
+      ? "left-0 top-full mt-2"
+      : "left-full top-0 ml-2"
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
@@ -297,7 +319,7 @@ const NewTabControl = ({
           type="button"
           onClick={handleNewTab}
           className={cn(
-            newTabButtonVariants({ variant, orientation }),
+            newButtonClassName,
             "rounded-none rounded-l-md",
             orientation === "vertical" ? "flex-1" : ""
           )}
@@ -309,7 +331,7 @@ const NewTabControl = ({
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
           className={cn(
-            newTabButtonVariants({ variant, orientation }),
+            newButtonClassName,
             "rounded-none rounded-r-md border-l border-[color:var(--tabs-bar-border)]",
             orientation === "vertical" ? "flex-1" : ""
           )}
@@ -372,10 +394,8 @@ const NewTabControl = ({
   )
 }
 
-/**
- * TabSystem - Main component
- * A fully-featured, animated tab system with multiple style variants
- */
+// ── TabSystem ───────────────────────────────────────────────────────
+
 const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
   (
     {
@@ -386,12 +406,15 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       onTabChange,
       onNewTab,
       onDeleteTab,
+      onReorderTabs,
       showNewButton = false,
       newTabMenuItems,
       showCloseButtons = false,
       closeButtonPosition = "inside",
       closeButtonShape = "circle",
       closeButtonVisibility = "hover",
+      tabMinWidth,
+      tabMaxWidth,
       className,
       children,
       // v2 stub - grouping not implemented yet (intentionally unused)
@@ -400,12 +423,24 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
     },
     ref
   ) => {
-    // Track which tabs are newly added for enter animation
+    // ── Variant styles ─────────────────────────────────────────
+    const styles = useMemo(
+      () =>
+        tabSystem({
+          variant,
+          orientation,
+          closePosition: closeButtonPosition,
+          closeShape: closeButtonShape,
+          closeVisibility: closeButtonVisibility,
+        }),
+      [variant, orientation, closeButtonPosition, closeButtonShape, closeButtonVisibility]
+    )
+
+    // ── Track newly added tabs for enter animation ─────────────
     const [newTabIds, setNewTabIds] = useState<Set<string>>(new Set())
     const prevTabIdsRef = useRef<string[]>([])
 
-    // Detect newly added tabs
-    React.useEffect(() => {
+    useEffect(() => {
       const currentIds = tabs.map((t) => t.id)
       const prevIds = prevTabIdsRef.current
 
@@ -413,7 +448,6 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
 
       if (addedIds.length > 0) {
         setNewTabIds((prev) => new Set([...prev, ...addedIds]))
-        // Clear "new" status after animation completes
         setTimeout(() => {
           setNewTabIds((prev) => {
             const next = new Set(prev)
@@ -426,20 +460,85 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       prevTabIdsRef.current = currentIds
     }, [tabs])
 
+    // ── DnD hook ───────────────────────────────────────────────
+    const tabIds = useMemo(() => tabs.map((t) => t.id), [tabs])
+    const isDndEnabled = !!onReorderTabs
+
+    const handleReorder = useCallback(
+      (newOrder: string[]) => {
+        onReorderTabs?.(newOrder)
+      },
+      [onReorderTabs]
+    )
+
+    const { sensors, activeId, handleDragStart, handleDragEnd, handleDragCancel } =
+      useDragReorder({
+        items: tabIds,
+        onReorder: handleReorder,
+        enabled: isDndEnabled,
+      })
+
+    // Cancel drag when tabs change (rapid add/delete during drag guard)
+    const prevTabCountRef = useRef(tabs.length)
+    useEffect(() => {
+      if (prevTabCountRef.current !== tabs.length && activeId) {
+        handleDragCancel()
+      }
+      prevTabCountRef.current = tabs.length
+    }, [tabs.length, activeId, handleDragCancel])
+
+    // ── Scroll overflow + wheel ────────────────────────────────
+    const {
+      containerRef: scrollContainerRef,
+      canScrollLeft,
+      canScrollRight,
+      scrollLeft: doScrollLeft,
+      scrollRight: doScrollRight,
+    } = useTabOverflow()
+
+    useWheelScroll({
+      containerRef: scrollContainerRef,
+      enabled: orientation === "horizontal",
+    })
+
+    // ── Handlers ───────────────────────────────────────────────
     const handleDelete = useCallback(
       (tabId: string) => {
-        if (onDeleteTab) {
-          onDeleteTab(tabId)
-        }
+        onDeleteTab?.(tabId)
       },
       [onDeleteTab]
     )
 
-    const newTabContainerClass = cn(
-      "relative",
-      orientation === "horizontal" ? "ml-1" : "mt-1 w-full"
-    )
+    // ── Derived elements ───────────────────────────────────────
     const menuItems = newTabMenuItems ?? []
+
+    const newTabControlEl = showNewButton &&
+      onNewTab &&
+      (menuItems.length > 0 ? (
+        <NewTabControl
+          onNewTab={onNewTab}
+          menuItems={menuItems}
+          newButtonClassName={styles.newButton()}
+          orientation={orientation}
+        />
+      ) : (
+        <NewTabButton onClick={onNewTab} className={styles.newButton()} />
+      ))
+
+    const sortingStrategy =
+      orientation === "horizontal"
+        ? horizontalListSortingStrategy
+        : verticalListSortingStrategy
+
+    const activeTab_item = activeId
+      ? tabs.find((t) => t.id === activeId)
+      : null
+
+    // ── CSS custom properties for responsive sizing ────────────
+    const rootStyle = {
+      "--tab-min-width": tabMinWidth ?? "5rem",
+      "--tab-max-width": tabMaxWidth ?? "15rem",
+    } as React.CSSProperties
 
     return (
       <TabsPrimitive.Root
@@ -447,58 +546,97 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
         value={activeTab}
         onValueChange={onTabChange}
         orientation={orientation}
-        className={cn(
-          "flex min-h-0",
-          orientation === "horizontal" ? "flex-col" : "flex-row",
-          className
-        )}
+        className={cn(styles.root(), className)}
+        style={rootStyle}
       >
-        <LayoutGroup>
-          <TabsPrimitive.List
-            className={cn(tabListVariants({ variant, orientation }))}
-            style={{ position: "relative" }}
-          >
-            <AnimatePresence mode="popLayout" initial={false}>
-              {tabs.map((tab) => (
-                <AnimatedTab
-                  key={tab.id}
-                  tab={tab}
-                  orientation={orientation}
-                  variant={variant}
-                  showCloseButton={showCloseButtons}
-                  closeButtonPosition={closeButtonPosition}
-                  closeButtonShape={closeButtonShape}
-                  closeButtonVisibility={closeButtonVisibility}
-                  onDelete={handleDelete}
-                  isNew={newTabIds.has(tab.id)}
-                />
-              ))}
-            </AnimatePresence>
+        {/* Tab bar: scroll arrows + scrollable list + pinned action */}
+        <div className={styles.bar()}>
+          {/* Left scroll arrow */}
+          {canScrollLeft && (
+            <ScrollArrow
+              direction="left"
+              onClick={doScrollLeft}
+              className={styles.scrollArrow()}
+            />
+          )}
 
-            {showNewButton && onNewTab && (
-              menuItems.length > 0 ? (
-                <NewTabControl
-                  onNewTab={onNewTab}
-                  variant={variant}
-                  orientation={orientation}
-                  menuItems={menuItems}
-                  className={newTabContainerClass}
-                />
-              ) : (
-                <div className={newTabContainerClass}>
-                  <NewTabButton
-                    onClick={onNewTab}
-                    variant={variant}
-                    orientation={orientation}
+          {/* Scrollable container */}
+          <div ref={scrollContainerRef} className={styles.scrollContainer()}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
+              <SortableContext
+                items={tabIds}
+                strategy={sortingStrategy}
+              >
+                <LayoutGroup>
+                  <TabsPrimitive.List
+                    className={cn(styles.list(), "flex-1 min-w-0")}
+                    style={{ position: "relative" }}
+                  >
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      {tabs.map((tab) => (
+                        <SortableTab
+                          key={tab.id}
+                          tab={tab}
+                          orientation={orientation}
+                          variant={variant}
+                          showCloseButton={showCloseButtons}
+                          closeButtonPosition={closeButtonPosition}
+                          closeButtonShape={closeButtonShape}
+                          closeButtonVisibility={closeButtonVisibility}
+                          onDelete={handleDelete}
+                          isNew={newTabIds.has(tab.id)}
+                          triggerClassName={styles.trigger()}
+                          isDndEnabled={isDndEnabled}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </TabsPrimitive.List>
+                </LayoutGroup>
+              </SortableContext>
+
+              <DragOverlay dropAnimation={null}>
+                {activeTab_item ? (
+                  <TabDragOverlayContent
+                    tab={activeTab_item}
+                    triggerClassName={styles.trigger()}
                   />
-                </div>
-              )
-            )}
-          </TabsPrimitive.List>
-        </LayoutGroup>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </div>
 
-        {/* Tab content area - must constrain height for scrolling */}
-        <div className="flex-1 overflow-hidden">
+          {/* Right scroll arrow */}
+          {canScrollRight && (
+            <ScrollArrow
+              direction="right"
+              onClick={doScrollRight}
+              className={styles.scrollArrow()}
+            />
+          )}
+
+          {/* Pinned new tab control — outside scroll container */}
+          {newTabControlEl && (
+            <div
+              className={cn(
+                "flex-shrink-0",
+                orientation === "horizontal"
+                  ? "border-l border-[color:var(--tabs-bar-border)] pl-1 ml-1"
+                  : "border-t border-[color:var(--tabs-bar-border)] pt-1 mt-1 w-full"
+              )}
+            >
+              {newTabControlEl}
+            </div>
+          )}
+        </div>
+
+        {/* Tab content area */}
+        <div className={styles.content()}>
           {children}
         </div>
       </TabsPrimitive.Root>
@@ -507,10 +645,8 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
 )
 TabSystem.displayName = "TabSystem"
 
-/**
- * TabContent - Wrapper for individual tab content panels
- * Use this inside TabSystem.children for each tab
- */
+// ── TabContent ──────────────────────────────────────────────────────
+
 const TabContent = forwardRef<
   HTMLDivElement,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
@@ -518,7 +654,7 @@ const TabContent = forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-2 ring-offset-background h-full overflow-auto",
+      "ring-offset-background h-full overflow-auto",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className
     )}

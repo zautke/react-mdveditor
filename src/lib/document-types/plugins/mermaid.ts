@@ -90,4 +90,5 @@ export const mermaidPlugin: DocumentTypePlugin = {
   exportExtension: '.mmd',
   defaultContent: defaultMermaidContent,
   defaultTitle: (n: number) => `Diagram-${n}`,
+  tabColor: 'oklch(0.62 0.15 155)',
 }

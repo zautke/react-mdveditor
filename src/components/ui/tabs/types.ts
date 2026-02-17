@@ -9,6 +9,8 @@ export interface TabItem {
   icon?: React.ReactNode
   disabled?: boolean
   closable?: boolean
+  /** Accent color from plugin (CSS color value, e.g. oklch(...)). */
+  color?: string
 }
 
 export interface NewTabMenuItem {
@@ -21,7 +23,7 @@ export interface NewTabMenuItem {
 
 export type TabOrientation = "horizontal" | "vertical"
 
-export type TabVariant = "chrome" | "underline" | "pills" | "boxed" | "minimal"
+export type TabVariant = "chrome" | "capsule" | "underline" | "pills" | "boxed" | "minimal"
 
 export type CloseButtonPosition = "inside" | "outside" | "overlap"
 export type CloseButtonShape = "circle" | "square" | "none"
@@ -81,6 +83,15 @@ export interface TabSystemProps {
 
   /** When to show close buttons */
   closeButtonVisibility?: CloseButtonVisibility
+
+  /** Callback when tabs are reordered via drag-and-drop */
+  onReorderTabs?: (tabIds: string[]) => void
+
+  /** Minimum tab width (CSS value). Default: '5rem' */
+  tabMinWidth?: string
+
+  /** Maximum tab width (CSS value). Default: '15rem' */
+  tabMaxWidth?: string
 
   /** v2 stub: Tab grouping configuration */
   grouping?: TabGroupConfig

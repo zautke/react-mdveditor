@@ -108,4 +108,5 @@ export const reactComponentPlugin: DocumentTypePlugin = {
   exportExtension: '.tsx',
   defaultContent: defaultReactContent,
   defaultTitle: (n: number) => `Component-${n}`,
+  tabColor: 'oklch(0.65 0.15 220)',
 }

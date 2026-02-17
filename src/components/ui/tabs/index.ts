@@ -22,6 +22,7 @@
  *       showCloseButtons
  *       onNewTab={() => setTabs([...tabs, { id: Date.now().toString(), label: "New" }])}
  *       onDeleteTab={(id) => setTabs(tabs.filter(t => t.id !== id))}
+ *       onReorderTabs={(newOrder) => setTabs(newOrder.map(id => tabs.find(t => t.id === id)!))}
  *     >
  *       <TabContent value="1">Content 1</TabContent>
  *       <TabContent value="2">Content 2</TabContent>
@@ -32,6 +33,11 @@
  */
 
 export { TabSystem, TabContent } from "./TabSystem"
+export { TabName } from "./tab-name"
+export { TabCloseButton } from "./tab-close-button"
+export { ScrollArrow } from "./scroll-arrow"
+export { tabSystem } from "./tab-system.variants"
+export type { TabSystemVariantProps } from "./tab-system.variants"
 export type {
   TabSystemProps,
   TabItem,
@@ -44,9 +50,8 @@ export type {
   TabGroupConfig,
   TabGroup,
 } from "./types"
-export {
-  tabListVariants,
-  tabTriggerVariants,
-  closeButtonVariants,
-  newTabButtonVariants,
-} from "./tab-variants"
+
+// Hooks
+export { useTabOverflow } from "./hooks/use-tab-overflow"
+export { useWheelScroll } from "./hooks/use-wheel-scroll"
+export { useDragReorder } from "./hooks/use-drag-reorder"

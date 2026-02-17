@@ -237,6 +237,7 @@ function App() {
       label: doc.title,
       icon: createElement(plugin.icon, { className: 'h-3.5 w-3.5' } as Record<string, unknown>),
       closable: documents.length > 1,
+      color: plugin.tabColor,
     }
   })
 
@@ -377,6 +378,13 @@ function App() {
     }
   }, [documents, activeDocId])
 
+  const handleReorderTabs = useCallback((newOrder: string[]) => {
+    setDocuments(docs => {
+      const docMap = new Map(docs.map(d => [d.id, d]))
+      return newOrder.map(id => docMap.get(id)!).filter(Boolean)
+    })
+  }, [])
+
   const handleAddFile = useCallback(() => {
     fileInputRef.current?.click()
   }, [])
@@ -443,43 +451,6 @@ function App() {
         aria-hidden="true"
       />
 
-      {/* Control Bar */}
-      <div className="absolute top-2 right-4 z-50 flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleAddFile}
-              className="h-8 w-8"
-              aria-label="Add file"
-            >
-              <FilePlus2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Add file</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleSave}
-              className="h-8 w-8"
-              aria-label="Save file"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Save file</p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
         <InputPane
@@ -499,8 +470,45 @@ function App() {
             />
           </div>
 
-          {/* Tab System with dynamic new-tab menu */}
+          {/* File toolbar + Tab System */}
           <div className="flex-1 pl-8 flex flex-col overflow-hidden">
+            {/* File toolbar row */}
+            <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleAddFile}
+                    className="h-7 w-7"
+                    aria-label="Add file"
+                  >
+                    <FilePlus2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Add file</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleSave}
+                    className="h-7 w-7"
+                    aria-label="Download file"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Download file</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+
             <TabSystem
               tabs={tabs}
               activeTab={activeDocId}
@@ -508,7 +516,8 @@ function App() {
               onNewTab={() => handleNewTab('markdown')}
               newTabMenuItems={newTabMenuItems}
               onDeleteTab={handleDeleteTab}
-              variant="chrome"
+              onReorderTabs={handleReorderTabs}
+              variant="capsule"
               showNewButton
               showCloseButtons
               className="flex-1"
