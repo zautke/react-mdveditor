@@ -5,9 +5,13 @@
  * Detects raw mermaid diagram syntax pasted or dropped into the editor.
  */
 
+import { lazy, Suspense, createElement } from 'react'
 import { GitBranch } from 'lucide-react'
-import MermaidDiagram from '@/components/markdown/MermaidDiagram'
 import type { DocumentTypePlugin, RendererProps } from '../types'
+
+// Lazy-load MermaidDiagram — the mermaid library (~2.3 MB) is only fetched
+// when a user actually opens or creates a mermaid document type.
+const LazyMermaidDiagram = lazy(() => import('@/components/markdown/MermaidDiagram'))
 
 // ── Detection heuristic ─────────────────────────────────────────────
 
@@ -62,7 +66,14 @@ export function isMermaidText(text: string): boolean {
 // The registry contract requires `{ content: string }`.
 
 function MermaidRendererWrapper({ content }: RendererProps) {
-  return MermaidDiagram({ chart: content })
+  return createElement(
+    Suspense,
+    { fallback: createElement('div', {
+        style: { padding: '1rem', color: '#888', fontStyle: 'italic' }
+      }, 'Loading diagram…')
+    },
+    createElement(LazyMermaidDiagram, { chart: content })
+  )
 }
 MermaidRendererWrapper.displayName = 'MermaidRendererWrapper'
 

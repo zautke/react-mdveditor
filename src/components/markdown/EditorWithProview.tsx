@@ -1,4 +1,4 @@
-import { useState, useEffect, DragEvent, memo, useRef, useCallback, createElement } from 'react'
+import { useState, useEffect, DragEvent, memo, useRef, useCallback, createElement, useMemo, Suspense } from 'react'
 import { FilePlus2, Download } from 'lucide-react'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
 import { TabSystem, TabContent } from '@/components/ui/tabs'
@@ -142,7 +142,8 @@ const InputPane = memo(({
 })
 InputPane.displayName = 'InputPane'
 
-// Dynamic RenderPane — resolves renderer from the registry
+// Dynamic RenderPane — resolves renderer from the registry.
+// Suspense boundary enables lazy-loaded plugin renderers (e.g. mermaid, react).
 const RenderPane = memo(({
   content,
   kind,
@@ -152,9 +153,13 @@ const RenderPane = memo(({
 }) => {
   const plugin = documentTypeRegistry.get(kind)
   return (
-    <div className="p-4 transform-gpu">
-      {createElement(plugin.renderer, { content })}
-    </div>
+    <Suspense fallback={
+      <div className="p-4 text-muted-foreground animate-pulse">Loading renderer…</div>
+    }>
+      <div className="p-4 transform-gpu">
+        {createElement(plugin.renderer, { content })}
+      </div>
+    </Suspense>
   )
 }, (prevProps, nextProps) => {
   return prevProps.content === nextProps.content &&
@@ -229,25 +234,55 @@ function App() {
   const activeContent = activeDoc?.content || ''
   const activeKind = activeDoc?.kind || 'markdown'
 
-  // Tabs — include plugin icon for each document
-  const tabs: TabItem[] = documents.map(doc => {
-    const plugin = documentTypeRegistry.get(doc.kind)
-    return {
-      id: doc.id,
-      label: doc.title,
-      icon: createElement(plugin.icon, { className: 'h-3.5 w-3.5' } as Record<string, unknown>),
-      closable: documents.length > 1,
-      color: plugin.tabColor,
-    }
-  })
+  // handleNewTab — placed before tabs/menu so useMemo closures can capture it safely.
+  // Uses functional updater to read docs.length inside setState, removing the
+  // dependency on `documents.length` and making this callback fully stable.
+  const handleNewTab = useCallback((kind: string = 'markdown') => {
+    const plugin = documentTypeRegistry.get(kind)
+    const newId = generateDocId()
+    setDocuments(docs => {
+      const newDoc: EditorDocument = {
+        id: newId,
+        title: plugin.defaultTitle(docs.length + 1),
+        content: plugin.defaultContent,
+        kind: plugin.kind,
+      }
+      return [...docs, newDoc]
+    })
+    setActiveDocId(newId)
+  }, [])
 
-  // New-tab dropdown menu — one item per registered document type
-  const newTabMenuItems: NewTabMenuItem[] = documentTypeRegistry.all().map(plugin => ({
-    id: `new-${plugin.kind}`,
-    label: `New ${plugin.label}`,
-    icon: createElement(plugin.icon, { className: 'h-4 w-4' } as Record<string, unknown>),
-    onSelect: () => handleNewTab(plugin.kind),
-  }))
+  // Tabs — include plugin icon for each document.
+  // Memoized with a metadata fingerprint so content edits (which update `documents`)
+  // don't recreate tab items — only id/title/kind/count changes matter for tabs.
+  const docMetaKey = documents.map(d => `${d.id}\0${d.title}\0${d.kind}`).join('\n')
+
+  const tabs: TabItem[] = useMemo(() =>
+    documents.map(doc => {
+      const plugin = documentTypeRegistry.get(doc.kind)
+      return {
+        id: doc.id,
+        label: doc.title,
+        icon: createElement(plugin.icon, { className: 'h-3.5 w-3.5' } as Record<string, unknown>),
+        closable: documents.length > 1,
+        color: plugin.tabColor,
+      }
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [docMetaKey]
+  )
+
+  // New-tab dropdown menu — one item per registered document type.
+  // Memoized because the registry is static and handleNewTab is fully stable ([] deps).
+  const newTabMenuItems: NewTabMenuItem[] = useMemo(() =>
+    documentTypeRegistry.all().map(plugin => ({
+      id: `new-${plugin.kind}`,
+      label: `New ${plugin.label}`,
+      icon: createElement(plugin.icon, { className: 'h-4 w-4' } as Record<string, unknown>),
+      onSelect: () => handleNewTab(plugin.kind),
+    })),
+    [handleNewTab]
+  )
 
   // ── Event handlers ──────────────────────────────────────────────
 
@@ -353,19 +388,6 @@ function App() {
   const handleTabChange = useCallback((tabId: string) => {
     setActiveDocId(tabId)
   }, [])
-
-  const handleNewTab = useCallback((kind: string = 'markdown') => {
-    const plugin = documentTypeRegistry.get(kind)
-    const newId = generateDocId()
-    const newDoc: EditorDocument = {
-      id: newId,
-      title: plugin.defaultTitle(documents.length + 1),
-      content: plugin.defaultContent,
-      kind: plugin.kind,
-    }
-    setDocuments(docs => [...docs, newDoc])
-    setActiveDocId(newId)
-  }, [documents.length])
 
   const handleDeleteTab = useCallback((tabId: string) => {
     if (documents.length <= 1) return
