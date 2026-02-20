@@ -14,6 +14,7 @@ import {
   useSensors,
   useSensor,
   type DragStartEvent,
+  type DragOverEvent,
   type DragEndEvent,
   type SensorDescriptor,
   type SensorOptions,
@@ -36,6 +37,7 @@ export interface UseDragReorderReturn {
   sensors: SensorDescriptor<SensorOptions>[]
   activeId: string | null
   handleDragStart: (event: DragStartEvent) => void
+  handleDragOver: (event: DragOverEvent) => void
   handleDragEnd: (event: DragEndEvent) => void
   handleDragCancel: () => void
 }
@@ -69,10 +71,10 @@ export function useDragReorder({
     [enabled]
   )
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      setActiveId(null)
-
+  // Optimistic reorder on drag-over: moves tabs out of the way in
+  // real-time as the dragged item crosses their midpoint.
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
       if (!enabled) return
 
       const { active, over } = event
@@ -89,9 +91,17 @@ export function useDragReorder({
     [enabled, items, onReorder]
   )
 
+  const handleDragEnd = useCallback(
+    (_event: DragEndEvent) => {
+      // Reorder already happened in onDragOver — just clear active state.
+      setActiveId(null)
+    },
+    []
+  )
+
   const handleDragCancel = useCallback(() => {
     setActiveId(null)
   }, [])
 
-  return { sensors, activeId, handleDragStart, handleDragEnd, handleDragCancel }
+  return { sensors, activeId, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel }
 }

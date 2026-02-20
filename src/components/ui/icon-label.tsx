@@ -31,7 +31,7 @@ export function IconLabel({
       className={cn("inline-flex items-center", positionClasses[position], className)}
       style={{ gap: gutter }}
     >
-      <span className="shrink-0">{icon}</span>
+      <span className="shrink-0" aria-hidden="true">{icon}</span>
       <span className="truncate">{label}</span>
     </span>
   )

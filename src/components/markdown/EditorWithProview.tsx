@@ -1,4 +1,4 @@
-import { useState, useEffect, DragEvent, memo, useRef, useCallback, createElement, useMemo, Suspense } from 'react'
+import { useState, useEffect, useId, DragEvent, memo, useRef, useCallback, createElement, useMemo, Suspense } from 'react'
 import { FilePlus2, Download } from 'lucide-react'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
 import { TabSystem, TabContent } from '@/components/ui/tabs'
@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils'
 import { loadState, saveState } from '@/lib/storage'
 import { documentTypeRegistry } from '@/lib/document-types'
 import type { TabItem, NewTabMenuItem } from '@/components/ui/tabs/types'
+
+// ── ARIA: status announcement for preview updates ───────────────────
+const PREVIEW_DEBOUNCE_MS = 1500
 
 // ── Document model ──────────────────────────────────────────────────
 // `kind` links each document to a registered plugin via the registry.
@@ -101,14 +104,20 @@ const InputPane = memo(({
   onContentChange,
   onPaste,
   isExpanded,
+  editorId,
 }: {
   content: string
   onContentChange: (value: string) => void
   onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void
   isExpanded: boolean
+  editorId: string
 }) => {
+  const headingId = `${editorId}-heading`
+  const helpId = `${editorId}-help`
+
   return (
-    <div
+    <section
+      aria-label="Markdown source editor"
       className={cn(
         "p-4 border-r border-border transition-all duration-400 ease-out",
         "will-change-[flex,opacity] transform-gpu backface-hidden",
@@ -118,12 +127,17 @@ const InputPane = memo(({
       )}
     >
       <div className="flex items-center mb-4">
-        <h3 className="m-0 text-lg font-semibold text-foreground">Editor</h3>
+        <h3 id={headingId} className="m-0 text-lg font-semibold text-foreground">Editor</h3>
       </div>
       <textarea
+        id={editorId}
         value={content}
         onChange={(e) => onContentChange(e.target.value)}
         onPaste={onPaste}
+        aria-labelledby={headingId}
+        aria-describedby={helpId}
+        aria-multiline="true"
+        spellCheck
         className={cn(
           "w-full h-[calc(100%-3rem)] p-2",
           "border border-input rounded-md",
@@ -134,7 +148,10 @@ const InputPane = memo(({
         )}
         placeholder="Start typing..."
       />
-    </div>
+      <div id={helpId} className="sr-only">
+        Write markdown here. The preview updates automatically in the adjacent panel.
+      </div>
+    </section>
   )
 }, (prevProps, nextProps) => {
   return prevProps.content === nextProps.content &&
@@ -154,9 +171,12 @@ const RenderPane = memo(({
   const plugin = documentTypeRegistry.get(kind)
   return (
     <Suspense fallback={
-      <div className="p-4 text-muted-foreground animate-pulse">Loading renderer…</div>
+      <div className="p-4 text-muted-foreground animate-pulse" role="status">
+        <span className="sr-only">Loading renderer</span>
+        Loading renderer…
+      </div>
     }>
-      <div className="p-4 transform-gpu">
+      <div className="p-4 transform-gpu" role="document" aria-label="Rendered preview content">
         {createElement(plugin.renderer, { content })}
       </div>
     </Suspense>
@@ -450,13 +470,32 @@ function App() {
     URL.revokeObjectURL(url)
   }, [activeContent, activeKind, activeDoc?.title])
 
+  // ── ARIA: unique IDs and live-region state ───────────────────────
+  const editorId = useId()
+  const previewStatusId = `${editorId}-preview-status`
+  const [previewStatus, setPreviewStatus] = useState('')
+  const previewDebounceRef = useRef<ReturnType<typeof setTimeout>>()
+
+  // Announce preview updates after a pause in typing
+  useEffect(() => {
+    clearTimeout(previewDebounceRef.current)
+    previewDebounceRef.current = setTimeout(() => {
+      setPreviewStatus('Preview updated')
+      // Clear after brief announcement window
+      setTimeout(() => setPreviewStatus(''), 500)
+    }, PREVIEW_DEBOUNCE_MS)
+    return () => clearTimeout(previewDebounceRef.current)
+  }, [activeContent])
+
   // ── Render ──────────────────────────────────────────────────────
 
   // Build the file-accept string from all registered extensions
   const acceptExtensions = documentTypeRegistry.allExtensions().join(',')
 
   return (
-    <div
+    <main
+      id="main-content"
+      aria-label="Markdown editor application"
       className="flex flex-col h-screen font-sans relative bg-background text-foreground"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -471,15 +510,17 @@ function App() {
         onChange={handleFileInputChange}
         className="hidden"
         aria-hidden="true"
+        tabIndex={-1}
       />
 
       {/* Main content area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden" role="group" aria-label="Editor and preview panes">
         <InputPane
           content={activeContent}
           onContentChange={handleContentChange}
           onPaste={handlePaste}
           isExpanded={isExpanded}
+          editorId={`${editorId}-textarea`}
         />
 
         <div className="flex-1 flex flex-col relative overflow-hidden">
@@ -494,22 +535,33 @@ function App() {
 
           {/* File toolbar + Tab System */}
           <div className="flex-1 pl-8 flex flex-col overflow-hidden">
-            {/* File toolbar row */}
-            <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border">
+            {/* File toolbar row — right-justified icon control panel */}
+            <div
+              role="toolbar"
+              aria-label="Document actions"
+              aria-orientation="horizontal"
+              className="flex items-center justify-end gap-1.5 px-2 py-1.5 border-b border-border"
+            >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={handleAddFile}
-                    className="h-7 w-7"
-                    aria-label="Add file"
+                    className={cn(
+                      "h-7 w-7 cursor-pointer",
+                      "transition-all duration-150",
+                      "hover:bg-accent hover:text-accent-foreground",
+                      "hover:shadow-md hover:border-accent-foreground/30",
+                      "active:scale-95 active:shadow-sm",
+                    )}
+                    aria-label="Upload file to new tab"
                   >
-                    <FilePlus2 className="h-3.5 w-3.5" />
+                    <FilePlus2 className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Add file</p>
+                  <p>Upload file</p>
                 </TooltipContent>
               </Tooltip>
 
@@ -519,10 +571,16 @@ function App() {
                     variant="outline"
                     size="icon"
                     onClick={handleSave}
-                    className="h-7 w-7"
-                    aria-label="Download file"
+                    className={cn(
+                      "h-7 w-7 cursor-pointer",
+                      "transition-all duration-150",
+                      "hover:bg-accent hover:text-accent-foreground",
+                      "hover:shadow-md hover:border-accent-foreground/30",
+                      "active:scale-95 active:shadow-sm",
+                    )}
+                    aria-label={`Download ${activeDoc?.title || 'document'} as file`}
                   >
-                    <Download className="h-3.5 w-3.5" />
+                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -554,11 +612,26 @@ function App() {
         </div>
       </div>
 
+      {/* ARIA: Live region for preview status announcements */}
+      <div
+        id={previewStatusId}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {previewStatus}
+      </div>
+
       {/* Drag-and-drop overlay */}
       {isDragging && (
-        <div className="absolute inset-0 bg-primary/10 border-3 border-dashed border-primary rounded-lg flex items-center justify-center z-[1000] pointer-events-none">
+        <div
+          className="absolute inset-0 bg-primary/10 border-3 border-dashed border-primary rounded-lg flex items-center justify-center z-[1000] pointer-events-none"
+          role="status"
+          aria-live="assertive"
+        >
           <div className="bg-background p-8 rounded-lg shadow-xl text-center">
-            <div className="text-5xl mb-4">📄</div>
+            <div className="text-5xl mb-4" aria-hidden="true">📄</div>
             <div className="text-xl font-bold mb-2">Drop File Here</div>
             <div className="text-sm text-muted-foreground">
               Drop a text file to open it
@@ -566,7 +639,7 @@ function App() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }
 

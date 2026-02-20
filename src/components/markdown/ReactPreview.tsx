@@ -262,6 +262,8 @@ function ReactPreview({ content }: RendererProps) {
       >
         {/* Mode toggle */}
         <div
+          role="radiogroup"
+          aria-label="Preview rendering mode"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -308,6 +310,8 @@ function ModeButton({
     <button
       onClick={onClick}
       type="button"
+      role="radio"
+      aria-checked={active}
       style={{
         padding: '0.15rem 0.5rem',
         borderRadius: '4px',
