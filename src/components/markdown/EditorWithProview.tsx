@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import { loadState, saveState } from '@/lib/storage'
 import { documentTypeRegistry } from '@/lib/document-types'
+import { validateFile } from '@/lib/file-validation'
 import type { TabItem, NewTabMenuItem } from '@/components/ui/tabs/types'
 
 // ── ARIA: status announcement for preview updates ───────────────────
@@ -364,40 +365,56 @@ function App() {
     e.stopPropagation()
     setIsDragging(false)
 
-    // Plain text drop
+    // Plain text drop — opens a new tab (consistent with file drop)
     const text = e.dataTransfer.getData('text/plain')
     if (text) {
       const converted = convertLatexDelimiters(text)
       const detectedKind = documentTypeRegistry.detect(converted)
-      setDocuments(docs => docs.map(d =>
-        d.id === activeDocId ? { ...d, content: converted, kind: detectedKind } : d
-      ))
+      const newId = generateDocId()
+      setDocuments(docs => {
+        const newDoc: EditorDocument = {
+          id: newId,
+          title: documentTypeRegistry.get(detectedKind).defaultTitle(docs.length + 1),
+          content: converted,
+          kind: detectedKind,
+        }
+        return [...docs, newDoc]
+      })
+      setActiveDocId(newId)
       return
     }
 
-    // File drop
+    // File drop — validate with blacklist + binary check, then open in new tab
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
       const file = files[0]
-      const ext = file.name.includes('.') ? `.${file.name.split('.').pop() ?? ''}` : ''
-      const pluginByExt = documentTypeRegistry.getByExtension(ext)
-      if (pluginByExt || file.type.startsWith('text/')) {
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          const content = event.target?.result as string
-          if (content) {
-            const converted = convertLatexDelimiters(content)
-            const kind = pluginByExt?.kind ?? documentTypeRegistry.detect(converted)
-            const title = documentTypeRegistry.stripExtension(file.name)
-            setDocuments(docs => docs.map(d =>
-              d.id === activeDocId ? { ...d, content: converted, kind, title } : d
-            ))
-          }
-        }
-        reader.readAsText(file)
+      const result = await validateFile(file)
+      if (!result.safe) {
+        console.warn(`[FileDrop] Rejected "${file.name}": ${result.reason}`)
+        return
       }
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const content = event.target?.result as string
+        if (content) {
+          const converted = convertLatexDelimiters(content)
+          const ext = file.name.includes('.') ? `.${file.name.split('.').pop() ?? ''}` : ''
+          const pluginByExt = documentTypeRegistry.getByExtension(ext)
+          const kind = pluginByExt?.kind ?? documentTypeRegistry.detect(converted)
+          const newId = generateDocId()
+          const newDoc: EditorDocument = {
+            id: newId,
+            title: documentTypeRegistry.stripExtension(file.name),
+            content: converted,
+            kind,
+          }
+          setDocuments(docs => [...docs, newDoc])
+          setActiveDocId(newId)
+        }
+      }
+      reader.readAsText(file)
     }
-  }, [activeDocId])
+  }, [])
 
   const handleContentChange = useCallback((value: string) => {
     setDocuments(docs => docs.map(d =>
@@ -431,9 +448,18 @@ function App() {
     fileInputRef.current?.click()
   }, [])
 
-  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    // Validate with blacklist + binary check before reading
+    const result = await validateFile(file)
+    if (!result.safe) {
+      console.warn(`[FileInput] Rejected "${file.name}": ${result.reason}`)
+      e.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (event) => {
       const content = event.target?.result as string
@@ -489,9 +515,6 @@ function App() {
 
   // ── Render ──────────────────────────────────────────────────────
 
-  // Build the file-accept string from all registered extensions
-  const acceptExtensions = documentTypeRegistry.allExtensions().join(',')
-
   return (
     <main
       id="main-content"
@@ -502,11 +525,11 @@ function App() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Hidden file input — accepts all registered extensions */}
+      {/* Hidden file input — accepts all text formats (runtime blacklist validates) */}
       <input
         ref={fileInputRef}
         type="file"
-        accept={acceptExtensions}
+        accept="text/*,.md,.mdx,.markdown,.mmd,.mermaid,.jsx,.tsx,.html,.htm,.json,.yaml,.yml,.toml,.xml,.csv,.tsv,.log,.cfg,.ini,.conf,.sh,.bash,.zsh,.fish,.py,.rb,.rs,.go,.java,.kt,.swift,.c,.cpp,.h,.hpp,.css,.scss,.sass,.less,.sql,.graphql,.gql,.env,.gitignore,.editorconfig,.prettierrc,.eslintrc"
         onChange={handleFileInputChange}
         className="hidden"
         aria-hidden="true"
@@ -634,7 +657,7 @@ function App() {
             <div className="text-5xl mb-4" aria-hidden="true">📄</div>
             <div className="text-xl font-bold mb-2">Drop File Here</div>
             <div className="text-sm text-muted-foreground">
-              Drop a text file to open it
+              Drop a text file to open it in a new tab
             </div>
           </div>
         </div>

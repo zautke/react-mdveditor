@@ -1,4 +1,3 @@
-import * as React from "react"
 import { useRef, useCallback, memo, type ChangeEvent } from "react"
 import { Plus } from "lucide-react"
 
@@ -17,8 +16,8 @@ export interface FileUploadButtonProps {
 
 const FileUploadButton = memo(({
   onFileContent,
-  accept = ".md,.mdx",
-  tooltipText = "Upload MD file"
+  accept = "text/*,.md,.mdx,.markdown,.mmd,.mermaid,.jsx,.tsx,.html,.htm",
+  tooltipText = "Upload file"
 }: FileUploadButtonProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
