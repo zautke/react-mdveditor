@@ -75,4 +75,5 @@ export const htmlPlugin: DocumentTypePlugin = {
   exportExtension: '.html',
   defaultContent: defaultHtmlContent,
   defaultTitle: (n: number) => `Page-${n}`,
+  tabColor: 'oklch(0.62 0.16 45)',
 }

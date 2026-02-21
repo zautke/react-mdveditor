@@ -64,4 +64,10 @@ export interface DocumentTypePlugin {
 
   /** Title generator for new tabs (receives a 1-based counter). */
   readonly defaultTitle: (n: number) => string
+
+  /** Accent color for the tab header (CSS color value, e.g. oklch(...)). */
+  readonly tabColor: string
+
+  /** Darker accent for the tab icon (auto-derived via color-mix if omitted). */
+  readonly tabIconColor?: string
 }

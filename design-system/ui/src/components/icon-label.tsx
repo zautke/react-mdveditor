@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "../utils"
 
 export type IconLabelPosition = "left" | "right" | "top" | "bottom"
 
@@ -31,9 +31,8 @@ export function IconLabel({
       className={cn("inline-flex items-center", positionClasses[position], className)}
       style={{ gap: gutter }}
     >
-      <span className="shrink-0" aria-hidden="true">{icon}</span>
+      <span className="shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
     </span>
   )
 }
-

@@ -1,4 +1,4 @@
-import { useState, useEffect, DragEvent, memo, useRef, useCallback, createElement } from 'react'
+import { useState, useEffect, useId, DragEvent, memo, useRef, useCallback, createElement, useMemo, Suspense } from 'react'
 import { FilePlus2, Download } from 'lucide-react'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
 import { TabSystem, TabContent } from '@/components/ui/tabs'
@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils'
 import { loadState, saveState } from '@/lib/storage'
 import { documentTypeRegistry } from '@/lib/document-types'
 import type { TabItem, NewTabMenuItem } from '@/components/ui/tabs/types'
+
+// ── ARIA: status announcement for preview updates ───────────────────
+const PREVIEW_DEBOUNCE_MS = 1500
 
 // ── Document model ──────────────────────────────────────────────────
 // `kind` links each document to a registered plugin via the registry.
@@ -101,14 +104,20 @@ const InputPane = memo(({
   onContentChange,
   onPaste,
   isExpanded,
+  editorId,
 }: {
   content: string
   onContentChange: (value: string) => void
   onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void
   isExpanded: boolean
+  editorId: string
 }) => {
+  const headingId = `${editorId}-heading`
+  const helpId = `${editorId}-help`
+
   return (
-    <div
+    <section
+      aria-label="Markdown source editor"
       className={cn(
         "p-4 border-r border-border transition-all duration-400 ease-out",
         "will-change-[flex,opacity] transform-gpu backface-hidden",
@@ -118,12 +127,17 @@ const InputPane = memo(({
       )}
     >
       <div className="flex items-center mb-4">
-        <h3 className="m-0 text-lg font-semibold text-foreground">Editor</h3>
+        <h3 id={headingId} className="m-0 text-lg font-semibold text-foreground">Editor</h3>
       </div>
       <textarea
+        id={editorId}
         value={content}
         onChange={(e) => onContentChange(e.target.value)}
         onPaste={onPaste}
+        aria-labelledby={headingId}
+        aria-describedby={helpId}
+        aria-multiline="true"
+        spellCheck
         className={cn(
           "w-full h-[calc(100%-3rem)] p-2",
           "border border-input rounded-md",
@@ -134,7 +148,10 @@ const InputPane = memo(({
         )}
         placeholder="Start typing..."
       />
-    </div>
+      <div id={helpId} className="sr-only">
+        Write markdown here. The preview updates automatically in the adjacent panel.
+      </div>
+    </section>
   )
 }, (prevProps, nextProps) => {
   return prevProps.content === nextProps.content &&
@@ -142,7 +159,8 @@ const InputPane = memo(({
 })
 InputPane.displayName = 'InputPane'
 
-// Dynamic RenderPane — resolves renderer from the registry
+// Dynamic RenderPane — resolves renderer from the registry.
+// Suspense boundary enables lazy-loaded plugin renderers (e.g. mermaid, react).
 const RenderPane = memo(({
   content,
   kind,
@@ -152,9 +170,16 @@ const RenderPane = memo(({
 }) => {
   const plugin = documentTypeRegistry.get(kind)
   return (
-    <div className="p-4 transform-gpu">
-      {createElement(plugin.renderer, { content })}
-    </div>
+    <Suspense fallback={
+      <div className="p-4 text-muted-foreground animate-pulse" role="status">
+        <span className="sr-only">Loading renderer</span>
+        Loading renderer…
+      </div>
+    }>
+      <div className="p-4 transform-gpu" role="document" aria-label="Rendered preview content">
+        {createElement(plugin.renderer, { content })}
+      </div>
+    </Suspense>
   )
 }, (prevProps, nextProps) => {
   return prevProps.content === nextProps.content &&
@@ -229,24 +254,55 @@ function App() {
   const activeContent = activeDoc?.content || ''
   const activeKind = activeDoc?.kind || 'markdown'
 
-  // Tabs — include plugin icon for each document
-  const tabs: TabItem[] = documents.map(doc => {
-    const plugin = documentTypeRegistry.get(doc.kind)
-    return {
-      id: doc.id,
-      label: doc.title,
-      icon: createElement(plugin.icon, { className: 'h-3.5 w-3.5' } as Record<string, unknown>),
-      closable: documents.length > 1,
-    }
-  })
+  // handleNewTab — placed before tabs/menu so useMemo closures can capture it safely.
+  // Uses functional updater to read docs.length inside setState, removing the
+  // dependency on `documents.length` and making this callback fully stable.
+  const handleNewTab = useCallback((kind: string = 'markdown') => {
+    const plugin = documentTypeRegistry.get(kind)
+    const newId = generateDocId()
+    setDocuments(docs => {
+      const newDoc: EditorDocument = {
+        id: newId,
+        title: plugin.defaultTitle(docs.length + 1),
+        content: plugin.defaultContent,
+        kind: plugin.kind,
+      }
+      return [...docs, newDoc]
+    })
+    setActiveDocId(newId)
+  }, [])
 
-  // New-tab dropdown menu — one item per registered document type
-  const newTabMenuItems: NewTabMenuItem[] = documentTypeRegistry.all().map(plugin => ({
-    id: `new-${plugin.kind}`,
-    label: `New ${plugin.label}`,
-    icon: createElement(plugin.icon, { className: 'h-4 w-4' } as Record<string, unknown>),
-    onSelect: () => handleNewTab(plugin.kind),
-  }))
+  // Tabs — include plugin icon for each document.
+  // Memoized with a metadata fingerprint so content edits (which update `documents`)
+  // don't recreate tab items — only id/title/kind/count changes matter for tabs.
+  const docMetaKey = documents.map(d => `${d.id}\0${d.title}\0${d.kind}`).join('\n')
+
+  const tabs: TabItem[] = useMemo(() =>
+    documents.map(doc => {
+      const plugin = documentTypeRegistry.get(doc.kind)
+      return {
+        id: doc.id,
+        label: doc.title,
+        icon: createElement(plugin.icon, { className: 'h-3.5 w-3.5' } as Record<string, unknown>),
+        closable: documents.length > 1,
+        color: plugin.tabColor,
+      }
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [docMetaKey]
+  )
+
+  // New-tab dropdown menu — one item per registered document type.
+  // Memoized because the registry is static and handleNewTab is fully stable ([] deps).
+  const newTabMenuItems: NewTabMenuItem[] = useMemo(() =>
+    documentTypeRegistry.all().map(plugin => ({
+      id: `new-${plugin.kind}`,
+      label: `New ${plugin.label}`,
+      icon: createElement(plugin.icon, { className: 'h-4 w-4' } as Record<string, unknown>),
+      onSelect: () => handleNewTab(plugin.kind),
+    })),
+    [handleNewTab]
+  )
 
   // ── Event handlers ──────────────────────────────────────────────
 
@@ -353,19 +409,6 @@ function App() {
     setActiveDocId(tabId)
   }, [])
 
-  const handleNewTab = useCallback((kind: string = 'markdown') => {
-    const plugin = documentTypeRegistry.get(kind)
-    const newId = generateDocId()
-    const newDoc: EditorDocument = {
-      id: newId,
-      title: plugin.defaultTitle(documents.length + 1),
-      content: plugin.defaultContent,
-      kind: plugin.kind,
-    }
-    setDocuments(docs => [...docs, newDoc])
-    setActiveDocId(newId)
-  }, [documents.length])
-
   const handleDeleteTab = useCallback((tabId: string) => {
     if (documents.length <= 1) return
     const idx = documents.findIndex(d => d.id === tabId)
@@ -376,6 +419,13 @@ function App() {
       setActiveDocId(newDocs[newActiveIdx].id)
     }
   }, [documents, activeDocId])
+
+  const handleReorderTabs = useCallback((newOrder: string[]) => {
+    setDocuments(docs => {
+      const docMap = new Map(docs.map(d => [d.id, d]))
+      return newOrder.map(id => docMap.get(id)!).filter(Boolean)
+    })
+  }, [])
 
   const handleAddFile = useCallback(() => {
     fileInputRef.current?.click()
@@ -420,13 +470,32 @@ function App() {
     URL.revokeObjectURL(url)
   }, [activeContent, activeKind, activeDoc?.title])
 
+  // ── ARIA: unique IDs and live-region state ───────────────────────
+  const editorId = useId()
+  const previewStatusId = `${editorId}-preview-status`
+  const [previewStatus, setPreviewStatus] = useState('')
+  const previewDebounceRef = useRef<ReturnType<typeof setTimeout>>()
+
+  // Announce preview updates after a pause in typing
+  useEffect(() => {
+    clearTimeout(previewDebounceRef.current)
+    previewDebounceRef.current = setTimeout(() => {
+      setPreviewStatus('Preview updated')
+      // Clear after brief announcement window
+      setTimeout(() => setPreviewStatus(''), 500)
+    }, PREVIEW_DEBOUNCE_MS)
+    return () => clearTimeout(previewDebounceRef.current)
+  }, [activeContent])
+
   // ── Render ──────────────────────────────────────────────────────
 
   // Build the file-accept string from all registered extensions
   const acceptExtensions = documentTypeRegistry.allExtensions().join(',')
 
   return (
-    <div
+    <main
+      id="main-content"
+      aria-label="Markdown editor application"
       className="flex flex-col h-screen font-sans relative bg-background text-foreground"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -441,52 +510,17 @@ function App() {
         onChange={handleFileInputChange}
         className="hidden"
         aria-hidden="true"
+        tabIndex={-1}
       />
 
-      {/* Control Bar */}
-      <div className="absolute top-2 right-4 z-50 flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleAddFile}
-              className="h-8 w-8"
-              aria-label="Add file"
-            >
-              <FilePlus2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Add file</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleSave}
-              className="h-8 w-8"
-              aria-label="Save file"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Save file</p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-
       {/* Main content area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden" role="group" aria-label="Editor and preview panes">
         <InputPane
           content={activeContent}
           onContentChange={handleContentChange}
           onPaste={handlePaste}
           isExpanded={isExpanded}
+          editorId={`${editorId}-textarea`}
         />
 
         <div className="flex-1 flex flex-col relative overflow-hidden">
@@ -499,8 +533,62 @@ function App() {
             />
           </div>
 
-          {/* Tab System with dynamic new-tab menu */}
+          {/* File toolbar + Tab System */}
           <div className="flex-1 pl-8 flex flex-col overflow-hidden">
+            {/* File toolbar row — right-justified icon control panel */}
+            <div
+              role="toolbar"
+              aria-label="Document actions"
+              aria-orientation="horizontal"
+              className="flex items-center justify-end gap-1.5 px-2 py-1.5 border-b border-border"
+            >
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleAddFile}
+                    className={cn(
+                      "h-7 w-7 cursor-pointer",
+                      "transition-all duration-150",
+                      "hover:bg-accent hover:text-accent-foreground",
+                      "hover:shadow-md hover:border-accent-foreground/30",
+                      "active:scale-95 active:shadow-sm",
+                    )}
+                    aria-label="Upload file to new tab"
+                  >
+                    <FilePlus2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Upload file</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleSave}
+                    className={cn(
+                      "h-7 w-7 cursor-pointer",
+                      "transition-all duration-150",
+                      "hover:bg-accent hover:text-accent-foreground",
+                      "hover:shadow-md hover:border-accent-foreground/30",
+                      "active:scale-95 active:shadow-sm",
+                    )}
+                    aria-label={`Download ${activeDoc?.title || 'document'} as file`}
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Download file</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+
             <TabSystem
               tabs={tabs}
               activeTab={activeDocId}
@@ -508,7 +596,8 @@ function App() {
               onNewTab={() => handleNewTab('markdown')}
               newTabMenuItems={newTabMenuItems}
               onDeleteTab={handleDeleteTab}
-              variant="chrome"
+              onReorderTabs={handleReorderTabs}
+              variant="capsule"
               showNewButton
               showCloseButtons
               className="flex-1"
@@ -523,11 +612,26 @@ function App() {
         </div>
       </div>
 
+      {/* ARIA: Live region for preview status announcements */}
+      <div
+        id={previewStatusId}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {previewStatus}
+      </div>
+
       {/* Drag-and-drop overlay */}
       {isDragging && (
-        <div className="absolute inset-0 bg-primary/10 border-3 border-dashed border-primary rounded-lg flex items-center justify-center z-[1000] pointer-events-none">
+        <div
+          className="absolute inset-0 bg-primary/10 border-3 border-dashed border-primary rounded-lg flex items-center justify-center z-[1000] pointer-events-none"
+          role="status"
+          aria-live="assertive"
+        >
           <div className="bg-background p-8 rounded-lg shadow-xl text-center">
-            <div className="text-5xl mb-4">📄</div>
+            <div className="text-5xl mb-4" aria-hidden="true">📄</div>
             <div className="text-xl font-bold mb-2">Drop File Here</div>
             <div className="text-sm text-muted-foreground">
               Drop a text file to open it
@@ -535,7 +639,7 @@ function App() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }
 

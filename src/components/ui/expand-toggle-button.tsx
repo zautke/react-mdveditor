@@ -1,4 +1,3 @@
-import * as React from "react"
 import { memo } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
@@ -35,12 +34,13 @@ const ExpandToggleButton = memo(({
             className
           )}
           style={{ opacity }}
-          aria-label={isExpanded ? "Show input pane" : "Hide input pane"}
+          aria-label={isExpanded ? "Expand editor pane" : "Collapse editor pane"}
+          aria-expanded={!isExpanded}
         >
           {isExpanded ? (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           )}
         </Button>
       </TooltipTrigger>

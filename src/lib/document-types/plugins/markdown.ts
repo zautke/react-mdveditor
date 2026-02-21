@@ -50,4 +50,5 @@ export const markdownPlugin: DocumentTypePlugin = {
   exportExtension: '.md',
   defaultContent: initialMarkdown,
   defaultTitle: (n: number) => `Untitled-${n}`,
+  tabColor: 'oklch(0.60 0.10 250)',
 }

@@ -1,2 +1,5 @@
+packages:
+  - 'design-system/*'
+
 onlyBuiltDependencies:
   - esbuild

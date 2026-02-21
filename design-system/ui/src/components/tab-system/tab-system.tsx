@@ -15,26 +15,18 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 
-import { cn } from "@/lib/utils"
-import { DraggableTab } from "./draggable-tab"
-import { TabDragOverlay } from "./tab-drag-overlay"
-import { NewTabButton } from "./new-tab-button"
-import { NewTabDropdown } from "./new-tab-dropdown"
-import { TabPanel } from "./tab-panel"
+import { cn } from "../../utils"
+import { SortableTab } from "./sortable-tab"
+import { TabDragOverlayContent } from "./tab-overlay"
+import { NewTabButton, NewTabControl } from "./new-tab-control"
 import { ScrollArrow } from "./scroll-arrow"
 import { tabSystem } from "./tab-system.variants"
 import { useTabOverflow } from "./hooks/use-tab-overflow"
 import { useWheelScroll } from "./hooks/use-wheel-scroll"
 import { useDragReorder } from "./hooks/use-drag-reorder"
-import type {
-  TabSystemProps,
-  TabItem,
-} from "./types"
+import type { TabSystemProps } from "./types"
 
 // ── TabSystem ───────────────────────────────────────────────────────
-// Orchestrator component that composes all tab sub-components:
-// DraggableTab, TabDragOverlay, NewTabButton/NewTabDropdown,
-// ScrollArrow, and TabPanel into a complete tabbed interface.
 
 const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
   (
@@ -57,9 +49,8 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       tabMaxWidth,
       className,
       children,
-      // v2 stub - grouping not implemented yet (intentionally unused)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      grouping,
+      // v2 stub - grouping not implemented yet
+      grouping: _grouping,
     },
     ref
   ) => {
@@ -111,7 +102,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       [onReorderTabs]
     )
 
-    const { sensors, activeId, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } =
+    const { sensors, activeId, handleDragStart, handleDragEnd, handleDragCancel } =
       useDragReorder({
         items: tabIds,
         onReorder: handleReorder,
@@ -155,7 +146,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
     const newTabControlEl = showNewButton &&
       onNewTab &&
       (menuItems.length > 0 ? (
-        <NewTabDropdown
+        <NewTabControl
           onNewTab={onNewTab}
           menuItems={menuItems}
           newButtonClassName={styles.newButton()}
@@ -173,43 +164,6 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
     const activeTab_item = activeId
       ? tabs.find((t) => t.id === activeId)
       : null
-
-    // ── Custom DnD screen-reader announcements ─────────────────
-    // Replaces the generic default ("Draggable item X was dropped
-    // over droppable area X") with position-based sortable messages.
-    const getTabLabel = useCallback(
-      (id: string | number) => tabs.find((t) => t.id === String(id))?.label ?? String(id),
-      [tabs]
-    )
-    const getPosition = useCallback(
-      (id: string | number) => tabIds.indexOf(String(id)) + 1,
-      [tabIds]
-    )
-    const tabCount = tabs.length
-
-    const dndAnnouncements = useMemo(
-      () => ({
-        onDragStart({ active }: { active: { id: string | number } }) {
-          return `Picked up tab ${getTabLabel(active.id)}. Tab is in position ${getPosition(active.id)} of ${tabCount}.`
-        },
-        onDragOver({ active, over }: { active: { id: string | number }; over: { id: string | number } | null }) {
-          if (over) {
-            return `Tab ${getTabLabel(active.id)} was moved to position ${getPosition(over.id)} of ${tabCount}.`
-          }
-          return `Tab ${getTabLabel(active.id)} is no longer over a drop target.`
-        },
-        onDragEnd({ active, over }: { active: { id: string | number }; over: { id: string | number } | null }) {
-          if (over) {
-            return `Tab ${getTabLabel(active.id)} was dropped at position ${getPosition(over.id)} of ${tabCount}.`
-          }
-          return `Tab ${getTabLabel(active.id)} was dropped.`
-        },
-        onDragCancel({ active }: { active: { id: string | number } }) {
-          return `Reorder cancelled. Tab ${getTabLabel(active.id)} was returned to its original position.`
-        },
-      }),
-      [getTabLabel, getPosition, tabCount]
-    )
 
     // ── CSS custom properties for responsive sizing ────────────
     const rootStyle = {
@@ -238,15 +192,13 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
           )}
 
           {/* Scrollable container */}
-          <div ref={scrollContainerRef} className={styles.scrollContainer()}>
+          <div ref={scrollContainerRef as React.Ref<HTMLDivElement>} className={styles.scrollContainer()}>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
-              accessibility={{ announcements: dndAnnouncements }}
             >
               <SortableContext
                 items={tabIds}
@@ -256,11 +208,10 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
                   <TabsPrimitive.List
                     className={cn(styles.list(), "flex-1 min-w-0")}
                     style={{ position: "relative" }}
-                    aria-label="Document tabs"
                   >
                     <AnimatePresence mode="popLayout" initial={false}>
                       {tabs.map((tab) => (
-                        <DraggableTab
+                        <SortableTab
                           key={tab.id}
                           tab={tab}
                           orientation={orientation}
@@ -273,7 +224,6 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
                           isNew={newTabIds.has(tab.id)}
                           triggerClassName={styles.trigger()}
                           isDndEnabled={isDndEnabled}
-                          isSortingActive={!!activeId}
                         />
                       ))}
                     </AnimatePresence>
@@ -283,7 +233,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
 
               <DragOverlay dropAnimation={null}>
                 {activeTab_item ? (
-                  <TabDragOverlay
+                  <TabDragOverlayContent
                     tab={activeTab_item}
                     triggerClassName={styles.trigger()}
                   />
@@ -326,10 +276,22 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
 )
 TabSystem.displayName = "TabSystem"
 
-// ── Backward-compatible alias ───────────────────────────────────────
-// The old name `TabContent` is kept as an alias for `TabPanel` to avoid
-// breaking existing imports. New code should use `TabPanel`.
-const TabContent = TabPanel
+// ── TabContent ──────────────────────────────────────────────────────
 
-export { TabSystem, TabPanel, TabContent }
-export type { TabSystemProps, TabItem }
+const TabContent = forwardRef<
+  HTMLDivElement,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "ring-offset-background h-full overflow-auto",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+))
+TabContent.displayName = "TabContent"
+
+export { TabSystem, TabContent }
