@@ -1,0 +1,515 @@
+commit d9f2924ad86f599e71861adea38f4d5ca4e00228
+Author: largo <largo@lukezautke.com>
+Date:   Sun Jan 25 05:54:37 2026 -0700
+
+    (interim): ignore and format frontmatter
+
+diff --git a/package.json b/package.json
+index b2d39cc..5031e03 100755
+--- a/package.json
++++ b/package.json
+@@ -17,6 +17,7 @@
+     "@radix-ui/react-tooltip": "^1.2.8",
+     "class-variance-authority": "^0.7.1",
+     "clsx": "^2.1.1",
++    "js-yaml": "^4.1.1",
+     "lucide-react": "^0.562.0",
+     "mermaid": "^11.12.2",
+     "motion": "^12.23.26",
+@@ -35,6 +36,7 @@
+   "devDependencies": {
+     "@eslint/js": "^9.39.1",
+     "@tailwindcss/vite": "^4.1.18",
++    "@types/js-yaml": "^4.0.9",
+     "@types/react": "^18.3.12",
+     "@types/react-dom": "^18.3.1",
+     "@types/react-syntax-highlighter": "^15.5.13",
+@@ -48,7 +50,7 @@
+     "typescript-eslint": "^8.49.0",
+     "vite": "^7.2.7"
+   },
+-  "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977",
++  "packageManager": "pnpm@10.24.0",
+   "engines": {
+     "node": ">=20.0.0",
+     "pnpm": ">=9.0.0"
+diff --git a/src/components/markdown/EditorWithProview.tsx b/src/components/markdown/EditorWithProview.tsx
+index 802183a..3fcf90f 100755
+--- a/src/components/markdown/EditorWithProview.tsx
++++ b/src/components/markdown/EditorWithProview.tsx
+@@ -1,4 +1,4 @@
+-import { useState, DragEvent, memo, useRef, useCallback } from 'react'
++import { useState, DragEvent, memo, useRef, useCallback, useMemo, useEffect } from 'react'
+ import { FilePlus2, Download } from 'lucide-react'
+ import MarkdownRenderer from './MarkdownRenderer_orig'
+ import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
+@@ -15,6 +15,25 @@ interface MarkdownDocument {
+   content: string
+ }
+ 
++interface FrontMatterNode {
++  label: string
++  children: FrontMatterNode[]
++}
++
++interface FrontMatterInfo {
++  lines: string[]
++  endLineIndex: number
++  lineBreak: string
++  root: FrontMatterNode
++}
++
++interface FrontMatterSummary {
++  lineCount: number
++  nodeCount: number
++}
++
++const FRONT_MATTER_GRAPH_MARKER = '<!-- front-matter-graph -->'
++
+ const initialMarkdown = `# React Markdown Demo
+ 
+ This is a **comprehensive** markdown renderer with *full* features:
+@@ -85,17 +104,191 @@ const getUser = (id: number): User | undefined =>
+ 
+ > **Tip:** Drop a \`.md\` file onto this editor to load it!`
+ 
++const normalizeLine = (line: string) => line.replace(/\t/g, '  ')
++
++const buildFrontMatterTree = (lines: string[]): FrontMatterNode => {
++  const root: FrontMatterNode = { label: 'Front Matter', children: [] }
++  const stack: { indent: number; node: FrontMatterNode }[] = [{ indent: -1, node: root }]
++
++  const parseNodeText = (text: string): { node: FrontMatterNode; hasChildren: boolean } => {
++    const trimmed = text.trim()
++    if (!trimmed) {
++      return { node: { label: '—', children: [] }, hasChildren: false }
++    }
++    const colonIndex = trimmed.indexOf(':')
++    if (colonIndex > -1) {
++      const key = trimmed.slice(0, colonIndex).trim()
++      const value = trimmed.slice(colonIndex + 1).trim()
++      const node: FrontMatterNode = { label: key || trimmed, children: [] }
++      if (value) {
++        node.children.push({ label: value.replace(/^['"]|['"]$/g, ''), children: [] })
++      }
++      return { node, hasChildren: !value }
++    }
++    return { node: { label: trimmed, children: [] }, hasChildren: false }
++  }
++
++  for (const rawLine of lines) {
++    const line = normalizeLine(rawLine)
++    const trimmed = line.trim()
++    if (!trimmed || trimmed.startsWith('#')) {
++      continue
++    }
++
++    const indentMatch = /^\s*/.exec(line)
++    const indent = indentMatch ? indentMatch[0].length : 0
++    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
++      stack.pop()
++    }
++
++    const parent = stack[stack.length - 1].node
++    const isListItem = trimmed.startsWith('- ')
++    const contentText = isListItem ? trimmed.slice(2) : trimmed
++    const { node, hasChildren } = parseNodeText(contentText)
++    parent.children.push(node)
++    if (hasChildren) {
++      stack.push({ indent, node })
++    }
++  }
++
++  return root
++}
++
++const extractFrontMatter = (markdown: string): FrontMatterInfo | null => {
++  const lineBreak = markdown.includes('\r\n') ? '\r\n' : '\n'
++  const lines = markdown.split(/\r?\n/)
++  if (lines.length === 0 || lines[0].trim() !== '---') {
++    return null
++  }
++
++  let endLineIndex = -1
++  for (let i = 1; i < lines.length; i += 1) {
++    const trimmed = lines[i].trim()
++    if (trimmed === '---' || trimmed === '...') {
++      endLineIndex = i
++      break
++    }
++  }
++
++  if (endLineIndex === -1) {
++    return null
++  }
++
++  const frontMatterLines = lines.slice(1, endLineIndex)
++  const root = buildFrontMatterTree(frontMatterLines)
++
++  return {
++    lines: frontMatterLines,
++    endLineIndex,
++    lineBreak,
++    root,
++  }
++}
++
++const countFrontMatterNodes = (node: FrontMatterNode): number => {
++  return node.children.reduce((count, child) => count + countFrontMatterNodes(child), 1)
++}
++
++const escapeMermaidLabel = (label: string): string => {
++  return label.replace(/[\r\n]+/g, ' ').replace(/"/g, "'")
++}
++
++const buildMermaidGraphBlock = (info: FrontMatterInfo): string => {
++  let idCounter = 0
++  const nextId = () => `fm${idCounter += 1}`
++  const lines: string[] = []
++  const rootId = nextId()
++  lines.push(FRONT_MATTER_GRAPH_MARKER)
++  lines.push('```mermaid')
++  lines.push('graph TD')
++  lines.push(`${rootId}["${escapeMermaidLabel(info.root.label)}"]`)
++
++  const walk = (node: FrontMatterNode, parentId: string) => {
++    for (const child of node.children) {
++      const childId = nextId()
++      lines.push(`${parentId} --> ${childId}`)
++      lines.push(`${childId}["${escapeMermaidLabel(child.label)}"]`)
++      if (child.children.length > 0) {
++        walk(child, childId)
++      }
++    }
++  }
++
++  walk(info.root, rootId)
++  lines.push('```')
++  return lines.join(info.lineBreak)
++}
++
++const upsertFrontMatterGraph = (markdown: string, info: FrontMatterInfo, graphBlock: string): string => {
++  const lines = markdown.split(/\r?\n/)
++  const graphLines = graphBlock.split(/\r?\n/)
++  const markerIndex = lines.findIndex(line => line.trim() === FRONT_MATTER_GRAPH_MARKER)
++
++  if (markerIndex !== -1) {
++    const fenceStart = lines.findIndex((line, index) => index > markerIndex && line.trim() === '```mermaid')
++    const fenceEnd = fenceStart !== -1
++      ? lines.findIndex((line, index) => index > fenceStart && line.trim() === '```')
++      : -1
++
++    if (fenceStart !== -1 && fenceEnd !== -1) {
++      return [...lines.slice(0, markerIndex), ...graphLines, ...lines.slice(fenceEnd + 1)].join(info.lineBreak)
++    }
++  }
++
++  const before = lines.slice(0, info.endLineIndex + 1)
++  const after = lines.slice(info.endLineIndex + 1)
++  const insertion: string[] = ['']
++  insertion.push(...graphLines)
++  if (after.length > 0 && after[0].trim() !== '') {
++    insertion.push('')
++  }
++
++  return [...before, ...insertion, ...after].join(info.lineBreak)
++}
++
++const removeFrontMatterGraph = (markdown: string): string => {
++  const lineBreak = markdown.includes('\r\n') ? '\r\n' : '\n'
++  const lines = markdown.split(/\r?\n/)
++  const markerIndex = lines.findIndex(line => line.trim() === FRONT_MATTER_GRAPH_MARKER)
++  if (markerIndex === -1) {
++    return markdown
++  }
++
++  const fenceStart = lines.findIndex((line, index) => index > markerIndex && line.trim() === '```mermaid')
++  const fenceEnd = fenceStart !== -1
++    ? lines.findIndex((line, index) => index > fenceStart && line.trim() === '```')
++    : -1
++
++  if (fenceStart !== -1 && fenceEnd !== -1) {
++    return [...lines.slice(0, markerIndex), ...lines.slice(fenceEnd + 1)].join(lineBreak)
++  }
++
++  return [...lines.slice(0, markerIndex), ...lines.slice(markerIndex + 1)].join(lineBreak)
++}
++
+ // Memoized InputPane with Tailwind classes
+ const InputPane = memo(({
+   markdown,
+   onMarkdownChange,
+   onPaste,
+-  isExpanded
++  isExpanded,
++  frontMatterSummary,
++  hasFrontMatter,
++  isFrontMatterIncomplete,
++  hasGraph,
++  textareaRef,
++  onGenerateGraph
+ }: {
+   markdown: string
+   onMarkdownChange: (value: string) => void
+   onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void
+   isExpanded: boolean
++  frontMatterSummary: FrontMatterSummary | null
++  hasFrontMatter: boolean
++  isFrontMatterIncomplete: boolean
++  hasGraph: boolean
++  textareaRef: React.RefObject<HTMLTextAreaElement>
++  onGenerateGraph: () => void
+ }) => {
+   return (
+     <div
+@@ -107,10 +300,36 @@ const InputPane = memo(({
+           : "flex-1 opacity-100"
+       )}
+     >
+-      <div className="flex items-center mb-4">
+-        <h3 className="m-0 text-lg font-semibold text-foreground">Markdown Input</h3>
++      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
++        <div className="flex items-center gap-2">
++          <h3 className="m-0 text-lg font-semibold text-foreground">Markdown Input</h3>
++          {hasFrontMatter ? (
++            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700">
++              Front matter detected
++            </span>
++          ) : isFrontMatterIncomplete ? (
++            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700">
++              Front matter open
++            </span>
++          ) : (
++            <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
++              No front matter
++            </span>
++          )}
++        </div>
++        {hasFrontMatter && frontMatterSummary && (
++          <div className="flex items-center gap-3">
++            <span className="text-xs text-muted-foreground">
++              {frontMatterSummary.lineCount} lines · {frontMatterSummary.nodeCount} nodes
++            </span>
++            <Button size="sm" variant="secondary" onClick={onGenerateGraph}>
++              {hasGraph ? 'Refresh graph' : 'Generate graph'}
++            </Button>
++          </div>
++        )}
+       </div>
+       <textarea
++        ref={textareaRef}
+         value={markdown}
+         onChange={(e) => onMarkdownChange(e.target.value)}
+         onPaste={onPaste}
+@@ -162,10 +381,83 @@ function App() {
+   const [arrowOpacity, setArrowOpacity] = useState(1)
+   const [isDragging, setIsDragging] = useState(false)
+   const fileInputRef = useRef<HTMLInputElement>(null)
++  const textareaRef = useRef<HTMLTextAreaElement>(null)
++  const autoSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+ 
+   // Get active document
+   const activeDoc = documents.find(d => d.id === activeDocId) || documents[0]
+   const markdown = activeDoc?.content || ''
++  const frontMatterInfo = useMemo(() => extractFrontMatter(markdown), [markdown])
++  const isFrontMatterIncomplete = useMemo(() => {
++    const firstLine = markdown.split(/\r?\n/, 1)[0] ?? ''
++    return firstLine.trim() === '---' && !frontMatterInfo
++  }, [markdown, frontMatterInfo])
++  const frontMatterSummary = useMemo<FrontMatterSummary | null>(() => {
++    if (!frontMatterInfo) {
++      return null
++    }
++    return {
++      lineCount: frontMatterInfo.lines.length,
++      nodeCount: Math.max(0, countFrontMatterNodes(frontMatterInfo.root) - 1),
++    }
++  }, [frontMatterInfo])
++  const hasFrontMatterGraph = useMemo(() => {
++    return markdown.split(/\r?\n/).some(line => line.trim() === FRONT_MATTER_GRAPH_MARKER)
++  }, [markdown])
++
++  useEffect(() => {
++    if (autoSyncTimerRef.current) {
++      clearTimeout(autoSyncTimerRef.current)
++    }
++
++    if (!frontMatterInfo) {
++      if (!hasFrontMatterGraph) {
++        return
++      }
++      const cleaned = removeFrontMatterGraph(markdown)
++      if (cleaned === markdown) {
++        return
++      }
++      setDocuments(docs => docs.map(d =>
++        d.id === activeDocId ? { ...d, content: cleaned } : d
++      ))
++      return
++    }
++
++    autoSyncTimerRef.current = setTimeout(() => {
++      const graphBlock = buildMermaidGraphBlock(frontMatterInfo)
++      const updated = upsertFrontMatterGraph(markdown, frontMatterInfo, graphBlock)
++      if (updated === markdown) {
++        return
++      }
++      const textarea = textareaRef.current
++      const selection = textarea
++        ? { start: textarea.selectionStart, end: textarea.selectionEnd, scrollTop: textarea.scrollTop }
++        : null
++
++      setDocuments(docs => docs.map(d =>
++        d.id === activeDocId ? { ...d, content: updated } : d
++      ))
++
++      if (selection) {
++        requestAnimationFrame(() => {
++          const current = textareaRef.current
++          if (!current) {
++            return
++          }
++          current.selectionStart = selection.start
++          current.selectionEnd = selection.end
++          current.scrollTop = selection.scrollTop
++        })
++      }
++    }, 300)
++
++    return () => {
++      if (autoSyncTimerRef.current) {
++        clearTimeout(autoSyncTimerRef.current)
++      }
++    }
++  }, [markdown, frontMatterInfo, activeDocId, hasFrontMatterGraph])
+ 
+   // Convert documents to TabItems
+   const tabs: TabItem[] = documents.map(doc => ({
+@@ -213,6 +505,20 @@ function App() {
+     return text
+   }, [])
+ 
++  const handleGenerateGraph = useCallback(() => {
++    if (!frontMatterInfo) {
++      return
++    }
++    const graphBlock = buildMermaidGraphBlock(frontMatterInfo)
++    const updated = upsertFrontMatterGraph(markdown, frontMatterInfo, graphBlock)
++    if (updated === markdown) {
++      return
++    }
++    setDocuments(docs => docs.map(d =>
++      d.id === activeDocId ? { ...d, content: updated } : d
++    ))
++  }, [frontMatterInfo, markdown, activeDocId])
++
+   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+     const pastedText = e.clipboardData.getData('text/plain')
+     const hasLatexInline = /\\\(.+?\\\)/.test(pastedText)
+@@ -400,6 +706,12 @@ function App() {
+           onMarkdownChange={handleMarkdownChange}
+           onPaste={handlePaste}
+           isExpanded={isExpanded}
++          frontMatterSummary={frontMatterSummary}
++          hasFrontMatter={Boolean(frontMatterInfo)}
++          isFrontMatterIncomplete={isFrontMatterIncomplete}
++          hasGraph={hasFrontMatterGraph}
++          textareaRef={textareaRef}
++          onGenerateGraph={handleGenerateGraph}
+         />
+ 
+         {/* Render Pane with Tabs */}
+diff --git a/src/components/markdown/FrontMatterPreview.tsx b/src/components/markdown/FrontMatterPreview.tsx
+new file mode 100644
+index 0000000..a870f46
+--- /dev/null
++++ b/src/components/markdown/FrontMatterPreview.tsx
+@@ -0,0 +1,88 @@
++import React from 'react';
++import yaml from 'js-yaml';
++import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
++import { cn } from '@/lib/utils';
++
++interface FrontMatterPreviewProps {
++  content: string;
++}
++
++const FrontMatterPreview: React.FC<FrontMatterPreviewProps> = ({ content }) => {
++  let data: any = null;
++  let error: string | null = null;
++
++  try {
++    data = yaml.load(content);
++  } catch (e: any) {
++    error = e.message || 'Invalid YAML structure';
++  }
++
++  if (error) {
++    return (
++      <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-destructive">
++        <div className="flex items-center gap-2 mb-2 font-semibold">
++          <AlertCircle className="h-4 w-4" />
++          <span>Front Matter Error</span>
++        </div>
++        <pre className="text-xs whitespace-pre-wrap font-mono opacity-80">{error}</pre>
++      </div>
++    );
++  }
++
++  if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
++    return null;
++  }
++
++  return (
++    <div className="mb-8 overflow-hidden rounded-xl border border-emerald-500/20 bg-emerald-500/5 shadow-sm transition-all hover:shadow-md">
++      <div className="flex items-center justify-between border-b border-emerald-500/20 bg-emerald-500/10 px-4 py-2">
++        <div className="flex items-center gap-2">
++          <Info className="h-4 w-4 text-emerald-600" />
++          <span className="text-sm font-bold uppercase tracking-wider text-emerald-800">Document Metadata</span>
++        </div>
++        <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">
++          <CheckCircle2 className="h-3 w-3" />
++          Validated YAML
++        </div>
++      </div>
++      <div className="p-4">
++        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
++          {Object.entries(data).map(([key, value]) => (
++            <div key={key} className="flex flex-col border-l-2 border-emerald-500/30 pl-3">
++              <dt className="text-xs font-semibold uppercase tracking-tight text-emerald-700/70">{key}</dt>
++              <dd className="mt-1 text-sm font-medium text-foreground">
++                {renderValue(value)}
++              </dd>
++            </div>
++          ))}
++        </dl>
++      </div>
++    </div>
++  );
++};
++
++const renderValue = (value: any): React.ReactNode => {
++  if (value === null || value === undefined) return <span className="italic text-muted-foreground">null</span>;
++  if (typeof value === 'boolean') return <span className={cn("font-bold", value ? "text-emerald-600" : "text-amber-600")}>{value ? 'TRUE' : 'FALSE'}</span>;
++  if (Array.isArray(value)) {
++    return (
++      <div className="flex flex-wrap gap-1 mt-1">
++        {value.map((item, i) => (
++          <span key={i} className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-800 border border-emerald-500/20">
++            {String(item)}
++          </span>
++        ))}
++      </div>
++    );
++  }
++  if (typeof value === 'object') {
++    return (
++      <pre className="mt-1 rounded bg-muted p-2 text-[10px] font-mono leading-tight overflow-x-auto">
++        {JSON.stringify(value, null, 2)}
++      </pre>
++    );
++  }
++  return String(value);
++};
++
++export default FrontMatterPreview;
