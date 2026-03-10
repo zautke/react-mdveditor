@@ -2,6 +2,7 @@ import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { mdeServerPlugin } from './src/lib/vite-plugin-mde-server'
 
 export default defineConfig({
   plugins: [
@@ -9,6 +10,7 @@ export default defineConfig({
       jsxRuntime: 'automatic'
     }),
     tailwindcss(),
+    mdeServerPlugin(),
   ],
   resolve: {
     alias: {

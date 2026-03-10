@@ -165,9 +165,11 @@ InputPane.displayName = 'InputPane'
 const RenderPane = memo(({
   content,
   kind,
+  documentId,
 }: {
   content: string
   kind: string
+  documentId: string
 }) => {
   const plugin = documentTypeRegistry.get(kind)
   return (
@@ -178,15 +180,20 @@ const RenderPane = memo(({
       </div>
     }>
       <div className="p-4 transform-gpu" role="document" aria-label="Rendered preview content">
-        {createElement(plugin.renderer, { content })}
+        {createElement(plugin.renderer, { content, documentId })}
       </div>
     </Suspense>
   )
 }, (prevProps, nextProps) => {
   return prevProps.content === nextProps.content &&
-         prevProps.kind === nextProps.kind
+         prevProps.kind === nextProps.kind &&
+         prevProps.documentId === nextProps.documentId
 })
 RenderPane.displayName = 'RenderPane'
+
+// ── External file injection (CLI: `mde file.md`) ─────────────────────
+
+interface MdeFilePayload { title: string; content: string; filePath: string }
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -272,6 +279,39 @@ function App() {
     })
     setActiveDocId(newId)
   }, [])
+
+  // openExternalFiles — stable callback for CLI file injection via /api/mde-open or HMR
+  const openExternalFiles = useCallback((files: MdeFilePayload[]) => {
+    if (files.length === 0) return
+    let lastId = ''
+    setDocuments(docs => {
+      let next = [...docs]
+      for (const file of files) {
+        const ext = file.filePath.includes('.')
+          ? `.${file.filePath.split('.').pop() ?? ''}`
+          : ''
+        const kind = documentTypeRegistry.getByExtension(ext)?.kind
+          ?? documentTypeRegistry.detect(file.content)
+        const newId = generateDocId()
+        lastId = newId
+        next = [...next, { id: newId, title: file.title, content: file.content, kind }]
+      }
+      return next
+    })
+    if (lastId) setActiveDocId(lastId)
+  }, [])
+
+  // Mount: fetch queued files; HMR: receive live files from CLI
+  useEffect(() => {
+    fetch('/api/mde-pending')
+      .then(r => r.json() as Promise<{ files: MdeFilePayload[] }>)
+      .then(({ files }) => { if (files.length > 0) openExternalFiles(files) })
+      .catch(() => { /* not in dev mode or no server — ignore */ })
+
+    if (import.meta.hot) {
+      import.meta.hot.on('mde:open-files', (data: { files: MdeFilePayload[] }) => openExternalFiles(data.files))
+    }
+  }, [openExternalFiles])
 
   // Tabs — include plugin icon for each document.
   // Memoized with a metadata fingerprint so content edits (which update `documents`)
@@ -627,7 +667,7 @@ function App() {
             >
               {documents.map(doc => (
                 <TabContent key={doc.id} value={doc.id}>
-                  <RenderPane content={doc.content} kind={doc.kind} />
+                  <RenderPane content={doc.content} kind={doc.kind} documentId={doc.id} />
                 </TabContent>
               ))}
             </TabSystem>
