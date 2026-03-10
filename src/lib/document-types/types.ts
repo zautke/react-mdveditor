@@ -11,6 +11,7 @@ import type { ComponentType } from 'react'
 /** Universal props contract for all renderer components. */
 export interface RendererProps {
   content: string
+  documentId?: string
 }
 
 /**

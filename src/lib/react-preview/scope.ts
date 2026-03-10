@@ -12,6 +12,7 @@
  */
 
 import * as React from 'react'
+import * as ReactJsxRuntime from 'react/jsx-runtime'
 import type { Scope } from 'react-runner'
 
 // ── Direct globals ──────────────────────────────────────────────────
@@ -41,8 +42,11 @@ const reactGlobals: Record<string, unknown> = {
 // Enables `import X from 'pkg'` / `import { X } from 'pkg'`.
 // react-runner resolves import specifiers against this map.
 
-const importMap: Record<string, unknown> = {
+export const REACT_PREVIEW_ALLOWED_IMPORTS = ['react', 'react/jsx-runtime'] as const
+
+const importMap: Record<(typeof REACT_PREVIEW_ALLOWED_IMPORTS)[number], unknown> = {
   react: React,
+  'react/jsx-runtime': ReactJsxRuntime,
 }
 
 // ── Assembled scope ─────────────────────────────────────────────────

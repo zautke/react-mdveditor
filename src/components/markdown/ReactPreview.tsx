@@ -10,13 +10,24 @@
  * - **Isolated**: A sandboxed `<iframe>` loads React from a CDN and
  *   transpiles + renders the code in complete JS/CSS isolation.
  *
- * Contract: accepts `{ content: string }` per the `RendererProps` type.
+ * Contract: accepts `{ content: string, documentId?: string }` per
+ * the `RendererProps` type.
  */
 
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRunner } from 'react-runner'
 import type { RendererProps } from '@/lib/document-types/types'
+import {
+  analyzeAndNormalizeReactSource,
+  type PreviewDiagnostic,
+  type PreviewDiagnosticCode,
+} from '@/lib/react-preview/compile'
 import { defaultScope } from '@/lib/react-preview/scope'
+import {
+  getMode as getSessionMode,
+  setMode as setSessionMode,
+  type PreviewMode,
+} from '@/lib/react-preview/session-state'
 
 // ── Constants ───────────────────────────────────────────────────────
 
@@ -26,6 +37,45 @@ const MIN_HEIGHT = 200
 const REACT_CDN = 'https://esm.sh'
 const REACT_VERSION = '18.3.1'
 const SUCRASE_VERSION = '3.35.0'
+
+const BLOCKING_DIAGNOSTIC_CODES = new Set<PreviewDiagnosticCode>([
+  'UNSUPPORTED_IMPORT',
+  'NO_RENDERABLE_EXPORT',
+  'AMBIGUOUS_NAMED_EXPORT',
+])
+
+const FALLBACK_ELIGIBLE_ERROR_PATTERNS = [
+  /module not found/i,
+  /cannot find module/i,
+  /cannot use import statement outside a module/i,
+  /unexpected token\s+(?:import|export)/i,
+]
+
+const fallbackAttemptedKeys = new Set<string>()
+
+// ── Helpers ─────────────────────────────────────────────────────────
+
+function getDocumentKey(documentId?: string): string {
+  return documentId && documentId.trim().length > 0
+    ? documentId
+    : '__react-preview:ephemeral__'
+}
+
+function getContentHash(text: string): string {
+  let hash = 0
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash * 31 + text.charCodeAt(i)) | 0
+  }
+  return (hash >>> 0).toString(16)
+}
+
+function getFallbackAttemptKey(documentId: string | undefined, code: string): string {
+  return `${getDocumentKey(documentId)}:${getContentHash(code)}`
+}
+
+function isFallbackEligibleError(error: string): boolean {
+  return FALLBACK_ELIGIBLE_ERROR_PATTERNS.some((pattern) => pattern.test(error))
+}
 
 // ── Isolated-mode iframe document ───────────────────────────────────
 
@@ -57,6 +107,7 @@ function buildIframeDoc(code: string): string {
   <script type="module">
     import React from '${REACT_CDN}/react@${REACT_VERSION}';
     import ReactDOM from '${REACT_CDN}/react-dom@${REACT_VERSION}';
+    import * as ReactJsxRuntime from '${REACT_CDN}/react@${REACT_VERSION}/jsx-runtime';
     import { transform } from '${REACT_CDN}/sucrase@${SUCRASE_VERSION}';
 
     const { useState, useEffect, useRef, useMemo, useCallback, useContext,
@@ -76,6 +127,7 @@ function buildIframeDoc(code: string): string {
       const require = (mod) => {
         if (mod === 'react') return React;
         if (mod === 'react-dom') return ReactDOM;
+        if (mod === 'react/jsx-runtime') return ReactJsxRuntime;
         throw new Error('Module not found: ' + mod);
       };
 
@@ -97,7 +149,16 @@ function buildIframeDoc(code: string): string {
 
       const Component = module.exports.default || module.exports;
       const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(Component));
+
+      if (React.isValidElement(Component)) {
+        root.render(Component);
+      } else if (typeof Component === 'function') {
+        root.render(React.createElement(Component));
+      } else if (typeof Component === 'string') {
+        root.render(Component);
+      } else {
+        throw new Error('No renderable export found. Add export default for your component.');
+      }
     } catch (err) {
       document.getElementById('root').innerHTML =
         '<pre style="color:#ef4444;white-space:pre-wrap;font-size:0.85rem;">' +
@@ -131,17 +192,37 @@ function isResizeMessage(data: unknown): data is IframeResizeMessage {
   return msg.type === 'iframe-resize' && typeof msg.height === 'number'
 }
 
+function hasBlockingDiagnostics(diagnostics: readonly PreviewDiagnostic[]): boolean {
+  return diagnostics.some((diagnostic) => BLOCKING_DIAGNOSTIC_CODES.has(diagnostic.code))
+}
+
 // ── Shared-mode renderer ────────────────────────────────────────────
 
-function SharedPreview({ content }: { content: string }) {
+function SharedPreview({
+  code,
+  onErrorChange,
+}: {
+  code: string
+  onErrorChange: (error: string | null) => void
+}) {
   const { element, error } = useRunner({
-    code: content,
+    code,
     scope: defaultScope,
   })
 
+  const normalizedError = error ? String(error) : null
+
+  useEffect(() => {
+    onErrorChange(normalizedError)
+  }, [normalizedError, onErrorChange])
+
+  useEffect(() => {
+    return () => onErrorChange(null)
+  }, [onErrorChange])
+
   return (
     <>
-      {error && (
+      {normalizedError && (
         <div
           style={{
             padding: '0.75rem 1rem',
@@ -156,7 +237,7 @@ function SharedPreview({ content }: { content: string }) {
             wordBreak: 'break-word',
           }}
         >
-          {error}
+          {normalizedError}
         </div>
       )}
       {element && (
@@ -170,7 +251,7 @@ function SharedPreview({ content }: { content: string }) {
 
 // ── Isolated-mode renderer ──────────────────────────────────────────
 
-function IsolatedPreview({ content }: { content: string }) {
+function IsolatedPreview({ code }: { code: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState<number>(MIN_HEIGHT)
 
@@ -188,7 +269,7 @@ function IsolatedPreview({ content }: { content: string }) {
   return (
     <iframe
       ref={iframeRef}
-      srcDoc={buildIframeDoc(content)}
+      srcDoc={buildIframeDoc(code)}
       sandbox="allow-scripts"
       title="React Preview (Isolated)"
       style={{
@@ -202,10 +283,78 @@ function IsolatedPreview({ content }: { content: string }) {
   )
 }
 
+function DiagnosticsPanel({ diagnostics }: { diagnostics: readonly PreviewDiagnostic[] }) {
+  return (
+    <div
+      style={{
+        minHeight: `${MIN_HEIGHT}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.5rem',
+      }}
+    >
+      {diagnostics.map((diagnostic, index) => (
+        <div
+          key={`${diagnostic.code}-${index}`}
+          style={{
+            padding: '0.75rem 1rem',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '6px',
+            color: '#b91c1c',
+            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+            fontSize: '0.8rem',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}
+        >
+          <strong>{diagnostic.code}</strong>
+          <div>{diagnostic.message}</div>
+          {diagnostic.details && <div>{diagnostic.details}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Main component ──────────────────────────────────────────────────
 
-function ReactPreview({ content }: RendererProps) {
-  const [mode, setMode] = useState<'shared' | 'isolated'>('shared')
+function ReactPreview({ content, documentId }: RendererProps) {
+  const [mode, setModeState] = useState<PreviewMode>(() => getSessionMode(documentId))
+
+  const analysis = useMemo(
+    () => analyzeAndNormalizeReactSource(content),
+    [content],
+  )
+
+  const hasBlocking = useMemo(
+    () => hasBlockingDiagnostics(analysis.diagnostics),
+    [analysis.diagnostics],
+  )
+
+  const setPreviewMode = useCallback((nextMode: PreviewMode) => {
+    setModeState(nextMode)
+    setSessionMode(documentId, nextMode)
+  }, [documentId])
+
+  const handleSharedErrorChange = useCallback((error: string | null) => {
+    if (!error) return
+    if (mode !== 'shared') return
+    if (hasBlocking) return
+    if (!isFallbackEligibleError(error)) return
+
+    const fallbackKey = getFallbackAttemptKey(documentId, analysis.normalizedCode)
+    if (fallbackAttemptedKeys.has(fallbackKey)) return
+
+    fallbackAttemptedKeys.add(fallbackKey)
+    setPreviewMode('isolated')
+  }, [
+    analysis.normalizedCode,
+    documentId,
+    hasBlocking,
+    mode,
+    setPreviewMode,
+  ])
 
   // Empty content placeholder
   if (!content.trim()) {
@@ -231,7 +380,7 @@ function ReactPreview({ content }: RendererProps) {
             fontStyle: 'italic',
           }}
         >
-          Enter React/JSX code to see a live preview
+          Enter React/JSX/TSX code to see a live preview
         </p>
       </div>
     )
@@ -273,22 +422,29 @@ function ReactPreview({ content }: RendererProps) {
           <ModeButton
             label="Shared"
             active={mode === 'shared'}
-            onClick={() => setMode('shared')}
+            onClick={() => setPreviewMode('shared')}
           />
           <ModeButton
             label="Isolated"
             active={mode === 'isolated'}
-            onClick={() => setMode('isolated')}
+            onClick={() => setPreviewMode('isolated')}
           />
         </div>
         <BadgeLabel />
       </div>
 
       {/* Preview pane */}
-      <div style={{ padding: mode === 'shared' ? '1rem' : 0 }}>
-        {mode === 'shared'
-          ? <SharedPreview content={content} />
-          : <IsolatedPreview content={content} />
+      <div style={{ padding: mode === 'shared' || hasBlocking ? '1rem' : 0 }}>
+        {hasBlocking
+          ? <DiagnosticsPanel diagnostics={analysis.diagnostics} />
+          : mode === 'shared'
+            ? (
+              <SharedPreview
+                code={analysis.normalizedCode}
+                onErrorChange={handleSharedErrorChange}
+              />
+            )
+            : <IsolatedPreview code={analysis.normalizedCode} />
         }
       </div>
     </div>

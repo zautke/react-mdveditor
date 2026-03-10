@@ -10,6 +10,7 @@
 import { Code } from 'lucide-react'
 import HtmlPreview from '@/components/markdown/HtmlPreview'
 import type { DocumentTypePlugin } from '../types'
+import defaultHtmlContent from '../../../../_html_scaffold.html?raw'
 
 // ── Detection heuristic ─────────────────────────────────────────────
 
@@ -45,23 +46,6 @@ export function isHtmlText(text: string): boolean {
 }
 
 // ── Plugin definition ───────────────────────────────────────────────
-
-const defaultHtmlContent = [
-  '<!DOCTYPE html>',
-  '<html lang="en">',
-  '<head>',
-  '  <meta charset="UTF-8">',
-  '  <title>New Page</title>',
-  '  <style>',
-  '    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }',
-  '  </style>',
-  '</head>',
-  '<body>',
-  '  <h1>Hello World</h1>',
-  '  <p>Start editing your HTML here...</p>',
-  '</body>',
-  '</html>',
-].join('\n')
 
 export const htmlPlugin: DocumentTypePlugin = {
   kind: 'html',
