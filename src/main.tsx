@@ -1,11 +1,20 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-// Switch between Apps:
-import App from './components/markdown/EditorWithProview'
-// import App from './TabsDemoApp'  // TabSystem demo
-// import App from './components/ui/DesignTokenDemo'  // Design token testing
+import EditorWithProview from './components/markdown/EditorWithProview'
+import PoachedDemoApp from './PoachedDemoApp'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import './styles/index.css'
+
+const normalizePathname = (pathname: string) => {
+  if (pathname === '/') {
+    return pathname
+  }
+
+  return pathname.replace(/\/+$/, '')
+}
+
+const pathname = normalizePathname(window.location.pathname)
+const App = pathname === '/demo' ? PoachedDemoApp : EditorWithProview
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

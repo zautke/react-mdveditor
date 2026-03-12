@@ -1,14 +1,14 @@
 import { useState, useEffect, useId, DragEvent, memo, useRef, useCallback, createElement, useMemo, Suspense } from 'react'
 import { FilePlus2, Download } from 'lucide-react'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
-import { TabSystem, TabContent } from '@/components/ui/tabs'
+import { TabSystem, TabContent, SettingsDropdown } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { loadState, saveState } from '@/lib/storage'
 import { documentTypeRegistry } from '@/lib/document-types'
 import { validateFile } from '@/lib/file-validation'
-import type { TabItem, NewTabMenuItem } from '@/components/ui/tabs/types'
+import type { TabItem, NewTabMenuItem, TabVariant } from '@/components/ui/tabs/types'
 
 // ── ARIA: status announcement for preview updates ───────────────────
 const PREVIEW_DEBOUNCE_MS = 1500
@@ -234,6 +234,7 @@ function App() {
     const saved = loadState<string>('activeDocId', '')
     return saved || 'doc-1'
   })
+  const [tabVariant, setTabVariant] = useState<TabVariant>('chrome')
   const [isExpanded, setIsExpanded] = useState(() =>
     loadState<boolean>('isExpanded', false)
   )
@@ -605,6 +606,10 @@ function App() {
               aria-orientation="horizontal"
               className="flex items-center justify-end gap-1.5 px-2 py-1.5 border-b border-border"
             >
+              <SettingsDropdown
+                currentVariant={tabVariant}
+                onVariantChange={setTabVariant}
+              />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -660,7 +665,7 @@ function App() {
               newTabMenuItems={newTabMenuItems}
               onDeleteTab={handleDeleteTab}
               onReorderTabs={handleReorderTabs}
-              variant="capsule"
+              variant={tabVariant}
               showNewButton
               showCloseButtons
               className="flex-1"
