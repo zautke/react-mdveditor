@@ -13,6 +13,7 @@
 
 import * as React from 'react'
 import type { Scope } from 'react-runner'
+import { loadFromCdn } from './cdn'
 
 // ── Direct globals ──────────────────────────────────────────────────
 // These are available as bare identifiers inside user code,
@@ -50,4 +51,55 @@ const importMap: Record<string, unknown> = {
 export const defaultScope: Scope = {
   ...reactGlobals,
   import: importMap,
+}
+
+// ── Dynamic scope builder ───────────────────────────────────────────
+// Extends the default scope with CDN-loaded external packages.
+
+const NATIVE_PACKAGES = new Set(['react', 'react-dom'])
+
+/**
+ * Builds a scope that includes dynamically loaded external packages.
+ *
+ * Packages already in the default scope (react) are skipped.
+ * CDN results are cached in `cdn.ts`, so repeated calls are cheap.
+ *
+ * @returns Extended scope with external packages in the import map,
+ *          plus an array of any packages that failed to load.
+ */
+export async function buildScope(
+  packages: string[],
+): Promise<{ scope: Scope; errors: string[] }> {
+  const externalImports: Record<string, unknown> = {}
+  const errors: string[] = []
+
+  const toLoad = packages.filter((p) => !NATIVE_PACKAGES.has(p))
+  if (toLoad.length === 0) return { scope: defaultScope, errors }
+
+  const results = await Promise.allSettled(
+    toLoad.map(async (pkg) => {
+      const mod = await loadFromCdn(pkg)
+      return { pkg, mod }
+    }),
+  )
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      externalImports[result.value.pkg] = result.value.mod
+    } else {
+      errors.push(
+        result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason),
+      )
+    }
+  }
+
+  return {
+    scope: {
+      ...reactGlobals,
+      import: { ...importMap, ...externalImports },
+    },
+    errors,
+  }
 }
