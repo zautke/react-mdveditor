@@ -6,8 +6,7 @@ import remarkMath from 'remark-math'
 import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import rehypeMathjax from 'rehype-mathjax'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { MdxCodeblock } from './MdxCodeblock'
 
 // Lazy-load MermaidDiagram — the mermaid library is ~2.3 MB and only needed
 // when a ```mermaid code fence is actually encountered.
@@ -38,13 +37,10 @@ const markdownComponents: Components = {
         }
 
         return match ? (
-            <SyntaxHighlighter
-                style={oneDark}
+            <MdxCodeblock
                 language={match[1]}
-                PreTag="div"
-            >
-                {codeContent}
-            </SyntaxHighlighter>
+                codeContent={codeContent}
+            />
         ) : (
             <code className={className} {...props}>
                 {children}

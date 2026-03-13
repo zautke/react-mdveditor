@@ -1,6 +1,5 @@
 import React, { memo } from 'react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { MdxCodeblock } from './MdxCodeblock'
 
 export interface RendererProps {
   content: string
@@ -30,20 +29,16 @@ const JsonPreview = memo(({ content }: RendererProps) => {
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden rounded-md border bg-muted/20">
-      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+      <div className="absolute right-4 top-4 z-30 flex items-center gap-2 pointer-events-none">
         <span className="rounded bg-background/80 px-2 py-1 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur-sm">
           JSON PREVIEW {isValidJson ? '' : '(Invalid)'}
         </span>
       </div>
       <div className="flex-1 overflow-auto p-4">
-        <SyntaxHighlighter
+        <MdxCodeblock
           language="json"
-          style={oneDark}
-          customStyle={{ margin: 0, padding: 0, background: 'transparent' }}
-          wrapLines={true}
-        >
-          {displayContent}
-        </SyntaxHighlighter>
+          codeContent={displayContent}
+        />
       </div>
     </div>
   )
