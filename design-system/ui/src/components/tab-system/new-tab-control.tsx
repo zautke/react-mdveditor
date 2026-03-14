@@ -90,7 +90,7 @@ const NewTabControl = ({
 
   const menuPositionClass =
     orientation === "horizontal"
-      ? "left-0 top-full mt-2"
+      ? "right-0 top-full mt-2"
       : "left-full top-0 ml-2"
 
   return (
@@ -133,12 +133,12 @@ const NewTabControl = ({
         {isOpen && menuItems.length > 0 && (
           <motion.div
             key="new-tab-menu"
-            initial={{ opacity: 0, scale: 0, x: -6, y: 6 }}
+            initial={{ opacity: 0, scale: 0, x: 6, y: 6 }}
             animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, x: -6, y: 6 }}
+            exit={{ opacity: 0, scale: 0.85, x: 6, y: 6 }}
             transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
             className={cn(
-              "absolute z-50 min-w-[220px] origin-top-left rounded-lg border p-1 shadow-[var(--menu-shadow)]",
+              "absolute z-50 min-w-[220px] origin-top-right rounded-lg border p-1 shadow-[var(--menu-shadow)]",
               "bg-[color:var(--menu-bg)] border-[color:var(--menu-border)]",
               menuPositionClass
             )}

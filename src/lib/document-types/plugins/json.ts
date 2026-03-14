@@ -33,4 +33,5 @@ export const jsonPlugin: DocumentTypePlugin = {
   exportExtension: '.json',
   defaultContent: '{\n  "hello": "world"\n}',
   defaultTitle: (n: number) => `data-${n}`,
+  tabColor: 'oklch(0.65 0.15 100)',
 }

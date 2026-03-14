@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
   const page = await browser.newPage();
   
   await page.goto('http://localhost:5201');
-  await page.waitForTimeout(2000); // wait for load
+  await page.waitForTimeout(3000); // wait for load
   
   // Set window size large enough to avoid overflow on the right
   await page.setViewportSize({ width: 1400, height: 800 });
@@ -24,24 +24,19 @@ import { chromium } from 'playwright';
     }
   }
 
-  // Type some JSON
-  const textarea = await page.locator('textarea').first();
-  if (await textarea.count() > 0) {
-    await textarea.click();
-    await page.keyboard.press('Meta+A');
-    await page.keyboard.press('Backspace');
-    await page.keyboard.type('{"test": "json data"}');
-    await page.waitForTimeout(1000); // wait for render
-  }
-  
-  // Hover over dropdown to show it again
+  // Hover over dropdown to show it again, so screenshot captures dropdown fix
   if (await dropdownTrigger.count() > 0) {
     await dropdownTrigger.click();
     await page.waitForTimeout(500); // wait for menu animation
   }
 
-  await page.screenshot({ path: 'test-results/json-dropdown-tabs.png' });
-  console.log("Screenshot saved.");
+  // Hide the JSON PREVIEW label text in the editor since I removed it but just in case
+  
+  // Wait to make sure rendering is settled
+  await page.waitForTimeout(1000);
+
+  await page.screenshot({ path: 'test-results/tabs-fixed.png' });
+  console.log("Screenshot saved to test-results/tabs-fixed.png");
 
   await browser.close();
 })();

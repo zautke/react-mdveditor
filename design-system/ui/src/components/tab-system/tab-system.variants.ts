@@ -66,9 +66,9 @@ export const tabSystem = tv({
         content: "border-t border-[color:var(--tabs-bar-border)]",
       },
       capsule: {
-        list: "bg-[color:var(--tabs-bar-bg)] p-1 rounded-full relative border border-[color:var(--tabs-bar-border)] backdrop-blur-md shadow-sm gap-1.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        list: "bg-[color:var(--tabs-bar-bg)] px-1 py-0 h-full rounded-full relative border border-[color:var(--tabs-bar-border)] backdrop-blur-md shadow-sm gap-1.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         trigger: [
-          "py-1.5",
+          "py-0 h-full",
           "bg-transparent text-[color:var(--tab-text)]",
           "rounded-full",
           "shrink grow-0 min-w-0",
@@ -79,7 +79,7 @@ export const tabSystem = tv({
           "data-[state=active]:z-10",
         ],
         newButton:
-          "rounded-full bg-[color:var(--tab-bg)] hover:bg-[color:var(--tab-hover-bg)]",
+          "rounded-full bg-[color:var(--tab-bg)] hover:bg-[color:var(--tab-hover-bg)] my-auto h-[calc(100%-8px)] w-auto aspect-square",
       },
       underline: {
         list: "border-b border-border gap-4",
