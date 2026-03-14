@@ -3,6 +3,7 @@ import { defineConfig } from "tsup"
 export default defineConfig({
   entry: {
     "tab-system": "src/components/tab-system/index.ts",
+    "code-block": "src/components/code-block/index.ts",
     "utils": "src/utils.ts",
   },
   format: ["esm", "cjs"],

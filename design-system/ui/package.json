@@ -8,6 +8,11 @@
       "import": "./dist/tab-system.js",
       "require": "./dist/tab-system.cjs"
     },
+    "./code-block": {
+      "types": "./dist/code-block.d.ts",
+      "import": "./dist/code-block.js",
+      "require": "./dist/code-block.cjs"
+    },
     "./utils": {
       "types": "./dist/utils.d.ts",
       "import": "./dist/utils.js",

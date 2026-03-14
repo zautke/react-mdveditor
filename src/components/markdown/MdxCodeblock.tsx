@@ -1,28 +1,44 @@
 import React, { useState } from 'react'
-import { CodeBlock, PlaygroundActionPanel } from '@braisenly/ui/code-block'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { CopyButton, LineNumberButton } from '@braisenly/ui/code-block'
 
 interface MdxCodeblockProps {
     codeContent: string
     language: string
 }
 
-export function MdxCodeblock({ codeContent, language }: MdxCodeblockProps) {
+export function ViteMDXDCodeBlock({ codeContent, language }: MdxCodeblockProps) {
     const [showLineNumbers, setShowLineNumbers] = useState(false)
     
     return (
-        <div className="relative group my-4">
-            <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <PlaygroundActionPanel
-                    onReload={() => {}}
-                    onCopyCode={async () => {
+        <div className="group relative my-4 overflow-hidden rounded-lg">
+            <div className="absolute right-3 top-3 z-20 flex items-center justify-end space-x-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                <CopyButton
+                    onCopy={async () => {
                         await navigator.clipboard.writeText(codeContent)
                     }}
-                    onToggleLineNumbers={() => setShowLineNumbers(prev => !prev)}
+                />
+                <LineNumberButton
                     showLineNumbers={showLineNumbers}
-                    className="[&>button:first-child]:hidden border-none bg-transparent shadow-lg rounded-md"
+                    onToggle={() => setShowLineNumbers(prev => !prev)}
                 />
             </div>
-            <CodeBlock code={codeContent} language={language} showLineNumbers={showLineNumbers} />
+            <SyntaxHighlighter
+                style={oneDark}
+                language={language}
+                PreTag="div"
+                showLineNumbers={showLineNumbers}
+                wrapLines={true}
+                customStyle={{
+                    margin: 0,
+                    padding: '1rem',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.9rem'
+                }}
+            >
+                {codeContent}
+            </SyntaxHighlighter>
         </div>
     )
 }

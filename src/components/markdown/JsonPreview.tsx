@@ -1,5 +1,5 @@
 import React, { memo } from 'react'
-import { MdxCodeblock } from './MdxCodeblock'
+import { ViteMDXDCodeBlock } from './MdxCodeblock'
 
 export interface RendererProps {
   content: string
@@ -35,7 +35,7 @@ const JsonPreview = memo(({ content }: RendererProps) => {
         </span>
       </div>
       <div className="flex-1 overflow-auto p-4">
-        <MdxCodeblock
+        <ViteMDXDCodeBlock
           language="json"
           codeContent={displayContent}
         />

@@ -6,7 +6,7 @@ import remarkMath from 'remark-math'
 import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import rehypeMathjax from 'rehype-mathjax'
-import { MdxCodeblock } from './MdxCodeblock'
+import { ViteMDXDCodeBlock } from './MdxCodeblock'
 
 // Lazy-load MermaidDiagram — the mermaid library is ~2.3 MB and only needed
 // when a ```mermaid code fence is actually encountered.
@@ -37,7 +37,7 @@ const markdownComponents: Components = {
         }
 
         return match ? (
-            <MdxCodeblock
+            <ViteMDXDCodeBlock
                 language={match[1]}
                 codeContent={codeContent}
             />
