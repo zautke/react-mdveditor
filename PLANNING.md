@@ -198,3 +198,112 @@ pnpm add react-runner
 | Isolated mode requires network (CDN) | Graceful fallback — show message if CDN unreachable; shared mode works offline |
 | Detection false-positives on HTML with `<Component>` | Require import statement OR multiple medium signals; HTML lacks imports |
 | Bundle size increase (~38KB) | Code-split into `react-preview` chunk via manualChunks |
+
+---
+
+## GraphViz Document Type Plugin (feat/graphviz-doctype)
+
+### Vision
+
+Add DOT language (Graphviz) as a first-class document type. Users can author and preview directed/undirected graphs and pipeline diagrams using the Graphviz DOT syntax, with WASM-based rendering in the preview pane.
+
+### Architectural Decisions
+
+#### ADR-11: @hpcc-js/wasm-graphviz over d3-graphviz
+**Decision**: Use `@hpcc-js/wasm-graphviz` directly (v1.21.2) rather than `d3-graphviz` (which wraps it).
+**Rationale**: No D3 dependency needed for a preview pane. Returns an SVG string via `gviz.dot(content, 'svg')` — we inject it directly, making width responsive via attribute manipulation. D3's animations and pan/zoom are deferred to a future iteration.
+
+#### ADR-12: Priority 11 with brace heuristic
+**Decision**: GraphViz plugin at priority 11 (above mermaid=10). Detection requires an opening `{` in the DOT header.
+**Rationale**: Mermaid's detection fires on the first word `'graph'`. An undirected GraphViz `graph { ... }` would be misdetected as mermaid if GraphViz ran at priority 9 or lower. Priority 11 + brace heuristic (`/^(strict\s+)?(di)?graph(\s+[\w"]+)?\s*\{/is`) prevents false positives: mermaid's `graph TD/LR` syntax never has a brace on the header line.
+
+#### ADR-13: WASM module-level singleton
+**Decision**: Cache `Graphviz.load()` in a module-level promise variable inside `GraphvizPreview.tsx`.
+**Rationale**: `Graphviz.load()` fetches the WASM binary (~650KB). Called once, reused across all content changes and re-renders. Since the file is itself lazy-loaded via `React.lazy()`, the WASM is not fetched until the first GraphViz tab is opened.
+
+#### ADR-14: Dedicated orange tab color
+**Decision**: `tabColor: 'oklch(0.65 0.18 45)'` — vibrant orange.
+**Rationale**: All existing plugins have distinct hues: markdown=250 (blue), mermaid=155 (green), json=100 (yellow-green). Orange/hue 45 is the only unoccupied warm tone and immediately distinguishes GraphViz tabs.
+
+### Detection Heuristic
+
+```
+/^(strict\s+)?(di)?graph(\s+[\w"]+)?\s*\{/is
+```
+
+Applied to `text.trimStart().slice(0, 100)`.
+
+| Input | Detects as |
+|-------|-----------|
+| `digraph Pipeline {` | ✅ graphviz |
+| `graph { a -> b }` | ✅ graphviz |
+| `strict digraph { }` | ✅ graphviz |
+| `graph TD\n  A --> B` | ❌ mermaid (no brace) |
+| `graph LR` | ❌ mermaid (no brace) |
+| `{ "hello": "world" }` | ❌ json |
+
+### File Manifest
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/markdown/GraphvizPreview.tsx` | **Create** | WASM renderer: empty/error/SVG states |
+| `src/lib/document-types/plugins/graphviz.ts` | **Create** | Plugin: kind=graphviz, priority=11, Workflow icon |
+| `src/lib/document-types/index.ts` | **Modify** | +2 lines (import + register) |
+| `vite.config.ts` | **Conditional** | `optimizeDeps.exclude` only if build fails |
+
+### Dependency
+
+```
+pnpm add @hpcc-js/wasm-graphviz   # installed v1.21.2
+```
+
+- ~650 KB WASM binary (gzip ~165 KB), lazy-loaded only when a `.dot` tab opens
+- No D3, no React version constraint
+
+### Test Matrix (10 points)
+
+| # | Test | Evidence |
+|---|------|----------|
+| 1 | New GraphViz tab — Workflow icon, orange color | Browser |
+| 2 | Default Pipeline digraph renders | Browser |
+| 3 | Paste `digraph { A -> B }` → auto-detects as graphviz | Browser |
+| 4 | Paste `graph TD` → still detects as mermaid | Browser |
+| 5 | Invalid DOT → red error badge, no crash | Browser |
+| 6 | Empty content → placeholder | Browser |
+| 7 | Drop `.dot`/`.gv` file → opens as graphviz | Browser |
+| 8 | Export produces `.dot` with `text/plain` | Browser |
+| 9 | Existing types (markdown/mermaid/json/html) unaffected | Browser |
+| 10 | Network tab: WASM not loaded on initial page load | Browser DevTools |
+
+### Risks
+
+| Risk | Mitigation |
+|------|------------|
+| Vite optimizer inlines WASM worker incorrectly | Add `exclude: ['@hpcc-js/wasm-graphviz']` to `optimizeDeps` (conditional, only if build fails) |
+| `graph { }` undirected graphs still grabbed by mermaid | Priority 11 runs before mermaid; brace heuristic covers this |
+| SVG has fixed width/height attributes from Graphviz | Post-process: `svgEl.setAttribute('width', '100%'); svgEl.removeAttribute('height')` |
+
+### Implementation Status (2026-03-28)
+
+**CODE COMPLETE — pending manual browser verification**
+
+3 commits on `feat/graphviz-doctype`:
+- `9cdb2b8` — chore: add @hpcc-js/wasm-graphviz dependency
+- `7a4fe93` — feat: add GraphViz document type plugin
+- `5d7ae5c` — fix: graphviz doctype review fixes
+
+Automated gates verified:
+- `pnpm typecheck` → EXIT:0 ✅
+- `pnpm lint` → EXIT:0 ✅
+- `pnpm build` → ✓ built in 9.62s, `GraphvizPreview` chunk 797 KB / 623 KB gzip ✅
+- No `vite.config.ts` change needed (WASM bundled without `optimizeDeps.exclude`)
+
+Review fixes applied:
+- Cancellation token guards (`let cancelled = false`) against stale async renders
+- WASM singleton retry-on-failure (`_graphvizPromise = null` in catch)
+- `setError(null)` placed after `gviz.dot()` (success-only)
+- `export default GraphvizRendererWrapper` added (mermaid convention)
+- Regex extended to `(sub|di)?graph` for top-level `subgraph` blocks
+- `types.ts` priority convention updated
+
+Pending: G5 manual verification checklist at `localhost:5200` (see TASKS.md)

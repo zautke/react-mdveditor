@@ -45,6 +45,7 @@ export interface DocumentTypePlugin {
    * Higher values are checked first.
    *
    * Convention: markdown = 0 (fallback), mermaid = 10, new types = 1–9.
+   * Diagram types that must pre-empt mermaid detection may use priority > 10.
    */
   readonly priority: number
 
