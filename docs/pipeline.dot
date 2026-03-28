@@ -1,0 +1,116 @@
+digraph HybridRAG {
+    rankdir=TB;
+    graph [fontname="Helvetica", fontsize=14];
+    node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=12];
+
+    subgraph cluster1 {
+        label="Step 1 – Discover files";
+        color="#00796b";
+        in1  [label="repo_root: str\nextensions: Iterable[str]", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op1  [label="discover supported files", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out1 [label="list of str", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in1 -> op1 -> out1;
+    }
+
+    subgraph cluster2 {
+        label="Step 2 – Parse AST & extract spans";
+        color="#00796b";
+        in2  [label="file_path: str\ncode: str\nparser: Parser\nlanguage: str", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op2  [label="parse AST & extract spans", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out2 [label="AST Node\nlist of (int,int) spans", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in2 -> op2 -> out2;
+    }
+
+    subgraph cluster3 {
+        label="Step 3 – Construct CodeChunks";
+        color="#00796b";
+        in3  [label="repo_root: str\nfile_path: str\nlanguage: str\nspans: list of (int,int)\nsource_text: str\nline_lookup: list of int", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op3  [label="construct CodeChunk objects", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out3 [label="list of CodeChunk", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in3 -> op3 -> out3;
+    }
+
+    subgraph cluster4 {
+        label="Step 4 – Build graph & persist";
+        color="#00796b";
+        in4  [label="chunks: list of CodeChunk\ndriver: neo4j.Driver", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op4  [label="build graph & persist to Neo4j", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out4 [label="None (graph persisted)", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in4 -> op4 -> out4;
+    }
+
+    subgraph cluster5 {
+        label="Step 5 – Generate embeddings";
+        color="#00796b";
+        in5  [label="chunks: list of CodeChunk\nembedder: SentenceTransformer\nbatch_size: int", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op5  [label="generate embeddings", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out5 [label="numpy.ndarray", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in5 -> op5 -> out5;
+    }
+
+    subgraph cluster6 {
+        label="Step 6 – Upsert embeddings";
+        color="#00796b";
+        in6  [label="client: QdrantClient\ncollection_name: str\nchunks: list of CodeChunk\nembeddings: numpy.ndarray", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op6  [label="upsert vectors to Qdrant", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out6 [label="None", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in6 -> op6 -> out6;
+    }
+
+    subgraph cluster7 {
+        label="Step 7 – Semantic search";
+        color="#00796b";
+        in7  [label="client: QdrantClient\ncollection_name: str\nembedder: SentenceTransformer\nquery: str\ntop_k: int", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op7  [label="vector retrieval", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out7 [label="list of (str, float, dict)", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in7 -> op7 -> out7;
+    }
+
+    subgraph cluster8 {
+        label="Step 8 – Load graph & expand";
+        color="#00796b";
+        in8  [label="driver: neo4j.Driver\nseed_chunk_ids: list of str\nmax_hops: int\nallowed_rel_types: set of str", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op8  [label="load graph & expand neighbourhood", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out8 [label="set of str (expanded nodes)", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in8 -> op8 -> out8;
+    }
+
+    subgraph cluster9 {
+        label="Step 9 – PageRank & rerank";
+        color="#00796b";
+        in9  [label="semantic_hits: list of (str, float, dict)\nexpanded_node_ids: set of str\ngraph_scores: dict of str→float\nstructural_weight: float\npagerank_weight: float", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op9  [label="compute PageRank & rerank", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out9 [label="list of RetrievalCandidate", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in9 -> op9 -> out9;
+    }
+
+    subgraph cluster10 {
+        label="Step 10 – Select context";
+        color="#00796b";
+        in10  [label="reranked: list of RetrievalCandidate\nhydrated_chunks: dict of str→CodeChunk\nmax_chunks: int", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op10 [label="select final context & hydrate", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out10 [label="list of CodeChunk", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in10 -> op10 -> out10;
+    }
+
+    subgraph cluster11 {
+        label="Step 11 – Build prompt & answer";
+        color="#00796b";
+        in11  [label="query: str\nchunks: list of CodeChunk\nmodel_name: str", fillcolor="#b2ebf2", fontcolor="#004d40", color="#00796b"];
+        op11 [label="construct prompt & call LLM", fillcolor="#4dd0e1", fontcolor="#004d40", color="#00796b"];
+        out11 [label="str (answer)", fillcolor="#e0f7fa", fontcolor="#004d40", color="#00796b"];
+        in11 -> op11 -> out11;
+    }
+
+    /* Connect outputs to next inputs */
+    out1  -> in2;
+    out2  -> in3;
+    out3  -> in4;
+    out4  -> in5;
+    out5  -> in6;
+    out6  -> in7;
+    out7  -> in8;
+    out8  -> in9;
+    out9  -> in10;
+    out10 -> in11;
+}

@@ -189,3 +189,112 @@ R0-1 → R0-2 → R1-1 → R1-2 → R1-3 → R1-4 → R1-5 → R1-6 → R2-1 →
 | R2: Verification | 19 | 84 min |
 | R3: Finalize | 4 | 22 min |
 | **Total** | **31 tasks** | **~4 hours** |
+
+---
+---
+
+# GraphViz Document Type Plugin — Task Breakdown
+
+**Branch:** `feat/graphviz-doctype`
+**Spec:** `docs/superpowers/specs/2026-03-28-graphviz-doctype-design.md`
+**Plan:** `docs/superpowers/plans/2026-03-28-graphviz-doctype.md`
+
+## Task Dependency Graph
+
+```
+G0 → G1 → G2 → G3 → G4-* → G5-*
+```
+
+---
+
+## G0: Install Library
+
+| ID | Task | Est. | Status | Depends |
+|----|------|------|--------|---------|
+| G0-1 | `pnpm add @hpcc-js/wasm-graphviz` — installed v1.21.2 | 5 min | ✅ **Done** (commit `9cdb2b8`) | — |
+
+---
+
+## G1: Create Renderer
+
+| ID | Task | Est. | Status | Depends |
+|----|------|------|--------|---------|
+| G1-1 | Create `src/components/markdown/GraphvizPreview.tsx` — WASM singleton, cancellation token, empty/error/SVG states | 20 min | ✅ **Done** | G0-1 |
+| G1-2 | Run `pnpm typecheck` — EXIT:0 ✓ | 2 min | ✅ **Done** | G1-1 |
+| G1-3 | Committed as part of feat commit `7a4fe93` | 1 min | ✅ **Done** | G1-2 |
+
+---
+
+## G2: Create Plugin
+
+| ID | Task | Est. | Status | Depends |
+|----|------|------|--------|---------|
+| G2-1 | Create `src/lib/document-types/plugins/graphviz.ts` — `isGraphvizText()`, lazy wrapper, plugin definition | 15 min | ✅ **Done** | G1-3 |
+| G2-2 | Run `pnpm typecheck` — EXIT:0 ✓ | 2 min | ✅ **Done** | G2-1 |
+| G2-3 | Committed in feat commit `7a4fe93` | 1 min | ✅ **Done** | G2-2 |
+
+---
+
+## G3: Register in Barrel
+
+| ID | Task | Est. | Status | Depends |
+|----|------|------|--------|---------|
+| G3-1 | Update `src/lib/document-types/index.ts` — added import + `register(graphvizPlugin)` at lines 23, 30 | 2 min | ✅ **Done** | G2-3 |
+| G3-2 | `pnpm typecheck` EXIT:0, `pnpm lint` EXIT:0 ✓ | 3 min | ✅ **Done** | G3-1 |
+| G3-3 | Committed in feat commit `7a4fe93` | 1 min | ✅ **Done** | G3-2 |
+
+---
+
+## G4: Quality Gates
+
+| ID | Task | Est. | Status | Depends |
+|----|------|------|--------|---------|
+| G4-1 | `pnpm build` — ✓ built in 9.62s (no WASM errors, no Vite config change needed) | 5 min | ✅ **Done** | G3-3 |
+| G4-2 | `dist/assets/GraphvizPreview-DR46ybnv.js` 797 KB / 623 KB gzip confirmed ✓ | 2 min | ✅ **Done** | G4-1 |
+| G4-3 | N/A — build succeeded without `optimizeDeps.exclude` | — | ✅ **N/A** | — |
+
+---
+
+## G4b: Code Review Fixes (3-reviewer code review, 2026-03-28)
+
+| ID | Fix | Status |
+|----|-----|--------|
+| CR-1 | Cancellation token (`let cancelled = false`) prevents stale renders on rapid typing | ✅ **Done** (commit `5d7ae5c`) |
+| CR-2 | WASM singleton clears `_graphvizPromise = null` on load failure — allows retry | ✅ **Done** |
+| CR-3 | `setError(null)` moved to after `gviz.dot()` call — success-only | ✅ **Done** |
+| CR-4 | `export default GraphvizRendererWrapper` added (mermaid convention) | ✅ **Done** |
+| CR-5 | Detection regex extended: `(sub|di)?graph` covers top-level subgraph blocks | ✅ **Done** |
+| CR-6 | `types.ts` priority convention comment updated to document > 10 for diagram types | ✅ **Done** |
+
+---
+
+## G5: Manual Verification (10 checkpoints at localhost:5201)
+
+> Verified 2026-03-28 via Playwright browser automation (stagehand MCP)
+
+| ID | Test | Est. | Status | Evidence |
+|----|------|------|--------|---------|
+| G5-1 | GraphViz tab in New Tab menu — `Workflow` icon, orange color | 3 min | ✅ PASS | Menu shows "New GraphViz Diagram" first (priority 11); orange tab confirmed in screenshot |
+| G5-2 | Default Pipeline digraph renders correctly | 3 min | ✅ PASS | All 15 nodes confirmed in accessibility tree; orange "Graph-2" tab |
+| G5-3 | Pasting `digraph { A -> B }` auto-detects as graphviz | 3 min | ✅ PASS | Paste event → orange tab, SVG renders A→B graph |
+| G5-4 | Pasting `graph TD` still detects as mermaid (brace heuristic works) | 3 min | ✅ PASS | Paste event → green mermaid tab, mermaid A→B flowchart |
+| G5-5 | Invalid DOT shows error message, no crash | 3 min | ✅ PASS | DOM: `syntax error in line 1 near '!'` in preview; no crash |
+| G5-6 | Empty content shows placeholder | 2 min | ✅ PASS | "Enter DOT language to see a live preview" italic text visible |
+| G5-7 | Dropping `.dot`/`.gv` file opens as graphviz | 3 min | ✅ PASS | `test-graph.dot` upload → orange tab, A→B→C renders |
+| G5-8 | Export produces `.dot` with `text/plain` MIME | 3 min | ✅ PASS | Download: `test-graph.dot`, MIME `text/plain`, size 33 bytes |
+| G5-9 | Existing markdown/mermaid/json/html tabs unaffected | 3 min | ✅ PASS | Untitled-1 markdown fully renders (headings, mermaid, code, tables, math) |
+| G5-10 | Network tab: WASM only loads when graphviz tab opens | 3 min | ✅ PASS | `GraphvizPreview.tsx` + `@hpcc-js_wasm-graphviz.js` appear last in network log, not at startup |
+
+---
+
+## Summary
+
+| Phase | Tasks | Estimated Total |
+|-------|-------|----------------|
+| G0: Install | 1 | 5 min (done) |
+| G1: Renderer | 3 | 23 min |
+| G2: Plugin | 3 | 18 min |
+| G3: Register | 3 | 6 min |
+| G4: Build | 2-3 | 7 min |
+| G5: Verify | 10 | 29 min |
+| **Total** | **22 tasks** | **~1.5 hours** |
