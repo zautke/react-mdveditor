@@ -18,7 +18,7 @@
 | **Plugin Migration Engineer** | Create `markdown.ts` and `mermaid.ts` plugin definitions | React component wrapping, detection heuristics, markdown/mermaid rendering pipeline | M2 |
 | **Integration Engineer** | Refactor `EditorWithProview.tsx` to use registry | React state management, file I/O, event handling, localStorage migration | M3 |
 | **QA Engineer** | Execute test matrix, capture evidence, verify quality gates | Build tooling, CLI output capture, regression testing | M4 |
-| **Browser Test Engineer** | Live browser testing at `http://localhost:5200` | Chrome DevTools MCP, BrowserTools MCP, screenshot capture, DOM interaction | M4 |
+| **Browser Test Engineer** | Live browser testing at `http://localhost:5200` | Chrome DevTools MCP (preferred), Playwright MCP (alternative), screenshot capture, DOM interaction | M4 |
 | **Code Reviewer** | Review all changes, enforce quality standards | TypeScript best practices, React patterns, bundle analysis, security review | M5 |
 
 ---

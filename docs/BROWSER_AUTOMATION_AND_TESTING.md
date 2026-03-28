@@ -39,9 +39,10 @@ This document is the authoritative reference for browser-based testing of the md
 ## Prerequisites
 
 ### Required Infrastructure
-- Dev server running: `pnpm dev` (port **5200**, NOT 5173)
-- Chrome browser with a page open to `http://localhost:5200`
-- Chrome DevTools MCP server connected (REQUIRED — see Tool Hierarchy)
+- Dev server running: `pnpm dev` (usually port **5200**; may fall back to **5201** if 5200 is occupied — check console output)
+- At least one of:
+  - Chrome DevTools MCP (Tier 1a, preferred): Chrome open to `http://localhost:<port>`, DevTools MCP connected
+  - Playwright MCP (Tier 1b, alternative): available as deferred tools `mcp__plugin_playwright_playwright__*`
 - `test-results/` directory for evidence storage (gitignored)
 
 ### Pre-Flight Checklist
@@ -79,8 +80,8 @@ Before ANY browser interaction:
 
 ## Tool Hierarchy and Selection
 
-### Tier 1: Chrome DevTools MCP (REQUIRED)
-The ONLY reliable method for browser testing. Provides:
+### Tier 1a: Chrome DevTools MCP (PREFERRED)
+Strongly preferred for browser testing. Provides:
 
 | Tool | Purpose |
 |------|---------|
@@ -93,6 +94,38 @@ The ONLY reliable method for browser testing. Provides:
 | `list_console_messages(types)` | Error monitoring |
 | `wait_for(text)` | Wait for async content loading |
 | `hover(uid)` | Trigger hover states |
+
+### Tier 1b: Playwright MCP (ALTERNATIVE — use when Chrome DevTools MCP unavailable)
+
+Available as deferred tools via `mcp__plugin_playwright_playwright__*`. Discovered 2026-03-28 as a viable full-capability alternative.
+
+| Tool | Purpose |
+|------|---------|
+| `browser_snapshot()` | Accessibility tree — equivalent to `take_snapshot()` |
+| `browser_take_screenshot({ path })` | Visual evidence capture |
+| `browser_click({ element, ref })` | DOM interaction |
+| `browser_fill_form` / `browser_type` | Input (use `evaluate_script` for React detection) |
+| `browser_evaluate({ function })` | JavaScript in page context — **note**: parameter is `function`, not `expression` |
+| `browser_navigate({ url })` | Navigation |
+| `browser_console_messages()` | Error monitoring |
+| `browser_wait_for({ text, time })` | **`time` is in seconds, not milliseconds** |
+| `browser_network_requests()` | Network log — useful for WASM lazy-load verification |
+| `browser_file_upload({ selector, files })` | File upload — **files must be within project root** |
+
+**Key differences from Chrome DevTools MCP**:
+- Element refs use `ref` parameter (e.g., `ref: "e23"`), obtained from `browser_snapshot()` output
+- `browser_evaluate` function parameter uses arrow syntax: `() => { ... }` (NOT `expression`)
+- `browser_wait_for` `time` is in seconds: `time: 3` means 3 seconds (NOT 3000ms)
+- File upload requires files within allowed roots — `/tmp` is blocked; use project root or home dir
+- CSS custom properties (e.g., `oklch(...)` values assigned to `--foreground`, `text-destructive`, etc.) do NOT render visually in headless screenshots — use accessibility tree for truth
+- `browser_network_requests()` returns the full network log since page load; parse for WASM chunks
+
+**When to use Playwright MCP over Chrome DevTools MCP**:
+- Chrome DevTools MCP server is not connected
+- User's Chrome instance is not running
+- When you need network request logs (`browser_network_requests`)
+
+**Evidence**: `docs/browser-runs/2026-03-28-graphviz-plugin-playwright-verification.md`
 
 ### Tier 2: macOS screencapture (SUPPLEMENTARY ONLY)
 ```bash
@@ -109,11 +142,12 @@ screencapture -x <path>
 - Use ONLY for launching Chrome or opening DevTools panel
 
 ### NEVER USE
-- Local Playwright/Puppeteer installations (not part of this project's test infrastructure)
+- **Local Playwright/Puppeteer CLI** (not installed in project; use the Playwright MCP deferred tools instead)
 - AppleScript `execute javascript` — blocked in modern Chrome without explicit user opt-in
 - `osascript` for page content manipulation
+- **`browse` CLI** (`@browserbasehq/browse-cli`) — cannot be installed in pnpm workspaces due to `workspace:*` protocol conflict; use Playwright MCP deferred tools instead
 
-### Why This Hierarchy Exists (Discovered 2026-02-14)
+### Why This Hierarchy Exists (Updated 2026-03-28)
 
 Run 2 (HTML Plugin Testing) attempted Tiers 2-3 before DevTools MCP was available. The progression of failures:
 
@@ -314,14 +348,18 @@ Zero errors/warnings is the standard (beyond the baseline favicon 404). Any cons
 ### "Chrome DevTools MCP not connected"
 ```
 1. Is Chrome running?
-   → If no: launch Chrome, navigate to http://localhost:5200
+   → If no: launch Chrome, navigate to http://localhost:<port>
 2. Is Chrome DevTools MCP server running?
    → User must configure and connect it — agents cannot do this
 3. Check: list_pages
    → Should return at least one page
-4. If no MCP available:
+4. If Chrome DevTools MCP unavailable:
+   → SWITCH TO Playwright MCP (Tier 1b): use mcp__plugin_playwright_playwright__* tools
+   → browser_navigate({ url: "http://localhost:<port>" })
+   → All other patterns (snapshot, click, evaluate, file upload) work equivalently
+5. If NEITHER MCP is available:
    → Fall back to screencapture for visual evidence ONLY (no interaction)
-   → ASK THE USER to connect Chrome DevTools MCP before proceeding
+   → ASK THE USER to connect an MCP before proceeding
    → Do NOT attempt AppleScript JavaScript execution (it will fail)
 ```
 
@@ -392,7 +430,9 @@ The paste handler in `EditorWithProview.tsx` computes the full resulting text an
 5. Preview re-renders with the correct renderer
 
 **Detection priority order** (higher number = checked first):
+- GraphViz: priority 11 (checks for `digraph/graph/subgraph ... {` — brace heuristic distinguishes from mermaid)
 - Mermaid: priority 10 (checks for `graph`, `flowchart`, `sequenceDiagram`, etc.)
+- JSON: priority 8 (checks for `{`, `[` structure)
 - HTML: priority 5 (checks for `<!doctype html` or `<html`)
 - Markdown: priority 0 (fallback — always returns true)
 
@@ -452,6 +492,7 @@ Key additions beyond that protocol:
 | `2026-02-14-registry-refactor.md` | 2026-02-14 | feature/document-type-registry | 17-point test matrix for registry refactor | Tab system basics, snapshot patterns, menu interaction, tab creation/switching |
 | `2026-02-14-html-plugin-failed-approaches.md` | 2026-02-14 | feat/html-document-type | Tool hierarchy discovery | AppleScript blocked, screencapture limits, 15 min wasted on Tiers 2-3 |
 | `2026-02-14-html-plugin-cdp-testing.md` | 2026-02-14 | feat/html-document-type | 10-point HTML plugin verification | Paste detection bug found + fixed, evaluate_script patterns for ClipboardEvent, iframe verification |
+| `2026-03-28-graphviz-plugin-playwright-verification.md` | 2026-03-28 | feat/graphviz-doctype | 10-point G5 verification via Playwright MCP | Playwright MCP as Chrome DevTools MCP alternative; OS clipboard unreliable; CSS vars invisible in headless; file upload path restrictions; WASM lazy-load verification via network log |
 
 ### Reusable Snippets Index
 
@@ -464,6 +505,8 @@ These snippets are proven to work. Copy them verbatim (only change UIDs):
 | ClipboardEvent paste | html-plugin-cdp | `DataTransfer` + `ClipboardEvent('paste', ...)` |
 | Clear localStorage | html-plugin-cdp | `localStorage.clear(); return 'Cleared';` |
 | Check textarea value | registry-refactor | Take snapshot → look for `textbox` element → read `value` attribute |
+| Intercept download | graphviz-playwright | Override `URL.createObjectURL` + `HTMLAnchorElement.prototype.click` to capture filename/MIME |
+| Verify WASM lazy-load | graphviz-playwright | `browser_network_requests()` → parse for WASM/chunk filenames; they appear last in the log |
 
 ---
 
@@ -528,6 +571,74 @@ Previous test sessions leave state in localStorage. The migration code only fill
 The `fill()` tool may time out after 5000ms for large content. This does NOT mean the fill failed — content is usually set successfully.
 
 **Solution**: After a timeout, take a snapshot to verify the content was actually set. Don't retry the fill — that would append or cause other issues.
+
+### 8. Using system clipboard (Meta+v / navigator.clipboard.writeText) for paste testing (Discovered 2026-03-28)
+
+**Source**: `docs/browser-runs/2026-03-28-graphviz-plugin-playwright-verification.md`
+
+`navigator.clipboard.writeText('content')` followed by `Meta+v` keypress uses the **OS clipboard**, not the browser's clipboard API. In headless Playwright, the OS clipboard may contain stale content from earlier test steps or the host system. The paste event will deliver unexpected content.
+
+**Wrong approach**:
+```javascript
+// Set clipboard
+await evaluate_script({ function: `() => navigator.clipboard.writeText('graph TD\n  A --> B')` })
+// Press paste shortcut
+await press_key({ key: 'Meta+v' })
+// Result: UNPREDICTABLE — may paste stale OS clipboard content
+```
+
+**Correct approach**: Dispatch a `ClipboardEvent` directly (bypasses OS clipboard entirely):
+```javascript
+evaluate_script({
+  function: `(el) => {
+    el.focus(); el.select();
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'graph TD\n  A --> B');
+    el.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt }));
+    return 'Pasted';
+  }`,
+  args: [{ ref: "TEXTAREA_REF" }]   // Chrome DevTools: uid; Playwright: ref
+})
+```
+
+### 9. CSS custom properties invisible in headless Playwright screenshots (Discovered 2026-03-28)
+
+**Source**: `docs/browser-runs/2026-03-28-graphviz-plugin-playwright-verification.md`
+
+CSS variables that reference theme tokens (e.g., `color: oklch(var(--foreground))`, `background: hsl(var(--background) / 0.8)`) may render as near-invisible (white-on-white or very low contrast) in Playwright headless screenshots. This is because the theme CSS is loaded via Tailwind's `@theme` directive and may not initialize identically in headless context.
+
+**Impact**: Error badges (`text-destructive`), backgrounds (`bg-background/80`), and other theme-colored elements may be invisible in screenshots even though they are correctly present in the DOM.
+
+**Rule**: **Accessibility tree is ground truth**. A screenshot that looks blank does NOT mean the element is absent. Always verify error states via `browser_snapshot()` / `take_snapshot()` before concluding a test failed.
+
+```javascript
+// Correct: verify error state via accessibility tree
+const snapshot = await browser_snapshot();
+// Look for: generic, text: "syntax error in line 1 near '!'"
+// This confirms the error badge IS rendered even if the screenshot looks blank
+```
+
+### 10. browser_file_upload path restrictions (Discovered 2026-03-28)
+
+**Source**: `docs/browser-runs/2026-03-28-graphviz-plugin-playwright-verification.md`
+
+`browser_file_upload` (and its Chrome DevTools MCP equivalent) only accepts files within allowed filesystem roots. `/tmp/` is blocked. Files must be within the project root or user home directory.
+
+**Wrong**:
+```javascript
+browser_file_upload({ selector: 'input[type=file]', files: ['/tmp/test-graph.dot'] })
+// Error: Path /tmp/test-graph.dot is outside allowed roots
+```
+
+**Correct**:
+```bash
+# Copy file to project root first
+cp /tmp/test-graph.dot /Volumes/FLOUNDER/dev/mdeditor/test-graph.dot
+```
+```javascript
+browser_file_upload({ selector: 'input[type=file]', files: ['/Volumes/FLOUNDER/dev/mdeditor/test-graph.dot'] })
+// Clean up after test: rm /Volumes/FLOUNDER/dev/mdeditor/test-graph.dot
+```
 
 ### 7. Attempting to interact with iframe content via parent UIDs
 
@@ -692,6 +803,7 @@ This document synthesizes findings from:
 
 ---
 
-*Last updated: 2026-02-14*
-*Document version: 1.0*
-*Based on: 3 completed browser test sessions across 2 branches*
+*Last updated: 2026-03-28*
+*Document version: 1.1*
+*Based on: 4 completed browser test sessions across 3 branches*
+*2026-03-28: Added Playwright MCP as Tier 1b; new anti-patterns 8-10 (clipboard, CSS vars, file upload paths); updated detection priority table; graphviz run log added*

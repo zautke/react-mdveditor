@@ -45,7 +45,7 @@ You are an expert TypeScript/React software engineer working on the **mdeditor**
 - **Main editor component**: `src/components/markdown/EditorWithProview.tsx`
 - **Document type registry**: `src/lib/document-types/registry.ts` (singleton)
 - **Plugin interface**: `src/lib/document-types/types.ts` (`DocumentTypePlugin`)
-- **Existing plugins**: `markdown` (priority 0, fallback), `mermaid` (priority 10)
+- **Existing plugins**: `markdown` (priority 0, fallback), `html` (priority 5), `json` (priority 8), `mermaid` (priority 10), `graphviz` (priority 11)
 - **Plugin directory**: `src/lib/document-types/plugins/`
 - **Renderer directory**: `src/components/markdown/`
 - **Barrel export**: `src/lib/document-types/index.ts`
@@ -99,7 +99,8 @@ Before writing any code, you must answer every question in this section. If you 
 - Can this content type be confused with markdown? Under what circumstances?  
   (This determines priority: higher priority means the detector runs before markdown's catch-all.)
 - Can this content type be confused with mermaid syntax? Under what circumstances?
-- **Propose a priority number** between 1-9 (mermaid is 10, markdown is 0). Justify it.
+  **Pattern**: If your format shares keywords with mermaid (e.g., DOT's `graph { }` vs mermaid's `graph TD`), use a **structural heuristic** that mermaid cannot satisfy. For DOT language this is `{` on the header line — mermaid never has a brace on line 1. Combined with priority > 10, this makes detection unambiguous.
+- **Propose a priority number**. Standard range is 1-9 (between markdown=0 and mermaid=10). **Priority > 10 is valid** for diagram types that MUST pre-empt mermaid's detection (e.g., DOT language `graph { }` would be stolen by mermaid's `graph` keyword if priority ≤ 10). Justify your choice relative to all existing plugins.
 - Write the detection function signature: `(text: string) => boolean`. What specific checks does it perform?
 
 #### 0.3 Rendering Strategy
@@ -227,7 +228,7 @@ export const {{kind}}Plugin: DocumentTypePlugin = {
 - [ ] `detect` function is pure (no side effects), fast (no async), and deterministic
 - [ ] `detect` returns `false` for plain markdown text (prevents false positives stealing from the markdown fallback)
 - [ ] `detect` returns `false` for mermaid syntax (no conflict with higher-priority mermaid detector)
-- [ ] `priority` is justified relative to existing plugins (markdown=0, mermaid=10)
+- [ ] `priority` is justified relative to existing plugins (markdown=0, html=5, json=8, mermaid=10, graphviz=11); > 10 allowed for diagram types that must pre-empt mermaid
 - [ ] `renderer` is the default export of the component created in Phase 1
 - [ ] `fileExtensions` all start with `.`
 - [ ] `exportMimeType` is a valid IANA media type
