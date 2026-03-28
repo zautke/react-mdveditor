@@ -35,6 +35,8 @@ function GraphvizRendererWrapper({ content }: RendererProps) {
 }
 GraphvizRendererWrapper.displayName = 'GraphvizRendererWrapper'
 
+export default GraphvizRendererWrapper
+
 // ── Detection ───────────────────────────────────────────────────────
 
 /**
@@ -51,7 +53,7 @@ GraphvizRendererWrapper.displayName = 'GraphvizRendererWrapper'
  */
 export function isGraphvizText(text: string): boolean {
   const peek = text.trimStart().slice(0, 100)
-  return /^(strict\s+)?(di)?graph(\s+[\w"]+)?\s*\{/is.test(peek)
+  return /^(strict\s+)?(sub|di)?graph(\s+[\w"]+)?\s*\{/is.test(peek)
 }
 
 // ── Default content ─────────────────────────────────────────────────

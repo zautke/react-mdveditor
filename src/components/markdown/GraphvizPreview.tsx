@@ -4,10 +4,16 @@ import type { RendererProps } from '@/lib/document-types/types'
 
 // ── WASM singleton ──────────────────────────────────────────────────
 // Graphviz.load() fetches the WASM binary — call once, reuse forever.
+// On failure the promise is cleared so the next content change retries.
 let _graphvizPromise: Promise<Graphviz> | null = null
 
 function getGraphviz(): Promise<Graphviz> {
-  if (!_graphvizPromise) _graphvizPromise = Graphviz.load()
+  if (!_graphvizPromise) {
+    _graphvizPromise = Graphviz.load().catch((err: unknown) => {
+      _graphvizPromise = null // allow retry on next content change
+      throw err
+    })
+  }
   return _graphvizPromise
 }
 
@@ -20,6 +26,7 @@ const GraphvizPreview = memo(({ content }: RendererProps) => {
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
+    let cancelled = false
 
     if (!content.trim()) {
       container.innerHTML = ''
@@ -28,8 +35,9 @@ const GraphvizPreview = memo(({ content }: RendererProps) => {
 
     getGraphviz()
       .then((gviz) => {
-        setError(null)
-        const svg = gviz.dot(content, 'svg')
+        if (cancelled) return
+        const svg = gviz.dot(content, 'svg') // throws on invalid DOT
+        setError(null)                        // only reached on success
         container.innerHTML = svg
         // Make SVG fill the container width responsively
         const svgEl = container.querySelector('svg')
@@ -39,10 +47,15 @@ const GraphvizPreview = memo(({ content }: RendererProps) => {
         }
       })
       .catch((err: unknown) => {
+        if (cancelled) return
         const msg = err instanceof Error ? err.message : String(err)
         setError(msg)
         container.innerHTML = ''
       })
+
+    return () => {
+      cancelled = true
+    }
   }, [content])
 
   if (!content.trim()) {
