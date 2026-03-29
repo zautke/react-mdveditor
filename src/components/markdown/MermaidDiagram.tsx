@@ -24,8 +24,15 @@ function MermaidDiagram({ chart }: MermaidDiagramProps) {
     const titleId = `${figureId}-title`
     const descId = `${figureId}-desc`
 
-    // Extract diagram type from first line (e.g. "flowchart TD" → "Flowchart")
-    const diagramType = chart.trim().split(/[\s\n]/)[0]?.replace(/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|mindmap|timeline|sankey|xychart|quadrantChart|requirementDiagram|C4Context).*$/i, '$1') || 'Mermaid'
+    // Extract diagram type from first line, skipping any YAML frontmatter
+    const chartBody = (() => {
+        const t = chart.trim()
+        if (!t.startsWith('---')) return t
+        const m = t.match(/^-{3}[^\S\r\n]*[\r\n][\s\S]*?[\r\n]-{3}[^\S\r\n]*[\r\n]+/)
+        return m ? t.slice(m[0].length).trimStart() : t
+    })()
+    const diagramType = chartBody.split(/[\s\n]/)[0]
+        ?.replace(/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitgraph|journey|mindmap|timeline|sankey|xychart|quadrantChart|requirementDiagram|C4Context).*$/i, '$1') || 'Mermaid'
     const capitalizedType = diagramType.charAt(0).toUpperCase() + diagramType.slice(1)
 
     useEffect(() => {

@@ -50,14 +50,21 @@ const mermaidStarters = [
  * Returns `true` when `text` looks like raw mermaid diagram source.
  *
  * Checks whether the first non-empty line starts with one of the
- * known mermaid diagram keywords.  Fast, pure, and deterministic.
+ * known mermaid diagram keywords.  Skips a leading YAML frontmatter
+ * block (--- ... ---) so that diagrams with per-diagram config are
+ * detected correctly.  Fast, pure, and deterministic.
  */
 export function isMermaidText(text: string): boolean {
-  const trimmed = text.trimStart().toLowerCase()
-  if (!trimmed) return false
+  let content = text.trimStart()
+  if (!content) return false
 
-  // Extract the first word (up to whitespace or newline)
-  const firstWord = trimmed.split(/[\s\n]/)[0]
+  // Skip YAML frontmatter (mirrors Mermaid's own frontMatterRegex)
+  if (content.startsWith('---')) {
+    const fm = content.match(/^-{3}[^\S\r\n]*[\r\n][\s\S]*?[\r\n]-{3}[^\S\r\n]*[\r\n]+/)
+    if (fm) content = content.slice(fm[0].length).trimStart()
+  }
+
+  const firstWord = content.toLowerCase().split(/[\s\n]/)[0]
   return mermaidStarters.some((starter) => firstWord === starter)
 }
 
