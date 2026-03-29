@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life by Design | Frameworks for Intentional Living</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['Playfair Display', 'serif'],
+            sans: ['DM Sans', 'sans-serif'],
+          },
+          colors: {
+            beige: {
+              50: '#FDFBF7',
+              100: '#F9F5ED',
+              200: '#F5F0E8',
+              300: '#EDE5D8',
+              400: '#E0D4C0',
+            },
+            sage: {
+              50: '#F6F8F4',
+              100: '#E8EDE3',
+              200: '#D4DFCA',
+              300: '#B5C4A5',
+              400: '#8B9A7D',
+              500: '#6B7F5A',
+              600: '#4A5A3D',
+            },
+            warm: {
+              50: '#FAF9F8',
+              100: '#F4F2F0',
+              200: '#E8E5E2',
+              300: '#D4D0CB',
+              400: '#A39E97',
+              500: '#6B6560',
+              600: '#4A4642',
+              700: '#3D3B3A',
+              800: '#2A2827',
+              900: '#1A1918',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes fadeIn {
+      0% { opacity: 0 }
+      100% { opacity: 1 }
+    }
+    @keyframes slideUp {
+      0% { opacity: 0; transform: translateY(30px) }
+      100% { opacity: 1; transform: translateY(0) }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) }
+      50% { transform: translateY(-10px) }
+    }
+    .animate-fade-in { animation: fadeIn 1s ease-out forwards }
+    .animate-slide-up { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards }
+    .animate-float { animation: float 6s ease-in-out infinite }
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #6B7F5A, #8B9A7D);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(74, 90, 61, 0.1);
+    }
+    .progress-bar {
+      background: linear-gradient(90deg, #8B9A7D, #B5C4A5);
+    }
+  </style>
+</head>
+<body class="font-sans bg-beige-50 text-warm-700 antialiased">
+
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-beige-50/95 backdrop-blur-md border-b border-beige-300/50">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        <!-- Logo -->
+        <a href="#" class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-sage-400 rounded-xl flex items-center justify-center">
+            <iconify-icon icon="ph:leaf-duotone" class="text-white text-xl"></iconify-icon>
+          </div>
+          <span class="font-serif text-xl font-semibold text-warm-800">Life by Design</span>
+        </a>
+
+        <!-- Desktop Menu -->
+        <div class="hidden lg:flex items-center gap-8">
+          <a href="#frameworks" class="text-sm font-medium text-warm-500 hover:text-sage-600 transition-colors">Frameworks</a>
+          <a href="#tools" class="text-sm font-medium text-warm-500 hover:text-sage-600 transition-colors">Tools</a>
+          <a href="#reflections" class="text-sm font-medium text-warm-500 hover:text-sage-600 transition-colors">Reflections</a>
+          <a href="#reviews" class="text-sm font-medium text-warm-500 hover:text-sage-600 transition-colors">Yearly Reviews</a>
+          <a href="#about" class="text-sm font-medium text-warm-500 hover:text-sage-600 transition-colors">About</a>
+        </div>
+
+        <!-- Subscribe Button -->
+        <div class="flex items-center gap-4">
+          <button class="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-sage-500 hover:bg-sage-600 text-white text-sm font-medium rounded-full transition-colors">
+            <iconify-icon icon="ph:envelope-simple"></iconify-icon>
+            Subscribe
+          </button>
+          <button class="lg:hidden p-2 text-warm-600" onclick="toggleMobileMenu()">
+            <iconify-icon icon="ph:list" class="text-2xl"></iconify-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="hidden lg:hidden bg-beige-50 border-t border-beige-300/50">
+      <div class="px-6 py-4 space-y-3">
+        <a href="#frameworks" class="block py-2 text-warm-600 hover:text-sage-600">Frameworks</a>
+        <a href="#tools" class="block py-2 text-warm-600 hover:text-sage-600">Tools</a>
+        <a href="#reflections" class="block py-2 text-warm-600 hover:text-sage-600">Reflections</a>
+        <a href="#reviews" class="block py-2 text-warm-600 hover:text-sage-600">Yearly Reviews</a>
+        <a href="#about" class="block py-2 text-warm-600 hover:text-sage-600">About</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="min-h-screen pt-20 relative overflow-hidden">
+    <!-- Decorative Elements -->
+    <div class="absolute top-32 right-0 w-96 h-96 bg-sage-200/30 rounded-full blur-3xl animate-float"></div>
+    <div class="absolute bottom-0 left-0 w-80 h-80 bg-beige-300/50 rounded-full blur-3xl"></div>
+    
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-32">
+      <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <!-- Text Content -->
+        <div class="space-y-8 animate-slide-up">
+          <div class="inline-flex items-center gap-2 px-4 py-2 bg-sage-100 rounded-full">
+            <iconify-icon icon="ph:compass-duotone" class="text-sage-600"></iconify-icon>
+            <span class="text-sm font-medium text-sage-600">Design Your Intentional Life</span>
+          </div>
+          
+          <h1 class="font-serif text-5xl lg:text-7xl font-medium leading-tight tracking-tight text-warm-800">
+            Frameworks for <br>
+            <span class="gradient-text">Intentional</span> Living
+          </h1>
+          
+          <p class="text-lg lg:text-xl text-warm-500 leading-relaxed max-w-lg">
+            Practical systems, meaningful habits, and thoughtful frameworks 
+            to help you design a life of purpose and clarity.
+          </p>
+          
+          <div class="flex flex-wrap gap-4">
+            <a href="#frameworks" class="inline-flex items-center gap-2 px-6 py-3 bg-warm-800 hover:bg-warm-900 text-white font-medium rounded-full transition-colors">
+              Explore Frameworks
+              <iconify-icon icon="ph:arrow-right"></iconify-icon>
+            </a>
+            <a href="#newsletter" class="inline-flex items-center gap-2 px-6 py-3 border border-warm-300 hover:border-sage-400 text-warm-700 font-medium rounded-full transition-colors">
+              Join Newsletter
+            </a>
+          </div>
+
+          <!-- Stats -->
+          <div class="flex gap-8 pt-8 border-t border-beige-300">
+            <div>
+              <p class="font-serif text-3xl font-semibold text-warm-800">47</p>
+              <p class="text-sm text-warm-500">Frameworks</p>
+            </div>
+            <div>
+              <p class="font-serif text-3xl font-semibold text-warm-800">12k+</p>
+              <p class="text-sm text-warm-500">Readers</p>
+            </div>
+            <div>
+              <p class="font-serif text-3xl font-semibold text-warm-800">5</p>
+              <p class="text-sm text-warm-500">Years Writing</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero Image/Illustration -->
+        <div class="relative animate-fade-in" style="animation-delay: 0.3s;">
+          <div class="relative bg-white rounded-3xl p-8 shadow-xl border border-beige-200">
+            <!-- System Diagram Preview -->
+            <div class="space-y-6">
+              <div class="flex items-center justify-between">
+                <h3 class="font-serif text-lg font-medium text-warm-800">Life Design System</h3>
+                <span class="text-xs text-sage-500 bg-sage-50 px-2 py-1 rounded-full">Active</span>
+              </div>
+              
+              <!-- Visual Diagram -->
+              <div class="grid grid-cols-3 gap-4">
+                <div class="bg-sage-50 rounded-xl p-4 text-center">
+                  <iconify-icon icon="ph:target-duotone" class="text-3xl text-sage-500 mb-2"></iconify-icon>
+                  <p class="text-xs font-medium text-warm-600">Vision</p>
+                </div>
+                <div class="bg-beige-100 rounded-xl p-4 text-center">
+                  <iconify-icon icon="ph:strategy-duotone" class="text-3xl text-warm-400 mb-2"></iconify-icon>
+                  <p class="text-xs font-medium text-warm-600">Strategy</p>
+                </div>
+                <div class="bg-sage-50 rounded-xl p-4 text-center">
+                  <iconify-icon icon="ph:check-circle-duotone" class="text-3xl text-sage-500 mb-2"></iconify-icon>
+                  <p class="text-xs font-medium text-warm-600">Action</p>
+                </div>
+              </div>
+
+              <!-- Progress Bars -->
+              <div class="space-y-4">
+                <div>
+                  <div class="flex justify-between text-sm mb-2">
+                    <span class="text-warm-600">Health System</span>
+                    <span class="text-sage-600 font-medium">85%</span>
+                  </div>
+                  <div class="h-2 bg-beige-200 rounded-full overflow-hidden">
+                    <div class="h-full progress-bar rounded-full" style="width: 85%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-2">
+                    <span class="text-warm-600">Learning Goals</span>
+                    <span class="text-sage-600 font-medium">72%</span>
+                  </div>
+                  <div class="h-2 bg-beige-200 rounded-full overflow-hidden">
+                    <div class="h-full progress-bar rounded-full" style="width: 72%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-2">
+                    <span class="text-warm-600">Creative Projects</span>
+                    <span class="text-sage-600 font-medium">60%</span>
+                  </div>
+                  <div class="h-2 bg-beige-200 rounded-full overflow-hidden">
+                    <div class="h-full progress-bar rounded-full" style="width: 60%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Floating Cards -->
+          <div class="absolute -top-4 -left-4 bg-white rounded-xl p-3 shadow-lg border border-beige-200 animate-float" style="animation-delay: 0.5s;">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 bg-sage-100 rounded-lg flex items-center justify-center">
+                <iconify-icon icon="ph:book-open-duotone" class="text-sage-600"></iconify-icon>
+              </div>
+              <div>
+                <p class="text-xs font-medium text-warm-700">Daily Reading</p>
+                <p class="text-xs text-warm-400">30 min • Done</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="absolute -bottom-4 -right-4 bg-white rounded-xl p-3 shadow-lg border border-beige-200 animate-float" style="animation-delay: 1s;">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 bg-beige-200 rounded-lg flex items-center justify-center">
+                <iconify-icon icon="ph:meditation-duotone" class="text-warm-600"></iconify-icon>
+              </div>
+              <div>
+                <p class="text-xs font-medium text-warm-700">Morning Routine</p>
+                <p class="text-xs text-warm-400">7/7 days</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Frameworks -->
+  <section id="frameworks" class="py-20 lg:py-32 bg-white">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="text-center mb-16 reveal">
+        <span class="inline-block text-xs font-semibold tracking-widest text-sage-500 uppercase mb-4">Core Frameworks</span>
+        <h2 class="font-serif text-4xl lg:text-5xl font-medium text-warm-800 mb-6">Guiding Principles</h2>
+        <p class="text-lg text-warm-500 max-w-2xl mx-auto">
+          Each framework is a lens through which to view your decisions, habits, and goals.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Framework Card 1 -->
+        <div class="reveal card-hover bg-beige-50 rounded-2xl p-8 border border-beige-200">
+          <div class="w-14 h-14 bg-sage-100 rounded-2xl flex items-center justify-center mb-6">
+            <iconify-icon icon="ph:arrows-out-cardinal-duotone" class="text-3xl text-sage-600"></iconify-icon>
+          </div>
+          <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Decision Making</span>
+          <h3 class="font-serif text-2xl font-medium text-warm-800 mt-2 mb-4">The 80/20 Principle</h3>
+          <p class="text-warm-500 leading-relaxed mb-6">
+            Focus on the vital few activities that drive 80% of your results. Eliminate or delegate the rest.
+          </p>
+          <a href="#" class="inline-flex items-center gap-2 text-sage-600 font-medium hover:gap-3 transition-all">
+            Read More <iconify-icon icon="ph:arrow-right"></iconify-icon>
+          </a>
+        </div>
+
+        <!-- Framework Card 2 -->
+        <div class="reveal card-hover bg-beige-50 rounded-2xl p-8 border border-beige-200" style="animation-delay: 0.1s;">
+          <div class="w-14 h-14 bg-sage-100 rounded-2xl flex items-center justify-center mb-6">
+            <iconify-icon icon="ph:spiral-duotone" class="text-3xl text-sage-600"></iconify-icon>
+          </div>
+          <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Growth</span>
+          <h3 class="font-serif text-2xl font-medium text-warm-800 mt-2 mb-4">Compound Habits</h3>
+          <p class="text-warm-500 leading-relaxed mb-6">
+            Small, consistent actions compound over time into remarkable transformations.
+          </p>
+          <a href="#" class="inline-flex items-center gap-2 text-sage-600 font-medium hover:gap-3 transition-all">
+            Read More <iconify-icon icon="ph:arrow-right"></iconify-icon>
+          </a>
+        </div>
+
+        <!-- Framework Card 3 -->
+        <div class="reveal card-hover bg-beige-50 rounded-2xl p-8 border border-beige-200" style="animation-delay: 0.2s;">
+          <div class="w-14 h-14 bg-sage-100 rounded-2xl flex items-center justify-center mb-6">
+            <iconify-icon icon="ph:flow-arrow-duotone" class="text-3xl text-sage-600"></iconify-icon>
+          </div>
+          <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Productivity</span>
+          <h3 class="font-serif text-2xl font-medium text-warm-800 mt-2 mb-4">Energy Mapping</h3>
+          <p class="text-warm-500 leading-relaxed mb-6">
+            Align your most important work with your natural energy peaks throughout the day.
+          </p>
+          <a href="#" class="inline-flex items-center gap-2 text-sage-600 font-medium hover:gap-3 transition-all">
+            Read More <iconify-icon icon="ph:arrow-right"></iconify-icon>
+          </a>
+        </div>
+
+        <!-- Framework Card 4 -->
+        <div class="reveal card-hover bg-beige-50 rounded-2xl p-8 border border-beige-200" style="animation-delay: 0.3s;">
+          <div class="w-14 h-14 bg-sage-100 rounded-2xl flex items-center justify-center mb-6">
+            <iconify-icon icon="ph:tree-structure-duotone" class="text-3xl text-sage-600"></iconify-icon>
+          </div>
+          <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Systems</span>
+          <h3 class="font-serif text-2xl font-medium text-warm-800 mt-2 mb-4">Life Operating System</h3>
+          <p class="text-warm-500 leading-relaxed mb-6">
+            A comprehensive framework for organizing all areas of life into interconnected systems.
+          </p>
+          <a href="#" class="inline-flex items-center gap-2 text-sage-600 font-medium hover:gap-3 transition-all">
+            Read More <iconify-icon icon="ph:arrow-right"></iconify-icon>
+          </a>
+        </div>
+
+        <!-- Framework Card 5 -->
+        <div class="reveal card-hover bg-beige-50 rounded-2xl p-8 border border-beige-200" style="animation-delay: 0.4s;">
+          <div class="w-14 h-14 bg-sage-100 rounded-2xl flex items-center justify-center mb-6">
+            <iconify-icon icon="ph:crosshair-duotone" class="text-3xl text-sage-600"></iconify-icon>
+          </div>
+          <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Focus</span>
+          <h3 class="font-serif text-2xl font-medium text-warm-800 mt-2 mb-4">Essentialism</h3>
+          <p class="text-warm-500 leading-relaxed mb-6">
+            The disciplined pursuit of less—doing only what is essential to create maximum impact.
+          </p>
+          <a href="#" class="inline-flex items-center gap-2 text-sage-600 font-medium hover:gap-3 transition-all">
+            Read More <iconify-icon icon="ph:arrow-right"></iconify-icon>
+          </a>
+        </div>
+
+        <!-- Framework Card 6 -->
+        <div class="reveal card-hover bg-beige-50 rounded-2xl p-8 border border-beige-200" style="animation-delay: 0.5s;">
+          <div class="w-14 h-14 bg-sage-100 rounded-2xl flex items-center justify-center mb-6">
+            <iconify-icon icon="ph:atom-duotone" class="text-3xl text-sage-600"></iconify-icon>
+          </div>
+          <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Mindset</span>
+          <h3 class="font-serif text-2xl font-medium text-warm-800 mt-2 mb-4">Atomic Progress</h3>
+          <p class="text-warm-500 leading-relaxed mb-6">
+            Break down overwhelming goals into the smallest possible actions you can take today.
+          </p>
+          <a href="#" class="inline-flex items-center gap-2 text-sage-600 font-medium hover:gap-3 transition-all">
+            Read More <iconify-icon icon="ph:arrow-right"></iconify-icon>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent Posts -->
+  <section id="tools" class="py-20 lg:py-32 bg-beige-50">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between mb-12 reveal">
+        <div>
+          <span class="inline-block text-xs font-semibold tracking-widest text-sage-500 uppercase mb-4">Recent Writing</span>
+          <h2 class="font-serif text-4xl lg:text-5xl font-medium text-warm-800">Latest Posts</h2>
+        </div>
+        <a href="#" class="mt-4 lg:mt-0 inline-flex items-center gap-2 text-sage-600 font-medium hover:gap-3 transition-all">
+          View All Posts <iconify-icon icon="ph:arrow-right"></iconify-icon>
+        </a>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-8">
+        <!-- Featured Post -->
+        <div class="reveal lg:row-span-2">
+          <article class="group h-full bg-white rounded-2xl overflow-hidden border border-beige-200 card-hover">
+            <div class="relative h-64 lg:h-80 overflow-hidden">
+              <img src="https://picsum.photos/seed/intentional-living/800/600.jpg" alt="Featured post" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+              <div class="absolute inset-0 bg-gradient-to-t from-warm-900/60 to-transparent"></div>
+              <div class="absolute bottom-6 left-6 right-6">
+                <span class="inline-block px-3 py-1 bg-sage-500 text-white text-xs font-medium rounded-full mb-3">Tools</span>
+                <h3 class="font-serif text-2xl lg:text-3xl text-white font-medium">Building Your Personal Dashboard: A Complete Guide</h3>
+              </div>
+            </div>
+            <div class="p-6 lg:p-8">
+              <p class="text-warm-500 leading-relaxed mb-4">
+                Learn how to create a visual dashboard that tracks your habits, goals, and key metrics in one unified system. Includes templates and Notion setups.
+              </p>
+              <div class="flex items-center gap-4 text-sm text-warm-400">
+                <span>Jan 15, 2025</span>
+                <span>•</span>
+                <span>12 min read</span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- Post Cards -->
+        <div class="reveal space-y-6" style="animation-delay: 0.1s;">
+          <article class="group bg-white rounded-xl p-6 border border-beige-200 card-hover flex gap-6">
+            <div class="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
+              <img src="https://picsum.photos/seed/morning-routine/300/300.jpg" alt="Post thumbnail" class="w-full h-full object-cover">
+            </div>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Habits</span>
+              <h3 class="font-serif text-lg font-medium text-warm-800 mt-1 mb-2 group-hover:text-sage-600 transition-colors">The 5AM Morning Protocol That Changed Everything</h3>
+              <p class="text-sm text-warm-400">Jan 10, 2025 • 8 min</p>
+            </div>
+          </article>
+
+          <article class="group bg-white rounded-xl p-6 border border-beige-200 card-hover flex gap-6">
+            <div class="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
+              <img src="https://picsum.photos/seed/reflection-writing/300/300.jpg" alt="Post thumbnail" class="w-full h-full object-cover">
+            </div>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Reflections</span>
+              <h3 class="font-serif text-lg font-medium text-warm-800 mt-1 mb-2 group-hover:text-sage-600 transition-colors">Weekly Review: The Art of Looking Back to Move Forward</h3>
+              <p class="text-sm text-warm-400">Jan 5, 2025 • 6 min</p>
+            </div>
+          </article>
+
+          <article class="group bg-white rounded-xl p-6 border border-beige-200 card-hover flex gap-6">
+            <div class="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
+              <img src="https://picsum.photos/seed/goal-setting/300/300.jpg" alt="Post thumbnail" class="w-full h-full object-cover">
+            </div>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Principles</span>
+              <h3 class="font-serif text-lg font-medium text-warm-800 mt-1 mb-2 group-hover:text-sage-600 transition-colors">Setting Intentions vs. Setting Goals: A Distinction</h3>
+              <p class="text-sm text-warm-400">Dec 28, 2024 • 5 min</p>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- Categories -->
+      <div class="flex flex-wrap gap-3 mt-12 reveal">
+        <span class="text-sm text-warm-500 mr-2">Browse by topic:</span>
+        <a href="#" class="px-4 py-2 bg-white border border-beige-200 rounded-full text-sm text-warm-600 hover:bg-sage-50 hover:border-sage-200 hover:text-sage-600 transition-all">Principles</a>
+        <a href="#" class="px-4 py-2 bg-white border border-beige-200 rounded-full text-sm text-warm-600 hover:bg-sage-50 hover:border-sage-200 hover:text-sage-600 transition-all">Tools</a>
+        <a href="#" class="px-4 py-2 bg-white border border-beige-200 rounded-full text-sm text-warm-600 hover:bg-sage-50 hover:border-sage-200 hover:text-sage-600 transition-all">Reflections</a>
+        <a href="#" class="px-4 py-2 bg-white border border-beige-200 rounded-full text-sm text-warm-600 hover:bg-sage-50 hover:border-sage-200 hover:text-sage-600 transition-all">Habits</a>
+        <a href="#" class="px-4 py-2 bg-white border border-beige-200 rounded-full text-sm text-warm-600 hover:bg-sage-50 hover:border-sage-200 hover:text-sage-600 transition-all">Systems</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Habit Dashboard Section -->
+  <section id="reflections" class="py-20 lg:py-32 bg-warm-800 text-white relative overflow-hidden">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 opacity-10">
+      <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,%3Csvg width=&quot;60&quot; height=&quot;60&quot; viewBox=&quot;0 0 60 60&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;none&quot; fill-rule=&quot;evenodd&quot;%3E%3Cg fill=&quot;%23ffffff&quot; fill-opacity=&quot;0.4&quot;%3E%3Cpath d=&quot;M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z&quot;/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 relative">
+      <div class="grid lg:grid-cols-2 gap-16 items-center">
+        <!-- Text Content -->
+        <div class="reveal">
+          <span class="inline-block text-xs font-semibold tracking-widest text-sage-300 uppercase mb-4">Habit Tracking</span>
+          <h2 class="font-serif text-4xl lg:text-5xl font-medium text-white mb-6">Build Systems, Not Just Goals</h2>
+          <p class="text-lg text-warm-300 leading-relaxed mb-8">
+            Every post includes interactive habit dashboards and system diagrams to help you visualize progress and maintain consistency in your intentional living journey.
+          </p>
+          
+          <div class="space-y-4">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 bg-sage-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <iconify-icon icon="ph:chart-line-up-duotone" class="text-xl text-sage-300"></iconify-icon>
+              </div>
+              <div>
+                <h4 class="font-medium text-white mb-1">Visual Progress Tracking</h4>
+                <p class="text-warm-400 text-sm">See your habits compound over weeks and months</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 bg-sage-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <iconify-icon icon="ph:calendar-check-duotone" class="text-xl text-sage-300"></iconify-icon>
+              </div>
+              <div>
+                <h4 class="font-medium text-white mb-1">Streak Maintenance</h4>
+                <p class="text-warm-400 text-sm">Build momentum with visual streak counters</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 bg-sage-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <iconify-icon icon="ph:notebook-duotone" class="text-xl text-sage-300"></iconify-icon>
+              </div>
+              <div>
+                <h4 class="font-medium text-white mb-1">Journal Integration</h4>
+                <p class="text-warm-400 text-sm">Reflect on patterns with built-in journaling</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Preview -->
+        <div class="reveal" style="animation-delay: 0.2s;">
+          <div class="bg-warm-700/50 backdrop-blur rounded-2xl p-6 lg:p-8 border border-warm-600">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="font-serif text-xl text-white">Weekly Habit Dashboard</h3>
+              <span class="text-sm text-sage-300">Jan 13 - 19</span>
+            </div>
+
+            <!-- Habit Grid -->
+            <div class="space-y-4">
+              <!-- Habit Row 1 -->
+              <div class="flex items-center gap-4">
+                <span class="w-24 text-sm text-warm-300">Meditation</span>
+                <div class="flex gap-2 flex-1">
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">M</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">T</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">W</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">T</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">F</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">S</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">S</div>
+                </div>
+                <span class="text-sm text-sage-300 font-medium w-12 text-right">5/7</span>
+              </div>
+
+              <!-- Habit Row 2 -->
+              <div class="flex items-center gap-4">
+                <span class="w-24 text-sm text-warm-300">Reading</span>
+                <div class="flex gap-2 flex-1">
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">M</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">T</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">W</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">T</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">F</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">S</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">S</div>
+                </div>
+                <span class="text-sm text-sage-300 font-medium w-12 text-right">5/7</span>
+              </div>
+
+              <!-- Habit Row 3 -->
+              <div class="flex items-center gap-4">
+                <span class="w-24 text-sm text-warm-300">Exercise</span>
+                <div class="flex gap-2 flex-1">
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">M</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">T</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">W</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">T</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">F</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">S</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">S</div>
+                </div>
+                <span class="text-sm text-sage-300 font-medium w-12 text-right">3/7</span>
+              </div>
+
+              <!-- Habit Row 4 -->
+              <div class="flex items-center gap-4">
+                <span class="w-24 text-sm text-warm-300">Writing</span>
+                <div class="flex gap-2 flex-1">
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">M</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">T</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">W</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">T</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">F</div>
+                  <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center text-white text-xs">S</div>
+                  <div class="w-8 h-8 bg-warm-600 rounded-lg flex items-center justify-center text-warm-400 text-xs">S</div>
+                </div>
+                <span class="text-sm text-sage-300 font-medium w-12 text-right">6/7</span>
+              </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="mt-8 pt-6 border-t border-warm-600 grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p class="font-serif text-2xl text-white">19</p>
+                <p class="text-xs text-warm-400">Completed</p>
+              </div>
+              <div>
+                <p class="font-serif text-2xl text-white">68%</p>
+                <p class="text-xs text-warm-400">Completion</p>
+              </div>
+              <div>
+                <p class="font-serif text-2xl text-sage-300">🔥 12</p>
+                <p class="text-xs text-warm-400">Day Streak</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Yearly Reviews -->
+  <section id="reviews" class="py-20 lg:py-32 bg-beige-100">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="text-center mb-16 reveal">
+        <span class="inline-block text-xs font-semibold tracking-widest text-sage-500 uppercase mb-4">Annual Reflections</span>
+        <h2 class="font-serif text-4xl lg:text-5xl font-medium text-warm-800 mb-6">Yearly Reviews</h2>
+        <p class="text-lg text-warm-500 max-w-2xl mx-auto">
+          Deep dives into lessons learned, goals achieved, and intentions for the year ahead.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Year Card -->
+        <a href="#" class="reveal group">
+          <div class="bg-white rounded-2xl p-6 border border-beige-200 card-hover h-full">
+            <div class="flex items-center justify-between mb-4">
+              <span class="font-serif text-4xl font-medium text-warm-800 group-hover:text-sage-600 transition-colors">2024</span>
+              <iconify-icon icon="ph:arrow-up-right" class="text-2xl text-warm-400 group-hover:text-sage-500 transition-colors"></iconify-icon>
+            </div>
+            <p class="text-warm-500 text-sm mb-4">The year of systems—building sustainable habits and automating success.</p>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 bg-sage-50 text-sage-600 text-xs rounded-full">Systems</span>
+              <span class="px-2 py-1 bg-beige-100 text-warm-500 text-xs rounded-full">Growth</span>
+            </div>
+          </div>
+        </a>
+
+        <a href="#" class="reveal group" style="animation-delay: 0.1s;">
+          <div class="bg-white rounded-2xl p-6 border border-beige-200 card-hover h-full">
+            <div class="flex items-center justify-between mb-4">
+              <span class="font-serif text-4xl font-medium text-warm-800 group-hover:text-sage-600 transition-colors">2023</span>
+              <iconify-icon icon="ph:arrow-up-right" class="text-2xl text-warm-400 group-hover:text-sage-500 transition-colors"></iconify-icon>
+            </div>
+            <p class="text-warm-500 text-sm mb-4">The year of foundations—establishing core values and direction.</p>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 bg-sage-50 text-sage-600 text-xs rounded-full">Values</span>
+              <span class="px-2 py-1 bg-beige-100 text-warm-500 text-xs rounded-full">Direction</span>
+            </div>
+          </div>
+        </a>
+
+        <a href="#" class="reveal group" style="animation-delay: 0.2s;">
+          <div class="bg-white rounded-2xl p-6 border border-beige-200 card-hover h-full">
+            <div class="flex items-center justify-between mb-4">
+              <span class="font-serif text-4xl font-medium text-warm-800 group-hover:text-sage-600 transition-colors">2022</span>
+              <iconify-icon icon="ph:arrow-up-right" class="text-2xl text-warm-400 group-hover:text-sage-500 transition-colors"></iconify-icon>
+            </div>
+            <p class="text-warm-500 text-sm mb-4">The year of exploration—trying new paths and finding what fits.</p>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 bg-sage-50 text-sage-600 text-xs rounded-full">Discovery</span>
+              <span class="px-2 py-1 bg-beige-100 text-warm-500 text-xs rounded-full">Change</span>
+            </div>
+          </div>
+        </a>
+
+        <a href="#" class="reveal group" style="animation-delay: 0.3s;">
+          <div class="bg-white rounded-2xl p-6 border border-beige-200 card-hover h-full">
+            <div class="flex items-center justify-between mb-4">
+              <span class="font-serif text-4xl font-medium text-warm-800 group-hover:text-sage-600 transition-colors">2021</span>
+              <iconify-icon icon="ph:arrow-up-right" class="text-2xl text-warm-400 group-hover:text-sage-500 transition-colors"></iconify-icon>
+            </div>
+            <p class="text-warm-500 text-sm mb-4">The year of beginnings—starting this blog and documenting the journey.</p>
+            <div class="flex gap-2">
+              <span class="px-2 py-1 bg-sage-50 text-sage-600 text-xs rounded-full">Start</span>
+              <span class="px-2 py-1 bg-beige-100 text-warm-500 text-xs rounded-full">Writing</span>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Long-term Goals Preview -->
+      <div class="mt-20 reveal">
+        <div class="bg-white rounded-2xl p-8 lg:p-12 border border-beige-200">
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div>
+              <span class="text-xs font-semibold text-sage-500 tracking-wide uppercase">Long-term Vision</span>
+              <h3 class="font-serif text-2xl lg:text-3xl font-medium text-warm-800 mt-2">10-Year Life Blueprint</h3>
+              <p class="text-warm-500 mt-2 max-w-xl">A living document outlining goals across health, relationships, career, and personal growth with quarterly milestones.</p>
+            </div>
+            <a href="#" class="inline-flex items-center gap-2 px-6 py-3 bg-sage-500 hover:bg-sage-600 text-white font-medium rounded-full transition-colors whitespace-nowrap">
+              View Blueprint
+              <iconify-icon icon="ph:arrow-right"></iconify-icon>
+            </a>
+          </div>
+
+          <!-- Goal Categories -->
+          <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-10 pt-10 border-t border-beige-200">
+            <div>
+              <div class="flex items-center gap-2 mb-3">
+                <iconify-icon icon="ph:heart-duotone" class="text-xl text-sage-500"></iconify-icon>
+                <span class="font-medium text-warm-700">Health</span>
+              </div>
+              <p class="text-sm text-warm-500">Physical vitality, mental clarity, emotional resilience</p>
+              <div class="mt-3 h-2 bg-beige-200 rounded-full overflow-hidden">
+                <div class="h-full progress-bar rounded-full" style="width: 75%"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-3">
+                <iconify-icon icon="ph:users-duotone" class="text-xl text-sage-500"></iconify-icon>
+                <span class="font-medium text-warm-700">Relationships</span>
+              </div>
+              <p class="text-sm text-warm-500">Family bonds, friendships, community connections</p>
+              <div class="mt-3 h-2 bg-beige-200 rounded-full overflow-hidden">
+                <div class="h-full progress-bar rounded-full" style="width: 68%"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-3">
+                <iconify-icon icon="ph:briefcase-duotone" class="text-xl text-sage-500"></iconify-icon>
+                <span class="font-medium text-warm-700">Career</span>
+              </div>
+              <p class="text-sm text-warm-500">Professional growth, meaningful work, financial goals</p>
+              <div class="mt-3 h-2 bg-beige-200 rounded-full overflow-hidden">
+                <div class="h-full progress-bar rounded-full" style="width: 82%"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-3">
+                <iconify-icon icon="ph:sparkle-duotone" class="text-xl text-sage-500"></iconify-icon>
+                <span class="font-medium text-warm-700">Growth</span>
+              </div>
+              <p class="text-sm text-warm-500">Skills, creativity, wisdom, self-awareness</p>
+              <div class="mt-3 h-2 bg-beige-200 rounded-full overflow-hidden">
+                <div class="h-full progress-bar rounded-full" style="width: 70%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Newsletter Section -->
+  <section id="newsletter" class="py-20 lg:py-32 bg-sage-500 relative overflow-hidden">
+    <!-- Decorative -->
+    <div class="absolute top-0 right-0 w-96 h-96 bg-sage-400/50 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-0 left-0 w-80 h-80 bg-sage-600/30 rounded-full blur-3xl"></div>
+
+    <div class="max-w-4xl mx-auto px-6 lg:px-8 relative text-center">
+      <div class="reveal">
+        <iconify-icon icon="ph:envelope-simple-duotone" class="text-6xl text-sage-200 mb-6"></iconify-icon>
+        <h2 class="font-serif text-4xl lg:text-5xl font-medium text-white mb-6">Weekly Intentional Living</h2>
+        <p class="text-lg text-sage-100 leading-relaxed mb-8 max-w-2xl mx-auto">
+          Join 12,000+ readers receiving frameworks, tools, and reflections every Sunday morning. Choose your themed series below.
+        </p>
+
+        <!-- Themed Series -->
+        <div class="flex flex-wrap justify-center gap-3 mb-8">
+          <button class="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-full transition-colors border border-white/30">
+            🔥 Habit Building
+          </button>
+          <button class="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-full transition-colors border border-white/30">
+            📚 Book Summaries
+          </button>
+          <button class="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-full transition-colors border border-white/30">
+            💡 Framework Deep Dives
+          </button>
+          <button class="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-full transition-colors border border-white/30">
+            ✨ Monthly Reflections
+          </button>
+        </div>
+
+        <!-- Email Form -->
+        <form class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+          <input type="email" placeholder="Enter your email" class="flex-1 px-5 py-3 bg-white/20 backdrop-blur border border-white/30 rounded-full text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50">
+          <button type="submit" class="px-6 py-3 bg-white text-sage-600 font-medium rounded-full hover:bg-sage-50 transition-colors whitespace-nowrap">
+            Subscribe
+          </button>
+        </form>
+
+        <p class="text-sm text-sage-200 mt-4">No spam, ever. Unsubscribe anytime.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer id="about" class="bg-warm-900 text-white pt-20 pb-10">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <!-- Manifesto -->
+      <div class="reveal text-center max-w-3xl mx-auto mb-20">
+        <iconify-icon icon="ph:quotes-duotone" class="text-5xl text-sage-400 mb-6"></iconify-icon>
+        <h3 class="font-serif text-2xl lg:text-3xl text-white font-medium leading-relaxed mb-6">
+          "Life doesn't happen to us—we design it through our daily choices, the systems we build, and the values we honor."
+        </h3>
+        <p class="text-warm-400">— The Life by Design Manifesto</p>
+      </div>
+
+      <!-- Footer Grid -->
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <!-- About -->
+        <div class="lg:col-span-2">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-sage-500 rounded-xl flex items-center justify-center">
+              <iconify-icon icon="ph:leaf-duotone" class="text-white text-xl"></iconify-icon>
+            </div>
+            <span class="font-serif text-xl font-semibold">Life by Design</span>
+          </div>
+          <p class="text-warm-400 leading-relaxed mb-6 max-w-md">
+            Sharing frameworks, habits, and personal systems for intentional living. Written by Alex Chen—a designer, writer, and lifelong learner exploring what it means to live deliberately.
+          </p>
+          <div class="flex gap-4">
+            <a href="#" class="w-10 h-10 bg-warm-800 hover:bg-sage-500 rounded-xl flex items-center justify-center transition-colors">
+              <iconify-icon icon="ph:twitter-logo" class="text-xl"></iconify-icon>
+            </a>
+            <a href="#" class="w-10 h-10 bg-warm-800 hover:bg-sage-500 rounded-xl flex items-center justify-center transition-colors">
+              <iconify-icon icon="ph:instagram-logo" class="text-xl"></iconify-icon>
+            </a>
+            <a href="#" class="w-10 h-10 bg-warm-800 hover:bg-sage-500 rounded-xl flex items-center justify-center transition-colors">
+              <iconify-icon icon="ph:linkedin-logo" class="text-xl"></iconify-icon>
+            </a>
+            <a href="#" class="w-10 h-10 bg-warm-800 hover:bg-sage-500 rounded-xl flex items-center justify-center transition-colors">
+              <iconify-icon icon="ph:youtube-logo" class="text-xl"></iconify-icon>
+            </a>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div>
+          <h4 class="font-semibold text-white mb-4">Explore</h4>
+          <ul class="space-y-3">
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">All Posts</a></li>
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">Frameworks</a></li>
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">Tools & Resources</a></li>
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">Yearly Reviews</a></li>
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">Newsletter Archive</a></li>
+          </ul>
+        </div>
+
+        <!-- Contact -->
+        <div>
+          <h4 class="font-semibold text-white mb-4">Connect</h4>
+          <ul class="space-y-3">
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">About Me</a></li>
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">Contact</a></li>
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">Speaking</a></li>
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">Newsletter</a></li>
+            <li><a href="#" class="text-warm-400 hover:text-sage-300 transition-colors">RSS Feed</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="pt-10 border-t border-warm-800 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-warm-500 text-sm">© 2025 Life by Design. All rights reserved.</p>
+        <div class="flex gap-6 text-sm">
+          <a href="#" class="text-warm-500 hover:text-sage-300 transition-colors">Privacy</a>
+          <a href="#" class="text-warm-500 hover:text-sage-300 transition-colors">Terms</a>
+          <a href="#" class="text-warm-500 hover:text-sage-300 transition-colors">Sitemap</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      menu.classList.toggle('hidden');
+    }
+
+    // Scroll reveal animation
+    function revealOnScroll() {
+      const reveals = document.querySelectorAll('.reveal');
+      reveals.forEach(element => {
+        const windowHeight = window.innerHeight;
+        const elementTop = element.getBoundingClientRect().top;
+        const elementVisible = 100;
+        
+        if (elementTop < windowHeight - elementVisible) {
+          element.classList.add('active');
+        }
+      });
+    }
+
+    window.addEventListener('scroll', revealOnScroll);
+    window.addEventListener('load', revealOnScroll);
+
+    // Smooth scroll for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+          // Close mobile menu if open
+          document.getElementById('mobileMenu').classList.add('hidden');
+        }
+      });
+    });
+
+    // Navbar background on scroll
+    const navbar = document.querySelector('nav');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) {
+        navbar.classList.add('shadow-sm');
+      } else {
+        navbar.classList.remove('shadow-sm');
+      }
+    });
+  </script>
+</body>
+</html>
