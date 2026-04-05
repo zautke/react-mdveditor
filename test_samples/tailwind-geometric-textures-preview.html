@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tailwind 4.1 Geometric Texture Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #121a2e;
+      --panel-2: #1a2440;
+      --ink: #e6edf7;
+      --muted: #9fb0d0;
+      --line: #2a365a;
+      --accent: #8ab4ff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(138,180,255,0.14), transparent 30%),
+        linear-gradient(180deg, #0b1020, #08101b 50%, #070d16);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 20px;
+    }
+
+    .panel {
+      background: color-mix(in oklab, var(--panel) 92%, black 8%);
+      border: 1px solid color-mix(in oklab, var(--line) 86%, white 6%);
+      border-radius: 20px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .controls {
+      position: sticky;
+      top: 18px;
+      align-self: start;
+    }
+
+    .panel-header {
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent);
+    }
+
+    .panel-header h1,
+    .panel-header h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0.01em;
+    }
+
+    .subtle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+      padding: 16px 18px 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field.two-up {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .field label,
+    .subgroup-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .subgroup-title {
+      margin: 4px 0 0;
+      padding-top: 2px;
+      color: #c5d3ef;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    input[type="range"],
+    input[type="color"],
+    input[type="number"] {
+      width: 100%;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    input[type="number"] {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    input[type="color"] {
+      height: 42px;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .value {
+      color: #dbe7ff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .main {
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: end;
+      flex-wrap: wrap;
+    }
+
+    .hero-title {
+      display: grid;
+      gap: 6px;
+    }
+
+    .hero-title h2 {
+      font-size: 22px;
+      margin: 0;
+    }
+
+    .hero-title p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 70ch;
+    }
+
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 999px;
+      padding: 7px 10px;
+      color: #d2def8;
+      background: rgba(255,255,255,0.03);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .tabs {
+      display: inline-flex;
+      gap: 8px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .tab {
+      border: 0;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .tab.active {
+      background: #1b2846;
+      color: #eff5ff;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .view {
+      display: none;
+      padding: 0 18px 18px;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
+    }
+
+    .swatch {
+      height: 210px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .swatch::after {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0));
+      mix-blend-mode: screen;
+      pointer-events: none;
+      opacity: 0.33;
+    }
+
+    .meta {
+      padding: 14px 14px 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .meta-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .meta h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .meta p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tag {
+      white-space: nowrap;
+      color: #d6e2ff;
+      background: rgba(138,180,255,0.12);
+      border: 1px solid rgba(138,180,255,0.22);
+      font-size: 11px;
+      border-radius: 999px;
+      padding: 5px 8px;
+    }
+
+    .code {
+      border-radius: 14px;
+      background: #0a1120;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 14px;
+      color: #d2def8;
+      overflow: auto;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .api {
+      display: grid;
+      gap: 16px;
+    }
+
+    .api-block {
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .api-block h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+
+    .api-block ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    .api-block li + li {
+      margin-top: 8px;
+    }
+
+    .footer-note {
+      padding: 0 18px 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 1080px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+      .controls {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="panel controls">
+      <div class="panel-header">
+        <h1>Controls</h1>
+        <div class="subtle">Global knobs for the preview artifact. Every card updates live.</div>
+      </div>
+      <div class="stack">
+        <div class="subgroup-title">Palette</div>
+        <div class="field two-up">
+          <div>
+            <label for="backgroundColor"><span>Background</span><span class="value" id="backgroundColorValue"></span></label>
+            <input id="backgroundColor" type="color" value="#f8fafc" />
+          </div>
+          <div>
+            <label for="gridColor"><span>Grid</span><span class="value" id="gridColorValue"></span></label>
+            <input id="gridColor" type="color" value="#cbd5e1" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="furnitureColor"><span>Furniture</span><span class="value" id="furnitureColorValue"></span></label>
+          <input id="furnitureColor" type="color" value="#0f172a" />
+        </div>
+
+        <div class="subgroup-title">Cell geometry</div>
+        <div class="field">
+          <label for="cellWidth"><span>Cell width</span><span class="value" id="cellWidthValue"></span></label>
+          <input id="cellWidth" type="range" min="18" max="120" step="1" value="44" />
+        </div>
+        <div class="field">
+          <label for="cellHeight"><span>Cell height</span><span class="value" id="cellHeightValue"></span></label>
+          <input id="cellHeight" type="range" min="18" max="120" step="1" value="44" />
+        </div>
+        <div class="field">
+          <label for="gridLine"><span>Grid line</span><span class="value" id="gridLineValue"></span></label>
+          <input id="gridLine" type="range" min="1" max="6" step="0.25" value="1" />
+        </div>
+
+        <div class="subgroup-title">Corner furniture</div>
+        <div class="field">
+          <label for="markSize"><span>Mark size</span><span class="value" id="markSizeValue"></span></label>
+          <input id="markSize" type="range" min="4" max="36" step="1" value="9" />
+        </div>
+        <div class="field">
+          <label for="markThickness"><span>Stroke / arm</span><span class="value" id="markThicknessValue"></span></label>
+          <input id="markThickness" type="range" min="1" max="12" step="0.5" value="2.5" />
+        </div>
+
+        <div class="subgroup-title">Diagonal stripes</div>
+        <div class="field">
+          <label for="stripeWidth"><span>Stripe width</span><span class="value" id="stripeWidthValue"></span></label>
+          <input id="stripeWidth" type="range" min="1" max="24" step="1" value="8" />
+        </div>
+        <div class="field">
+          <label for="stripeGap"><span>Stripe gap</span><span class="value" id="stripeGapValue"></span></label>
+          <input id="stripeGap" type="range" min="1" max="28" step="1" value="9" />
+        </div>
+        <div class="field">
+          <label for="stripeAngle"><span>Stripe angle</span><span class="value" id="stripeAngleValue"></span></label>
+          <input id="stripeAngle" type="range" min="0" max="180" step="1" value="135" />
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="panel">
+        <div class="hero">
+          <div class="hero-top">
+            <div class="hero-title">
+              <h2>Tailwind 4.1 geometric texture spike</h2>
+              <p>
+                Updated around your narrowed set: <strong>plain grid</strong>, <strong>pluses</strong>, <strong>checks</strong>,
+                <strong>diamonds</strong>, <strong>triangles</strong>, and <strong>hex grid</strong>, plus four research-driven
+                candidate repeats from current CSS/Tailwind pattern libraries.
+              </p>
+            </div>
+            <div class="tabs" aria-label="views">
+              <button class="tab active" data-tab="preview">Preview</button>
+              <button class="tab" data-tab="api">Tailwind API</button>
+            </div>
+          </div>
+
+          <div class="pills">
+            <div class="pill">Core set: plain grid / pluses / checks / diamonds / triangles / hex grid</div>
+            <div class="pill">Candidates: cross-dots / zigzag / crosshatch / concentric squares</div>
+            <div class="pill">Separate grid + furniture colors where the motif supports both</div>
+            <div class="pill">Independent cell width + height</div>
+          </div>
+        </div>
+
+        <section class="view active" id="preview">
+          <div class="grid" id="patternGrid"></div>
+        </section>
+
+        <section class="view" id="api">
+          <div class="api">
+            <div class="api-block">
+              <h3>Proposed utility names</h3>
+              <div class="code">tx-base
+tx-plain-grid
+tx-pluses
+tx-checks
+tx-diamonds
+tx-triangles
+tx-hex-grid
+tx-cross-dots
+tx-zigzag
+tx-crosshatch
+tx-concentric-squares</div>
+            </div>
+
+            <div class="api-block">
+              <h3>Proposed variable contract</h3>
+              <div class="code">--tx-bg
+--tx-grid-color
+--tx-furniture-color
+--tx-cell-w
+--tx-cell-h
+--tx-grid-line
+--tx-mark-size
+--tx-mark-thickness</div>
+            </div>
+
+            <div class="api-block">
+              <h3>Expected usage shape</h3>
+              <div class="code" id="usageSnippet"></div>
+            </div>
+
+            <div class="api-block">
+              <h3>Why this updated set</h3>
+              <ul>
+                <li><strong>Checks</strong>, <strong>diamonds</strong>, <strong>triangles</strong>, and <strong>pluses</strong> stay closest to the corner-furniture idea.</li>
+                <li><strong>Hex grid</strong> is a very common geometric repeat in current CSS pattern collections and generators.</li>
+                <li><strong>Cross-dots</strong> and <strong>zigzag</strong> are directly represented in established Tailwind/CSS pattern libraries.</li>
+                <li><strong>Crosshatch</strong> and <strong>concentric squares</strong> are strong related repeats that show a different texture family without leaving the geometric space.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <div class="footer-note">
+          This artifact is the design and geometry decision surface. Once you choose proportions or motif swaps, the same variable model can be frozen into the production Tailwind 4.1 utilities.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const patternSpecs = [
+      {
+        key: "plain-grid",
+        name: "plain grid",
+        tag: "core",
+        source: "grid only",
+        description: "Baseline graph-paper layer with no extra furniture."
+      },
+      {
+        key: "pluses",
+        name: "pluses",
+        tag: "core",
+        source: "corner pluses",
+        description: "Orthogonal corner marks that stay out of the cell interior."
+      },
+      {
+        key: "checks",
+        name: "checks",
+        tag: "core",
+        source: "checker motifs",
+        description: "Quarter-square corner fills; effectively a corner-constrained checkerboard."
+      },
+      {
+        key: "diamonds",
+        name: "diamonds",
+        tag: "core",
+        source: "diamond tiles",
+        description: "Clipped diamond corners so the intersection reads as a lozenge."
+      },
+      {
+        key: "triangles",
+        name: "triangles",
+        tag: "core",
+        source: "triangle motifs",
+        description: "Corner wedges that point inward without filling the whole cell."
+      },
+      {
+        key: "hex-grid",
+        name: "hex grid",
+        tag: "core",
+        source: "hexagon / honeycomb",
+        description: "A repeating honeycomb mesh for comparing square-cell and hex-cell geometry."
+      },
+      {
+        key: "cross-dots",
+        name: "cross-dots",
+        tag: "candidate",
+        source: "pattern.css / tailwindcss-pattern",
+        description: "Offset dots that create a staggered intersection rhythm."
+      },
+      {
+        key: "zigzag",
+        name: "zigzag",
+        tag: "candidate",
+        source: "pattern.css / tailwindcss-pattern",
+        description: "Chevron-like interior repeat that reads as a directional geometric texture."
+      },
+      {
+        key: "crosshatch",
+        name: "crosshatch",
+        tag: "candidate",
+        source: "current CSS pattern libraries",
+        description: "A subtle two-angle hatch for paper-like geometric texture."
+      },
+      {
+        key: "concentric-squares",
+        name: "concentric squares",
+        tag: "candidate",
+        source: "pattern generators / GitHub examples",
+        description: "Nested square rings that add a denser technical repeat."
+      }
+    ];
+
+    const inputs = {
+      backgroundColor: document.getElementById("backgroundColor"),
+      gridColor: document.getElementById("gridColor"),
+      furnitureColor: document.getElementById("furnitureColor"),
+      cellWidth: document.getElementById("cellWidth"),
+      cellHeight: document.getElementById("cellHeight"),
+      gridLine: document.getElementById("gridLine"),
+      markSize: document.getElementById("markSize"),
+      markThickness: document.getElementById("markThickness"),
+      stripeWidth: document.getElementById("stripeWidth"),
+      stripeGap: document.getElementById("stripeGap"),
+      stripeAngle: document.getElementById("stripeAngle")
+    };
+
+    const valueNodes = Object.fromEntries(
+      Object.keys(inputs).map((key) => [key, document.getElementById(key + "Value")])
+    );
+
+    const patternGrid = document.getElementById("patternGrid");
+    const usageSnippet = document.getElementById("usageSnippet");
+
+    function svgUrl(svg) {
+      return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    }
+
+    function furnitureSvg(pattern, opts) {
+      const w = opts.cellWidth;
+      const h = opts.cellHeight;
+      const s = Math.min(opts.markSize, w * 0.7, h * 0.7);
+      const t = Math.min(opts.markThickness, Math.max(1, s));
+      const r = s / 2;
+
+      let inner = "";
+
+      if (pattern === "pluses") {
+        inner = `
+          <path d="M 0 0 H ${s}" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linecap="square" fill="none" />
+          <path d="M 0 0 V ${s}" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linecap="square" fill="none" />
+
+          <path d="M ${w - s} 0 H ${w}" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linecap="square" fill="none" />
+          <path d="M ${w} 0 V ${s}" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linecap="square" fill="none" />
+
+          <path d="M 0 ${h} H ${s}" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linecap="square" fill="none" />
+          <path d="M 0 ${h - s} V ${h}" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linecap="square" fill="none" />
+
+          <path d="M ${w - s} ${h} H ${w}" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linecap="square" fill="none" />
+          <path d="M ${w} ${h - s} V ${h}" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linecap="square" fill="none" />
+        `;
+      }
+
+      if (pattern === "checks") {
+        inner = `
+          <rect x="0" y="0" width="${s}" height="${s}" />
+          <rect x="${w - s}" y="0" width="${s}" height="${s}" />
+          <rect x="0" y="${h - s}" width="${s}" height="${s}" />
+          <rect x="${w - s}" y="${h - s}" width="${s}" height="${s}" />
+        `;
+      }
+
+      if (pattern === "triangles") {
+        inner = `
+          <polygon points="0,0 ${s},0 0,${s}" />
+          <polygon points="${w},0 ${w - s},0 ${w},${s}" />
+          <polygon points="0,${h} ${s},${h} 0,${h - s}" />
+          <polygon points="${w},${h} ${w - s},${h} ${w},${h - s}" />
+        `;
+      }
+
+      if (pattern === "diamonds") {
+        inner = `
+          <polygon points="0,${r} ${r},0 0,${-r} ${-r},0" />
+          <polygon points="${w},${r} ${w + r},0 ${w},${-r} ${w - r},0" />
+          <polygon points="0,${h + r} ${r},${h} 0,${h - r} ${-r},${h}" />
+          <polygon points="${w},${h + r} ${w + r},${h} ${w},${h - r} ${w - r},${h}" />
+        `;
+      }
+
+      if (pattern === "zigzag") {
+        const y1 = h * 0.28;
+        const y2 = h * 0.72;
+        inner = `
+          <polyline points="0,${y2} ${w * 0.25},${y1} ${w * 0.5},${y2} ${w * 0.75},${y1} ${w},${y2}" fill="none" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linejoin="miter" stroke-linecap="square" />
+          <polyline points="0,${h} ${w * 0.25},${y2} ${w * 0.5},${h} ${w * 0.75},${y2} ${w},${h}" fill="none" stroke="${opts.furnitureColor}" stroke-width="${t}" stroke-linejoin="miter" stroke-linecap="square" />
+        `;
+      }
+
+      if (pattern === "concentric-squares") {
+        const inset1 = Math.max(1, t * 0.8);
+        const inset2 = Math.min(Math.max(inset1 + t * 2, s * 0.22), Math.min(w, h) / 2 - t);
+        const inset3 = Math.min(Math.max(inset2 + t * 2, s * 0.38), Math.min(w, h) / 2 - t * 0.5);
+        inner = `
+          <rect x="${inset1}" y="${inset1}" width="${w - inset1 * 2}" height="${h - inset1 * 2}" fill="none" stroke="${opts.furnitureColor}" stroke-width="${t}" />
+          <rect x="${inset2}" y="${inset2}" width="${w - inset2 * 2}" height="${h - inset2 * 2}" fill="none" stroke="${opts.furnitureColor}" stroke-width="${Math.max(1, t * 0.85)}" />
+          <rect x="${inset3}" y="${inset3}" width="${w - inset3 * 2}" height="${h - inset3 * 2}" fill="none" stroke="${opts.furnitureColor}" stroke-width="${Math.max(1, t * 0.7)}" />
+        `;
+      }
+
+      if (!inner.trim()) return "none";
+
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="${opts.furnitureColor}">
+          ${inner}
+        </svg>
+      `;
+      return svgUrl(svg);
+    }
+
+    function hexGridLayer(opts) {
+      const stroke = Math.max(0.6, opts.gridLine * 0.9);
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 49" width="28" height="49" fill="none">
+          <path d="M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z" stroke="${opts.gridColor}" stroke-width="${stroke}" vector-effect="non-scaling-stroke" />
+        </svg>
+      `;
+      return {
+        image: [svgUrl(svg)],
+        size: [`${opts.cellWidth}px ${Math.max(18, opts.cellHeight * 1.225)}px`],
+        position: ["0 0"]
+      };
+    }
+
+    function gridLayer(opts) {
+      const line = opts.gridLine + "px";
+      const size = `${opts.cellWidth}px ${opts.cellHeight}px`;
+      return {
+        image: [
+          `linear-gradient(to right, ${opts.gridColor} 0 ${line}, transparent ${line})`,
+          `linear-gradient(to bottom, ${opts.gridColor} 0 ${line}, transparent ${line})`
+        ],
+        size: [size, size],
+        position: ["0 0", "0 0"]
+      };
+    }
+
+    function furnitureLayer(pattern, opts) {
+      const size = `${opts.cellWidth}px ${opts.cellHeight}px`;
+      const dot = Math.max(1, opts.markSize * 0.22);
+      const gap = Math.max(6, opts.markSize + opts.markThickness * 2.5);
+      const hatchGapA = Math.max(6, opts.markSize + opts.markThickness * 2);
+      const hatchGapB = Math.max(8, opts.markSize + opts.markThickness * 3);
+
+      if (pattern === "plain-grid") {
+        return { image: [], size: [], position: [] };
+      }
+
+      if (pattern === "hex-grid") {
+        return { image: [], size: [], position: [] };
+      }
+
+      if (pattern === "cross-dots") {
+        return {
+          image: [
+            `radial-gradient(circle, ${opts.furnitureColor} 0 ${dot}px, transparent ${dot + 0.2}px)`,
+            `radial-gradient(circle, ${opts.furnitureColor} 0 ${dot}px, transparent ${dot + 0.2}px)`
+          ],
+          size: [size, size],
+          position: ["0 0", `${opts.cellWidth / 2}px ${opts.cellHeight / 2}px`]
+        };
+      }
+
+      if (pattern === "crosshatch") {
+        return {
+          image: [
+            `repeating-linear-gradient(45deg, ${opts.furnitureColor} 0 ${opts.markThickness}px, transparent ${opts.markThickness}px ${hatchGapA}px)`,
+            `repeating-linear-gradient(-45deg, ${opts.furnitureColor} 0 ${Math.max(1, opts.markThickness * 0.85)}px, transparent ${Math.max(1, opts.markThickness * 0.85)}px ${hatchGapB}px)`
+          ],
+          size: ["auto", "auto"],
+          position: ["0 0", "0 0"]
+        };
+      }
+
+      return {
+        image: [furnitureSvg(pattern, opts)],
+        size: [size],
+        position: ["0 0"]
+      };
+    }
+
+    function styleFor(pattern, opts) {
+      if (pattern === "hex-grid") {
+        const hex = hexGridLayer(opts);
+        return {
+          backgroundColor: opts.backgroundColor,
+          backgroundImage: hex.image.join(", "),
+          backgroundSize: hex.size.join(", "),
+          backgroundPosition: hex.position.join(", "),
+          backgroundRepeat: "repeat"
+        };
+      }
+
+      const grid = gridLayer(opts);
+      const furniture = furnitureLayer(pattern, opts);
+      const images = [...furniture.image, ...grid.image];
+      const sizes = [...furniture.size, ...grid.size];
+      const positions = [...furniture.position, ...grid.position];
+
+      return {
+        backgroundColor: opts.backgroundColor,
+        backgroundImage: images.join(", "),
+        backgroundSize: sizes.join(", "),
+        backgroundPosition: positions.join(", "),
+        backgroundRepeat: "repeat"
+      };
+    }
+
+    function getOptions() {
+      return {
+        backgroundColor: inputs.backgroundColor.value,
+        gridColor: inputs.gridColor.value,
+        furnitureColor: inputs.furnitureColor.value,
+        cellWidth: Number(inputs.cellWidth.value),
+        cellHeight: Number(inputs.cellHeight.value),
+        gridLine: Number(inputs.gridLine.value),
+        markSize: Number(inputs.markSize.value),
+        markThickness: Number(inputs.markThickness.value),
+        stripeWidth: Number(inputs.stripeWidth.value),
+        stripeGap: Number(inputs.stripeGap.value),
+        stripeAngle: Number(inputs.stripeAngle.value)
+      };
+    }
+
+    function valueText(key, value) {
+      if (key.endsWith("Color")) return value.toUpperCase();
+      if (key === "stripeAngle") return value + "°";
+      if (typeof value === "number") return value + "px";
+      return String(value);
+    }
+
+    function updateValueLabels(opts) {
+      for (const [key, input] of Object.entries(inputs)) {
+        valueNodes[key].textContent = valueText(key, key.endsWith("Color") ? input.value : Number(input.value));
+      }
+    }
+
+    function usageText(opts) {
+      return [
+        `<div`,
+        `  class="tx-base tx-hex-grid`,
+        `         [--tx-bg:${opts.backgroundColor}]`,
+        `         [--tx-grid-color:${opts.gridColor}]`,
+        `         [--tx-furniture-color:${opts.furnitureColor}]`,
+        `         [--tx-cell-w:${opts.cellWidth}px]`,
+        `         [--tx-cell-h:${opts.cellHeight}px]`,
+        `         [--tx-grid-line:${opts.gridLine}px]`,
+        `         [--tx-mark-size:${opts.markSize}px]`,
+        `         [--tx-mark-thickness:${opts.markThickness}px]"`,
+        `></div>`
+      ].join("\n");
+    }
+
+    function render() {
+      const opts = getOptions();
+      updateValueLabels(opts);
+      usageSnippet.textContent = usageText(opts);
+
+      patternGrid.innerHTML = "";
+      patternSpecs.forEach((spec) => {
+        const card = document.createElement("article");
+        card.className = "card";
+
+        const swatch = document.createElement("div");
+        swatch.className = "swatch";
+        Object.assign(swatch.style, styleFor(spec.key, opts));
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML = `
+          <div class="meta-top">
+            <div>
+              <h3>${spec.name}</h3>
+              <p>${spec.source}</p>
+            </div>
+            <span class="tag">${spec.tag}</span>
+          </div>
+          <p>${spec.description}</p>
+          <div class="code">class="tx-base tx-${spec.key}"</div>
+        `;
+
+        card.appendChild(swatch);
+        card.appendChild(meta);
+        patternGrid.appendChild(card);
+      });
+    }
+
+    Object.values(inputs).forEach((input) => {
+      input.addEventListener("input", render);
+      input.addEventListener("change", render);
+    });
+
+    document.querySelectorAll(".tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((node) => node.classList.remove("active"));
+        document.querySelectorAll(".view").forEach((node) => node.classList.remove("active"));
+        button.classList.add("active");
+        document.getElementById(button.dataset.tab).classList.add("active");
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>
