@@ -226,17 +226,8 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
         className={cn(styles.root(), className)}
         style={rootStyle}
       >
-        {/* Tab bar: scroll arrows + scrollable list + pinned action */}
+        {/* Tab bar: scrollable list + arrows + pinned action */}
         <div className={styles.bar()}>
-          {/* Left scroll arrow */}
-          {canScrollLeft && (
-            <ScrollArrow
-              direction="left"
-              onClick={doScrollLeft}
-              className={styles.scrollArrow()}
-            />
-          )}
-
           {/* Scrollable container */}
           <div ref={scrollContainerRef} className={styles.scrollContainer()}>
             <DndContext
@@ -254,7 +245,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
               >
                 <LayoutGroup>
                   <TabsPrimitive.List
-                    className={cn(styles.list(), "flex-1 min-w-0")}
+                    className={cn(styles.list(), "w-max min-w-full")}
                     style={{ position: "relative" }}
                     aria-label="Document tabs"
                   >
@@ -292,13 +283,26 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
             </DndContext>
           </div>
 
-          {/* Right scroll arrow */}
-          {canScrollRight && (
-            <ScrollArrow
-              direction="right"
-              onClick={doScrollRight}
-              className={styles.scrollArrow()}
-            />
+          {/* Scroll arrows — grouped together to the right of the tab bar */}
+          {(canScrollLeft || canScrollRight) && (
+            <div className="flex-shrink-0 flex items-center">
+              <ScrollArrow
+                direction="left"
+                onClick={doScrollLeft}
+                className={cn(
+                  styles.scrollArrow(),
+                  !canScrollLeft && "opacity-30 pointer-events-none"
+                )}
+              />
+              <ScrollArrow
+                direction="right"
+                onClick={doScrollRight}
+                className={cn(
+                  styles.scrollArrow(),
+                  !canScrollRight && "opacity-30 pointer-events-none"
+                )}
+              />
+            </div>
           )}
 
           {/* Pinned new tab control — outside scroll container */}

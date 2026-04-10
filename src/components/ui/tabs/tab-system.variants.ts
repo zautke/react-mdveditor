@@ -66,7 +66,7 @@ export const tabSystem = tv({
         content: "border-t border-[color:var(--tabs-bar-border)]",
       },
       capsule: {
-        list: "bg-[color:var(--tabs-bar-bg)] px-1 py-0 h-full rounded-full relative border border-[color:var(--tabs-bar-border)] backdrop-blur-md shadow-sm gap-1.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        list: "bg-[color:var(--tabs-bar-bg)] px-1 py-0 h-full rounded-full relative border border-[color:var(--tabs-bar-border)] backdrop-blur-md shadow-sm gap-1.5 overflow-visible",
         trigger: [
           "py-0 h-full",
           "bg-transparent text-[color:var(--tab-text)]",

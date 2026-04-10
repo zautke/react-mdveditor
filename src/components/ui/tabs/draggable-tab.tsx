@@ -132,7 +132,7 @@ const DraggableTab = forwardRef<HTMLButtonElement, DraggableTabProps>(
       zIndex: isDragging ? 50 : undefined,
       containerType: "inline-size" as React.CSSProperties["containerType"],
       // Responsive width clamping via CSS custom properties
-      flex: "1 1 0",
+      flex: "1 0 auto",
       minWidth: "var(--tab-min-width, 5rem)",
       maxWidth: "var(--tab-max-width, 15rem)",
       position: "relative" as const,
