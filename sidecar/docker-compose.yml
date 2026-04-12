@@ -1,0 +1,11 @@
+services:
+  url-sidecar:
+    build: .
+    ports:
+      - "${MDE_URL_SIDECAR_PORT:-8787}:8787"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

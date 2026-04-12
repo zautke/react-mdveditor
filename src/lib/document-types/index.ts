@@ -21,6 +21,7 @@ import { htmlPlugin } from './plugins/html'
 import { reactComponentPlugin } from './plugins/react-component'
 import { jsonPlugin } from './plugins/json'
 import { graphvizPlugin } from './plugins/graphviz'
+import { urlPlugin } from './plugins/url'
 
 register(markdownPlugin)
 register(mermaidPlugin)
@@ -28,3 +29,4 @@ register(htmlPlugin)
 register(reactComponentPlugin)
 register(jsonPlugin)
 register(graphvizPlugin)
+register(urlPlugin)

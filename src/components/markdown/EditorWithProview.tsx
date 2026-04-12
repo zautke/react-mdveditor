@@ -1,5 +1,5 @@
 import { useState, useEffect, useId, DragEvent, memo, useRef, useCallback, createElement, useMemo, Suspense } from 'react'
-import { FilePlus2, Download } from 'lucide-react'
+import { FilePlus2, Download, Settings2 } from 'lucide-react'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
 import { TabSystem, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,12 @@ import { cn } from '@/lib/utils'
 import { loadState, saveState } from '@/lib/storage'
 import { documentTypeRegistry } from '@/lib/document-types'
 import { validateFile } from '@/lib/file-validation'
+import { isHttpUrl } from '@/lib/url-validation'
+import { UrlInputModal } from '@/components/markdown/UrlInputModal'
+import { SettingsDialog } from '@/components/ui/settings-dialog'
+import { useUserSettings } from '@/lib/user-settings'
+import { fetchUrlContent } from '@/lib/url-fetch'
+import type { FetchUrlResult } from '@/lib/url-fetch'
 import type { TabItem, NewTabMenuItem } from '@/components/ui/tabs/types'
 
 // ── ARIA: status announcement for preview updates ───────────────────
@@ -239,7 +245,13 @@ function App() {
   )
   const [arrowOpacity, setArrowOpacity] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
+  const [urlModalOpen, setUrlModalOpen] = useState(false)
+  const [urlModalPrefill, setUrlModalPrefill] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // ── User settings ───────────────────────────────────────────────
+  const { settings } = useUserSettings()
 
   // ── Persistence ─────────────────────────────────────────────────
 
@@ -400,14 +412,44 @@ function App() {
     // Otherwise: no LaTeX and same kind — let browser handle paste normally
   }, [activeContent, activeDocId, activeKind])
 
+  // ── URL modal success handler ────────────────────────────────────
+  // Defined before handleDrop because auto-fetch mode calls it directly.
+  const handleUrlModalSuccess = useCallback((result: FetchUrlResult) => {
+    const newId = generateDocId()
+    const title = result.meta.title ?? result.meta.siteName ?? 'Web Article'
+    setDocuments(docs => [
+      ...docs,
+      { id: newId, title, content: result.content, kind: 'url' },
+    ])
+    setActiveDocId(newId)
+  }, [])
+
   const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
 
-    // Plain text drop — opens a new tab (consistent with file drop)
+    // Plain text drop — check for URL first, then open as new tab
     const text = e.dataTransfer.getData('text/plain')
     if (text) {
+      // URL drop → auto-fetch or open modal depending on user setting
+      if (isHttpUrl(text)) {
+        const trimmedUrl = text.trim()
+        if (settings.urlDragAutoFetch) {
+          // Auto-fetch: skip modal, create document directly.
+          // On failure, fall back to the confirmation modal.
+          fetchUrlContent(trimmedUrl)
+            .then(handleUrlModalSuccess)
+            .catch(() => {
+              setUrlModalPrefill(trimmedUrl)
+              setUrlModalOpen(true)
+            })
+        } else {
+          setUrlModalPrefill(trimmedUrl)
+          setUrlModalOpen(true)
+        }
+        return
+      }
       const converted = convertLatexDelimiters(text)
       const detectedKind = documentTypeRegistry.detect(converted)
       const newId = generateDocId()
@@ -454,7 +496,7 @@ function App() {
       }
       reader.readAsText(file)
     }
-  }, [])
+  }, [settings.urlDragAutoFetch, handleUrlModalSuccess])
 
   const handleContentChange = useCallback((value: string) => {
     setDocuments(docs => docs.map(d =>
@@ -535,6 +577,21 @@ function App() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }, [activeContent, activeKind, activeDoc?.title])
+
+  // ── URL preview inline-fetch event listener ──────────────────────
+  // UrlPreview's EmptyState dispatches 'url-preview-fetched' when a
+  // user fetches a URL from within the empty-state form.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { documentId, result } = (e as CustomEvent<{ documentId: string; result: FetchUrlResult }>).detail
+      const nextTitle = result.meta.title ?? result.meta.siteName ?? 'Web Article'
+      setDocuments(docs => docs.map(d =>
+        d.id === documentId ? { ...d, title: nextTitle, content: result.content, kind: 'url' } : d
+      ))
+    }
+    window.addEventListener('url-preview-fetched', handler)
+    return () => window.removeEventListener('url-preview-fetched', handler)
+  }, [])
 
   // ── ARIA: unique IDs and live-region state ───────────────────────
   const editorId = useId()
@@ -650,6 +707,29 @@ function App() {
                   <p>Download file</p>
                 </TooltipContent>
               </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSettingsOpen(true)}
+                    className={cn(
+                      "h-7 w-7 cursor-pointer",
+                      "transition-all duration-150",
+                      "hover:bg-accent hover:text-accent-foreground",
+                      "hover:shadow-md hover:border-accent-foreground/30",
+                      "active:scale-95 active:shadow-sm",
+                    )}
+                    aria-label="Open settings"
+                  >
+                    <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Settings</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             <TabSystem
@@ -702,6 +782,20 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* URL fetch modal — opened by URL drop or menu action */}
+      <UrlInputModal
+        open={urlModalOpen}
+        onOpenChange={setUrlModalOpen}
+        prefillUrl={urlModalPrefill}
+        onSuccess={handleUrlModalSuccess}
+      />
+
+      {/* Settings modal */}
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
     </main>
   )
 }

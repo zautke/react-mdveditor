@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { mdeServerPlugin } from './src/lib/vite-plugin-mde-server'
 
+const sidecarPort = process.env.MDE_URL_SIDECAR_PORT ?? '8787'
+
 export default defineConfig({
   plugins: [
     react({
@@ -21,6 +23,13 @@ export default defineConfig({
     port: 5200,
     host: true,
     allowedHosts: ['*.local', 'largo.local'],
+    proxy: {
+      '/api/extract': {
+        target: `http://localhost:${sidecarPort}`,
+        changeOrigin: true,
+        rewrite: (p: string) => p.replace(/^\/api/, ''),
+      },
+    },
   },
   build: {
     minify: 'esbuild',
