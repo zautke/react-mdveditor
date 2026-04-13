@@ -814,17 +814,29 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: var(--icon-button-gap);
+  padding: 0.25rem;
+  border: 1px solid color-mix(in oklab, var(--border) 48%, transparent);
+  border-radius: calc(var(--radius) + 0.25rem);
+  background: color-mix(in oklab, var(--background) 72%, black 28%);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-md);
 }
 
 .mdeditor-media-action-panel--inline {
   opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-out);
+  pointer-events: none;
+  transform: translateY(-0.125rem) scale(0.98);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .group:hover > .mdeditor-media-action-panel--inline,
 .group:focus-within > .mdeditor-media-action-panel--inline,
 .mdeditor-media-asset[data-force-controls='true'] > .mdeditor-media-action-panel--inline {
   opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
 }
 
 .mdeditor-media-modal__viewport {

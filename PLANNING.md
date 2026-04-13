@@ -56,6 +56,14 @@ That scope expansion destabilized the app and broke trust. The user then explici
 3. Do not reintroduce GSAP, modal diagram controls, or fetch-hardening changes until the restored baseline is proven in the browser the user is actually using.
 4. Once the rewind checkpoint is proven, create a separate spec/plan for smoothing the animation without changing surface area.
 
+## Browser Evidence Recorded In This Rewind Session
+
+- Active app verified at `http://127.0.0.1:5200`.
+- Chrome DevTools accessibility snapshot shows `Zoom media` controls on Mermaid assets in the preview.
+- Clicking `Zoom media` opens a dialog titled by the asset label and shows a `Collapse media` control.
+- The modal overlay still uses a blurred dark backdrop.
+- Clicking `Collapse media` returns the asset to inline state and restores `Zoom media` in the snapshot.
+
 ## Reference
 
 The detailed timeline, failure analysis, and next-agent instructions are in [HANDOFF.md](/Volumes/FLOUNDER/dev/mdeditor/HANDOFF.md).

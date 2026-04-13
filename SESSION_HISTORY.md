@@ -107,6 +107,10 @@ Live browser evidence gathered on `http://127.0.0.1:5200`:
 - accessibility snapshot again shows only `Zoom media` on eligible assets
 - clicking the zoom control opens a dialog with a blurred backdrop
 - a Chrome DevTools snapshot after clicking `Collapse media` shows the dialog returning to inline state
+- the latest rewind-session snapshots show this sequence explicitly on the default Mermaid flowchart asset:
+  - inline snapshot: `Zoom media`
+  - modal snapshot: `Collapse media`
+  - post-close snapshot: `Zoom media`
 
 There is still one conflicting signal that the next agent should re-check:
 - a quick Playwright one-off script reported `visibleAfter: true` after collapse on one run, while the Chrome DevTools snapshot in the same session showed the dialog closed and inline controls restored
