@@ -1,3 +1,80 @@
+# Rewind Tasks - 2026-04-13
+
+## Restore Checkpoint
+
+| ID | Task | Status |
+|----|------|--------|
+| RW-1 | Restore the pre-GSAP media zoom implementation with the original zoom/collapse backdrop experience | In Progress |
+| RW-2 | Remove the later media-panel expansion (`Copy + Zoom/Collapse`) and restore the single zoom toggle baseline | In Progress |
+| RW-3 | Remove the later Mermaid/Graphviz modal pan/zoom control cluster from the restored checkpoint | In Progress |
+| RW-4 | Remove the later URL fetch hardening layer that was introduced after the "too fast" feedback | In Progress |
+
+## Verify The Rewind
+
+| ID | Task | Status |
+|----|------|--------|
+| RW-V-1 | Verify on `http://127.0.0.1:5200` that hover reveals `Zoom media` on eligible assets | In Progress |
+| RW-V-2 | Verify in the live browser that clicking `Zoom media` opens a modal with a blurred backdrop | In Progress |
+| RW-V-3 | Verify in the live browser that `Collapse media` returns the asset back to inline state | In Progress |
+| RW-V-4 | Verify `pnpm typecheck` | Done |
+| RW-V-5 | Verify `pnpm lint` | Done |
+
+## Handoff
+
+| ID | Task | Status |
+|----|------|--------|
+| RW-H-1 | Write the failure account, expected behavior, and exact timeline to `HANDOFF.md` | Pending |
+| RW-H-2 | Update `PLANNING.md`, `TASKS.md`, and `SESSION_HISTORY.md` with the rewind record | In Progress |
+| RW-H-3 | Mirror the rewind record and failure entry into Basic Memory, including `HOW-AGENTS-GET-FIRED` | Pending |
+
+# Recovery Tasks - 2026-04-12
+
+## Codeblock Recovery
+
+| ID | Task | Status |
+|----|------|--------|
+| RCV-CB-1 | Add and keep a failing regression check for codeblock readability, gutter artifact removal, and line-number/code alignment | Pending |
+| RCV-CB-2 | Restore block-code DOM/CSS isolation so inline-code rules no longer affect syntax-highlighted blocks | Pending |
+| RCV-CB-3 | Simplify codeblock visuals to a single readable surface with transparent controls and no outline artifacts | Pending |
+| RCV-CB-4 | Verify line-number gutter animation expands and collapses smoothly without baseline drift | Pending |
+
+## Media Toolbar and Modal
+
+| ID | Task | Status |
+|----|------|--------|
+| RCV-MD-1 | Add and keep a failing regression check for media hover controls, modal controls, and transition timing | Pending |
+| RCV-MD-2 | Replace the current media transition implementation with GSAP-based transform/opacity choreography | Pending |
+| RCV-MD-3 | Standardize media controls to `Copy + Zoom/Collapse` in the upper-right panel | Pending |
+| RCV-MD-4 | Keep Radix modal semantics intact while locking repeated toggles during active transitions | Pending |
+| RCV-MD-5 | Validate reduced-motion fallback and synchronized 400ms overlay timing | Pending |
+
+## Diagram Interaction Controls
+
+| ID | Task | Status |
+|----|------|--------|
+| RCV-DG-1 | Add and keep a failing regression check for modal Mermaid/Graphviz navigation controls | Pending |
+| RCV-DG-2 | Implement shared modal SVG viewport plumbing with drag-to-pan and wheel-to-zoom | Pending |
+| RCV-DG-3 | Add lower-right controls for pan up/down/left/right, zoom in/out, reset, and reload | Pending |
+| RCV-DG-4 | Re-render Mermaid and Graphviz diagrams on reload and restore the initial fitted view | Pending |
+
+## URL Fetch Hardening
+
+| ID | Task | Status |
+|----|------|--------|
+| RCV-FE-1 | Add and keep a failing regression check for extractor success and extractor-unavailable messaging | Pending |
+| RCV-FE-2 | Implement extractor endpoint probing and health caching in `url-fetch.ts` | Pending |
+| RCV-FE-3 | Add explicit preview messaging when no healthy extractor backend exists | Pending |
+| RCV-FE-4 | Verify sidecar fallback via `VITE_MDE_URL_SIDECAR_ORIGIN` and local direct-origin probing | Pending |
+
+## Validation
+
+| ID | Task | Status |
+|----|------|--------|
+| RCV-V-1 | Run `pnpm typecheck` | Pending |
+| RCV-V-2 | Run `pnpm lint` | Pending |
+| RCV-V-3 | Run `pnpm build` | Pending |
+| RCV-V-4 | Run `node scripts/test-recovery-regressions.mjs` | Pending |
+
 # Document Type Registry - Task Breakdown
 
 ## Task Dependency Graph

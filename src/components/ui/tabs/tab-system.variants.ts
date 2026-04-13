@@ -30,9 +30,8 @@ export const tabSystem = tv({
       "hover:bg-destructive/20 hover:text-destructive",
     ],
     newButton: [
-      "inline-flex items-center justify-center h-8 w-8 rounded-md",
+      "app-icon-button app-icon-button-segment rounded-md",
       "text-[color:var(--tab-text)] transition-colors duration-150",
-      "hover:bg-[color:var(--tab-hover-bg)] hover:text-[color:var(--tab-active-text)]",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     ],
     scrollArrow: [
@@ -78,8 +77,7 @@ export const tabSystem = tv({
           "data-[state=active]:shadow-[var(--tab-shadow)]",
           "data-[state=active]:z-10",
         ],
-        newButton:
-          "rounded-full bg-[color:var(--tab-bg)] hover:bg-[color:var(--tab-hover-bg)] my-auto h-[calc(100%-8px)] w-auto aspect-square",
+        newButton: "rounded-full",
       },
       underline: {
         list: "border-b border-border gap-4",
@@ -90,7 +88,7 @@ export const tabSystem = tv({
           "hover:text-[color:var(--tab-active-text)] hover:border-border",
           "data-[state=active]:text-[color:var(--tab-active-text)] data-[state=active]:border-primary",
         ],
-        newButton: "border border-dashed border-border hover:border-solid",
+        newButton: "border border-dashed border-border hover:border-solid bg-background",
         content: "border-t border-transparent",
       },
       pills: {
@@ -102,7 +100,7 @@ export const tabSystem = tv({
           "data-[state=active]:bg-[color:var(--tab-active-bg)] data-[state=active]:text-[color:var(--tab-active-text)]",
           "data-[state=active]:shadow-sm",
         ],
-        newButton: "bg-muted/50 hover:bg-muted",
+        newButton: "bg-muted/50",
       },
       boxed: {
         list: "border border-border rounded-lg p-1 gap-1",
@@ -114,7 +112,7 @@ export const tabSystem = tv({
           "data-[state=active]:bg-[color:var(--tab-active-bg)] data-[state=active]:border-border",
           "data-[state=active]:text-[color:var(--tab-active-text)] data-[state=active]:shadow-sm",
         ],
-        newButton: "border border-dashed border-border hover:border-solid",
+        newButton: "border border-dashed border-border hover:border-solid bg-background",
       },
       minimal: {
         list: "gap-6",
@@ -125,7 +123,7 @@ export const tabSystem = tv({
           "data-[state=active]:text-[color:var(--tab-active-text)]",
           "data-[state=active]:font-semibold",
         ],
-        newButton: "hover:bg-muted/50",
+        newButton: "",
       },
     },
     orientation: {

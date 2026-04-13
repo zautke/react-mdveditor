@@ -145,7 +145,7 @@ function NewTabDropdown({
           onClick={handleNewTab}
           className={cn(
             newButtonClassName,
-            "rounded-none rounded-l-md",
+            "app-icon-button-segment-left rounded-none rounded-l-md",
             orientation === "vertical" ? "flex-1" : ""
           )}
           aria-label="Add new tab"
@@ -158,7 +158,7 @@ function NewTabDropdown({
           onClick={() => setIsOpen((prev) => !prev)}
           className={cn(
             newButtonClassName,
-            "rounded-none rounded-r-md border-l border-[color:var(--tabs-bar-border)]",
+            "app-icon-button-segment-right rounded-none rounded-r-md border-l border-[color:var(--tabs-bar-border)]",
             orientation === "vertical" ? "flex-1" : ""
           )}
           aria-haspopup="menu"

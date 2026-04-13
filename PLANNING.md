@@ -1,3 +1,113 @@
+# Rewind Plan - 2026-04-13
+
+## Objective
+
+Rewind the markdown media experience to the checkpoint immediately before the user said the zoom/collapse animation was "too fast". That checkpoint is the last known-working baseline. The goal is not to improve it further in this pass. The goal is to restore that exact behavior and hand off a clean record.
+
+## Expected Behavior At The Rewind Checkpoint
+
+- Direct media assets in markdown preview support the zoom-to-modal experience again:
+  - markdown images
+  - markdown videos
+  - Mermaid diagrams
+  - Graphviz diagrams
+- Each eligible asset shows a single upper-right `Zoom media` icon button on hover/focus.
+- Double click on the asset performs the same open/close toggle.
+- Opening an asset creates a centered modal with a blurred dark backdrop.
+- The modal exposes a single `Collapse media` control in the upper right.
+- Modal close paths are:
+  - collapse button
+  - double click
+  - `Escape`
+- The modal is sized as a large preview surface, approximately the earlier `90vw` / `90vh` behavior.
+- The transition is visually present but still the older "too fast" version.
+- The newer lower-right diagram pan/zoom cluster is not part of this rewind checkpoint.
+- The later `Copy + Zoom/Collapse` media panel is not part of this rewind checkpoint.
+
+## Failure Account
+
+I failed by replacing a working-but-imperfect interaction with a larger architectural rewrite instead of improving the stable baseline in place.
+
+The user’s complaint at the checkpoint was narrow:
+- hover controls were unreliable
+- the animation was too fast and not smooth enough
+- diagram controls and fetch needed additional work
+
+My response was too broad:
+- rewrote the media transition around GSAP
+- added a copy action to media controls
+- added modal-only pan/zoom controls for Mermaid and Graphviz
+- hardened URL fetch transport
+- changed verification harnesses and then reported progress the user could not see
+
+That scope expansion destabilized the app and broke trust. The user then explicitly reported:
+- "now where the zoom was work before now it's broken"
+- "always trying to collapse from zoom without ever getting there"
+- "there no icon control on hover"
+- "IT DOES FAIL"
+- "EVERYTHING WAS WORKING"
+- "you ... broke the stable app"
+- "there is NO zoom and NO icon panel, NO zoom controls"
+
+## Current Plan For The Next Agent
+
+1. Treat the Motion-based zoom/backdrop behavior as the checkpoint to preserve.
+2. Verify the user-visible behavior on the same running port the user is looking at before making any further changes.
+3. Do not reintroduce GSAP, modal diagram controls, or fetch-hardening changes until the restored baseline is proven in the browser the user is actually using.
+4. Once the rewind checkpoint is proven, create a separate spec/plan for smoothing the animation without changing surface area.
+
+## Reference
+
+The detailed timeline, failure analysis, and next-agent instructions are in [HANDOFF.md](/Volumes/FLOUNDER/dev/mdeditor/HANDOFF.md).
+
+# Recovery Track - 2026-04-12
+
+## Goal
+
+Stabilize the markdown preview experience after the recent UI/interaction regressions by recovering codeblock readability, rebuilding media zoom interactions, adding GitHub-style diagram navigation controls, and hardening URL extraction transport.
+
+## Active Workstreams
+
+### 1. Codeblock Recovery
+- Restore a real `pre > code` structure so block code no longer inherits inline-code styling.
+- Keep the codeblock surface visually simple: one dark surface, transparent action panel, no extra outlines or stray gutter artifacts.
+- Align line numbers and code baselines with explicit line-height/font-size tokens and a clean gutter animation contract.
+
+### 2. Media Toolbar and Modal Re-architecture
+- Replace the previous Motion shared-layout transition with a GSAP-driven FLIP-style modal choreography.
+- Keep Radix Dialog for focus trapping, escape handling, and inert background behavior.
+- Standardize the upper-right media panel to `Copy + Zoom/Collapse`, visible on hover/focus inline and persistently visible in modal state.
+- Keep transform/opacity as the only animated properties for performance, with a synchronized 400ms blur-mask fade.
+
+### 3. Diagram Interaction Controls
+- Add a shared modal-only SVG viewport wrapper for Mermaid and Graphviz diagrams.
+- Implement lower-right navigation controls modeled after GitHub's Mermaid renderer: pan in four directions, zoom in/out, reset, and reload.
+- Support click-and-hold dragging plus mouse-wheel zoom while the pointer is over the modal diagram.
+
+### 4. URL Fetch Hardening
+- Stop assuming the extractor is always reachable at same-origin `/api/extract`.
+- Probe candidate backends, cache the first healthy endpoint, and fall back to `VITE_MDE_URL_SIDECAR_ORIGIN` or a local sidecar origin when needed.
+- Surface extractor-unavailable errors as setup guidance instead of generic `Not Found` failures.
+
+## Architecture Decisions
+
+- `GSAP Flip`-style sequencing is the chosen direction for media source-to-modal choreography in this app. The previous Motion shared-layout approach was not smooth enough for this portal-based transition.
+- `@panzoom/panzoom` is the chosen implementation for modal SVG diagram interaction because it handles SVG pan/zoom well and keeps interaction logic focused.
+- The codeblock regression is structural, not thematic: block code styling must be insulated from inline-code rules.
+- URL fetch remains sidecar-backed; the fix is endpoint discovery and health handling, not a wholesale extractor replacement.
+
+## Validation Targets
+
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm build`
+- `node scripts/test-recovery-regressions.mjs`
+
+## Known Constraints and Blockers
+
+- `codebase-retrieval` is currently unavailable in this environment (`401 Unauthorized`), so repo work must rely on direct inspection plus external docs.
+- Port `8787` is occupied by a different service in the current local environment, so extractor fallback needs explicit origin handling rather than assuming the default port is correct.
+
 # Document Type Registry - Project Roadmap
 
 ## Vision

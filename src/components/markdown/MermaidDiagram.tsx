@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import { AlertCircle } from 'lucide-react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { MediaAssetFrame } from './media/MediaAssetFrame'
 
 interface MermaidDiagramProps {
     chart: string
@@ -16,7 +17,6 @@ mermaid.initialize({
 })
 
 function MermaidDiagram({ chart }: MermaidDiagramProps) {
-    const containerRef = useRef<HTMLDivElement>(null)
     const [error, setError] = useState<string | null>(null)
     const [svg, setSvg] = useState<string>('')
     const renderIdRef = useRef(0)
@@ -80,31 +80,34 @@ function MermaidDiagram({ chart }: MermaidDiagramProps) {
     }
 
     return (
-        <figure
-            role="img"
-            aria-labelledby={titleId}
-            aria-describedby={descId}
-            style={{
-                margin: '1rem 0',
-                padding: '1rem',
-                backgroundColor: '#f8fafc',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                overflow: 'auto',
-            }}
-        >
-            <figcaption id={titleId} className="sr-only">
-                {capitalizedType} diagram
-            </figcaption>
-            <div id={descId} className="sr-only">
-                {chart}
-            </div>
-            <div
-                ref={containerRef}
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: svg }}
-            />
-        </figure>
+        <MediaAssetFrame
+            assetId={`mermaid-${figureId}`}
+            label={`${capitalizedType} diagram`}
+            renderContent={({ zoomed }) => (
+                <figure
+                    role="img"
+                    aria-labelledby={titleId}
+                    aria-describedby={descId}
+                    className="w-full"
+                >
+                    <figcaption id={titleId} className="sr-only">
+                        {capitalizedType} diagram
+                    </figcaption>
+                    <div id={descId} className="sr-only">
+                        {chart}
+                    </div>
+                    <div
+                        aria-hidden="true"
+                        className={
+                            zoomed
+                                ? 'max-h-[calc(90vh-2rem)] overflow-auto p-4 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full'
+                                : 'overflow-x-auto [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full'
+                        }
+                        dangerouslySetInnerHTML={{ __html: svg }}
+                    />
+                </figure>
+            )}
+        />
     )
 }
 

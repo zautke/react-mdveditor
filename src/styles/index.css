@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Rethink+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
+@source "../../design-system/ui/src";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -210,6 +211,9 @@
 
   /* ─── Base Spacing Unit (SOP required) ─── */
   --spacing:                  0.25rem;
+  --icon-button-size:         calc(var(--spacing) * 6);
+  --icon-button-glyph-size:   calc(var(--spacing) * 4);
+  --icon-button-gap:          var(--spacing);
 
   /* ─── Border Radius (SOP pattern) ─── */
   --radius:                   0.625rem;                 /* 10px base */
@@ -667,6 +671,229 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.app-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border-radius: var(--radius-md);
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  min-width: var(--icon-button-size);
+  min-height: var(--icon-button-size);
+  padding: 0;
+  flex: 0 0 var(--icon-button-size);
+}
+
+.app-icon-button > svg {
+  width: var(--icon-button-glyph-size);
+  height: var(--icon-button-glyph-size);
+}
+
+.app-icon-button > svg,
+.app-icon-button > span > svg {
+  flex: 0 0 auto;
+}
+
+.app-icon-button-surface {
+  color: var(--muted-foreground);
+}
+
+.app-icon-button-transparent {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: oklch(0.98 0.005 85 / 0.7);
+}
+
+.app-icon-button-transparent:hover,
+.app-icon-button-transparent:focus-visible {
+  border-color: transparent;
+  background: oklch(0.98 0.005 85 / 0.08);
+  color: oklch(0.98 0.005 85);
+  box-shadow: none;
+}
+
+.app-icon-button-transparent[data-active="true"] {
+  color: oklch(0.98 0.005 85);
+}
+
+.app-icon-button-segment {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--tab-text);
+}
+
+.app-icon-button-segment:hover,
+.app-icon-button-segment:focus-visible {
+  background: var(--tab-hover-bg);
+  color: var(--tab-active-text);
+  box-shadow: none;
+}
+
+.app-icon-button-segment-left {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.app-icon-button-segment-right {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.mdeditor-code-block code,
+.mdeditor-code-block code * {
+  text-shadow: none !important;
+}
+
+.mdeditor-code-block pre.mdeditor-code-block__surface {
+  background: rgb(40 44 52) !important;
+  color: rgb(171 178 191);
+  overflow-x: auto;
+}
+
+.mdeditor-code-block :where(pre, pre code, .mdeditor-code-block__code) {
+  background: transparent !important;
+}
+
+.markdown-content .mdeditor-code-block :where(pre, code) {
+  border: 0;
+}
+
+.mdeditor-code-block__code {
+  display: block;
+  color: inherit !important;
+}
+
+.mdeditor-code-block__line {
+  display: flex;
+  align-items: baseline;
+  min-height: 1.6em;
+}
+
+.mdeditor-code-block__line > .react-syntax-highlighter-line-number {
+  overflow: hidden;
+  flex: 0 0 auto;
+  line-height: inherit !important;
+}
+
+.mdeditor-code-block__line > span:last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mdeditor-media-asset__content,
+.mdeditor-media-modal__content {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.mdeditor-media-asset__content img,
+.mdeditor-media-asset__content video,
+.mdeditor-media-asset__content svg,
+.mdeditor-media-modal__content img,
+.mdeditor-media-modal__content video,
+.mdeditor-media-modal__content svg {
+  display: block;
+  max-width: 100%;
+}
+
+.mdeditor-media-asset__content svg,
+.mdeditor-media-modal__content svg {
+  height: auto;
+}
+
+.mdeditor-media-action-panel {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--icon-button-gap);
+}
+
+.mdeditor-media-action-panel--inline {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.group:hover > .mdeditor-media-action-panel--inline,
+.group:focus-within > .mdeditor-media-action-panel--inline,
+.mdeditor-media-asset[data-force-controls='true'] > .mdeditor-media-action-panel--inline {
+  opacity: 1;
+}
+
+.mdeditor-media-modal__viewport {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: min(70vh, 40rem);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: color-mix(in oklab, var(--background) 84%, black 16%);
+}
+
+.mdeditor-media-modal__viewport-inner {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.mdeditor-media-modal__viewport-inner[data-dragging='true'] {
+  cursor: grabbing;
+}
+
+.mdeditor-media-modal__svg-host {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.mdeditor-media-modal__svg-host svg {
+  display: block;
+  max-width: none;
+  max-height: none;
+}
+
+.mdeditor-diagram-controls {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 25;
+  display: grid;
+  grid-template-columns: repeat(3, var(--icon-button-size));
+  gap: var(--icon-button-gap);
+  padding: 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  border-radius: calc(var(--radius) + 0.25rem);
+  background: color-mix(in oklab, var(--background) 88%, black 12%);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-lg);
+}
+
+.mdeditor-diagram-controls .app-icon-button-transparent {
+  color: oklch(0.98 0.005 85 / 0.9);
+}
+
+.mdeditor-diagram-controls .app-icon-button-transparent:hover,
+.mdeditor-diagram-controls .app-icon-button-transparent:focus-visible {
+  background: oklch(0.98 0.005 85 / 0.12);
+}
+
 .app-shell {
   background: var(--app-bg);
   color: var(--foreground);
@@ -701,6 +928,15 @@ code {
 .markdown-content pre {
   border-radius: 4px;
   overflow-x: auto;
+}
+
+.markdown-content > .mdeditor-code-block code,
+.markdown-content .mdeditor-code-block pre code,
+.markdown-content .mdeditor-code-block .mdeditor-code-block__code {
+  background-color: transparent !important;
+  color: inherit !important;
+  border: 0;
+  padding: 0;
 }
 
 .markdown-content :not(pre) > code {

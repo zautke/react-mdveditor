@@ -1,0 +1,41 @@
+# Session History
+
+## 2026-04-12 - Recovery Planning and Implementation
+
+### Regressions Observed
+- Codeblocks lost readability because syntax-highlighted block code was inheriting inline-code styling, which also introduced visible gutter artifacts and misaligned line numbers.
+- Media assets did not expose the required hover control panel, and the inline-to-modal animation was too abrupt to feel intentional.
+- Mermaid and Graphviz diagrams lacked modal navigation controls for pan, zoom, reset, and reload.
+- URL extraction failed with `Not Found` because the frontend assumed a single extractor path that did not match the local runtime.
+
+### Repo and Runtime Findings
+- `MdxCodeblock` was rendering with `PreTag="div"`, which allowed `.markdown-content :not(pre) > code` to leak into block code.
+- `MediaAssetFrame` only rendered a single zoom button and used Motion shared-layout transitions for a portal-based modal flow.
+- Mermaid and Graphviz previews produced SVG output without a dedicated viewport controller for drag/pan/zoom.
+- A non-sidecar service was listening on port `8787`, returning `Cannot GET /health` and `Cannot POST /extract`; the URL extractor sidecar had to be started on `8788`.
+- `codebase-retrieval` was unavailable in this environment with `401 Unauthorized`.
+
+### Architecture Decisions
+- Keep Radix Dialog for modal semantics and accessibility.
+- Use GSAP-based transform/opacity choreography for media open/close rather than continuing with Motion shared-layout.
+- Use `@panzoom/panzoom` for modal Mermaid/Graphviz viewport controls.
+- Keep codeblocks visually minimal: one dark surface, transparent actions, no nested outlines or stray gutter backgrounds.
+- Add extractor endpoint probing with fallback to `VITE_MDE_URL_SIDECAR_ORIGIN` or a direct local sidecar origin.
+
+### References Used
+- GSAP Flip docs: https://gsap.com/docs/v3/Plugins/Flip
+- Motion layout animation docs: https://motion.dev/docs/layout-animations
+- Panzoom docs: https://github.com/timmywil/panzoom
+- Mermaid pan/zoom implementation examples from GitHub search:
+  - https://github.com/event-catalog/eventcatalog/blob/f43e8b1e9ae7738ae22b62626387ce2e4f8f04aa/packages/core/eventcatalog/src/utils/mermaid-zoom.ts
+  - https://github.com/xiaolai/vmark/blob/3c8ae25b2ec728c9248ebef3c0889fd35dccaec5/src/plugins/mermaid/mermaidPanZoom.ts
+
+### Verification
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm build`
+- `node scripts/test-recovery-regressions.mjs`
+
+### Notes
+- Dev server was restarted on `http://127.0.0.1:5200` with `VITE_MDE_URL_SIDECAR_ORIGIN=http://127.0.0.1:8788`.
+- URL fetch verification used `https://example.com` as the stable extraction target after the previously tested Augment docs URL was confirmed to return an upstream `404`.

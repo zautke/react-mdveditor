@@ -660,7 +660,7 @@ function App() {
               role="toolbar"
               aria-label="Document actions"
               aria-orientation="horizontal"
-              className="flex items-center justify-end gap-1.5 px-2 py-1.5 border-b border-border"
+              className="flex items-center justify-end gap-1 px-2 py-1.5 border-b border-border"
             >
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -669,15 +669,11 @@ function App() {
                     size="icon"
                     onClick={handleAddFile}
                     className={cn(
-                      "h-7 w-7 cursor-pointer",
-                      "transition-all duration-150",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      "hover:shadow-md hover:border-accent-foreground/30",
-                      "active:scale-95 active:shadow-sm",
+                      "app-icon-button app-icon-button-surface icon-button-unified cursor-pointer",
                     )}
                     aria-label="Upload file to new tab"
                   >
-                    <FilePlus2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    <FilePlus2 aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -692,15 +688,11 @@ function App() {
                     size="icon"
                     onClick={handleSave}
                     className={cn(
-                      "h-7 w-7 cursor-pointer",
-                      "transition-all duration-150",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      "hover:shadow-md hover:border-accent-foreground/30",
-                      "active:scale-95 active:shadow-sm",
+                      "app-icon-button app-icon-button-surface icon-button-unified cursor-pointer",
                     )}
                     aria-label={`Download ${activeDoc?.title || 'document'} as file`}
                   >
-                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Download aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -715,15 +707,11 @@ function App() {
                     size="icon"
                     onClick={() => setSettingsOpen(true)}
                     className={cn(
-                      "h-7 w-7 cursor-pointer",
-                      "transition-all duration-150",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      "hover:shadow-md hover:border-accent-foreground/30",
-                      "active:scale-95 active:shadow-sm",
+                      "app-icon-button app-icon-button-surface icon-button-unified cursor-pointer",
                     )}
                     aria-label="Open settings"
                   >
-                    <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Settings2 aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>

@@ -14,18 +14,19 @@ interface LineNumberButtonProps {
 export const LineNumberButton = React.memo(({ showLineNumbers, onToggle, className }: LineNumberButtonProps) => {
   return (
     <motion.button
+      type="button"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={onToggle}
       className={cn(
-        "rounded-md p-2 transition-colors",
-        "bg-muted hover:bg-muted/80",
-        showLineNumbers ? "text-primary" : "text-muted-foreground hover:text-foreground",
+        "app-icon-button app-icon-button-transparent transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-0",
         className
       )}
+      data-active={showLineNumbers ? "true" : "false"}
       aria-label={`${showLineNumbers ? "Hide" : "Show"} line numbers`}
     >
-      <Hash size={16} />
+      <Hash />
     </motion.button>
   );
 });

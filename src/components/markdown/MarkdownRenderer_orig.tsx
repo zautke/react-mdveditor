@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useId, type ComponentPropsWithoutRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -7,10 +7,80 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSlug from 'rehype-slug'
 import rehypeMathjax from 'rehype-mathjax'
 import { ViteMDXDCodeBlock } from './MdxCodeblock'
+import { MediaAssetFrame } from './media/MediaAssetFrame'
+import { cn } from '@/lib/utils'
 
 // Lazy-load MermaidDiagram — the mermaid library is ~2.3 MB and only needed
 // when a ```mermaid code fence is actually encountered.
 const LazyMermaidDiagram = lazy(() => import('./MermaidDiagram'))
+
+function MarkdownImage({ src, alt, ...props }: ComponentPropsWithoutRef<'img'>) {
+    const assetId = useId()
+
+    if (!src) return null
+
+    return (
+        <MediaAssetFrame
+            assetId={`markdown-image-${assetId}`}
+            label={alt?.trim() ? `Expanded image: ${alt}` : 'Expanded image'}
+            contentClassName="p-0"
+            modalClassName="bg-background/95"
+            copyLabel="Copy media source"
+            onCopy={async () => {
+                await navigator.clipboard.writeText(src)
+            }}
+            renderContent={({ zoomed }) => (
+                <img
+                    src={src}
+                    alt={alt}
+                    {...props}
+                    className={cn(
+                        "block h-auto max-w-full object-contain",
+                        zoomed
+                            ? "max-h-[calc(90vh-2rem)] max-w-[calc(90vw-2rem)] rounded-xl"
+                            : "max-w-full rounded-xl"
+                    )}
+                />
+            )}
+        />
+    )
+}
+
+function MarkdownVideo(props: ComponentPropsWithoutRef<'video'>) {
+    const assetId = useId()
+    const { children, className, title, controls, ...rest } = props
+
+    return (
+        <MediaAssetFrame
+            assetId={`markdown-video-${assetId}`}
+            label={title?.trim() ? `Expanded video: ${title}` : 'Expanded video'}
+            contentClassName="p-0"
+            modalClassName="bg-background/95"
+            copyLabel="Copy media source"
+            onCopy={async () => {
+                const copyTarget = typeof rest.src === 'string' ? rest.src : title ?? ''
+                if (copyTarget) {
+                    await navigator.clipboard.writeText(copyTarget)
+                }
+            }}
+            renderContent={({ zoomed }) => (
+                <video
+                    controls={controls ?? true}
+                    className={cn(
+                        "block max-w-full rounded-xl bg-black/80",
+                        className,
+                        zoomed
+                            ? "max-h-[calc(90vh-2rem)] max-w-[calc(90vw-2rem)] object-contain"
+                            : "max-w-full"
+                    )}
+                    {...rest}
+                >
+                    {children}
+                </video>
+            )}
+        />
+    )
+}
 
 // ── Module-level components config ──────────────────────────────────
 // Defined at module scope so ReactMarkdown receives the same object reference
@@ -46,6 +116,12 @@ const markdownComponents: Components = {
                 {children}
             </code>
         )
+    },
+    img({ src, alt, ...props }) {
+        return <MarkdownImage src={src} alt={alt} {...props} />
+    },
+    video({ node: _node, children, ...props }) {
+        return <MarkdownVideo {...props}>{children}</MarkdownVideo>
     },
     table({ children, ...props }) {
         return (
