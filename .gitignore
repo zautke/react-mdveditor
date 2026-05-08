@@ -28,5 +28,6 @@ dist-ssr
 .env.local
 .env.*.local
 .trees/**
+.worktrees/**
 
 .playwright-mcp/
