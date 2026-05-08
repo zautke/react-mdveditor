@@ -6,7 +6,7 @@ Exposes POST /extract  { url: str }  →  { title, author, date, siteName, conte
 Trafilatura handles the heavy lifting: HTTP fetch, boilerplate removal,
 ad filtering, and clean HTML extraction.
 
-Run locally:  MDE_URL_SIDECAR_PORT=8788 bash run.sh
+Run locally:  MDE_SIDECAR_INTERNAL_PORT=5280 bash run.sh
 Via Docker:   docker compose up
 """
 

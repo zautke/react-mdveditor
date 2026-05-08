@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Local dev startup — installs deps in a venv and runs uvicorn.
 # Usage: cd sidecar && bash run.sh
-# Optional: MDE_URL_SIDECAR_PORT=8788 bash run.sh
+# Optional: MDE_SIDECAR_INTERNAL_PORT=5280 bash run.sh
 
 set -euo pipefail
 
@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 VENV_DIR=".venv"
-PORT="${MDE_URL_SIDECAR_PORT:-8787}"
+PORT="${MDE_SIDECAR_INTERNAL_PORT:-${MDE_URL_SIDECAR_PORT:-5280}}"
 
 if [ ! -d "$VENV_DIR" ]; then
   echo "Creating virtual environment…"

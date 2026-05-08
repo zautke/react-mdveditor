@@ -4,10 +4,20 @@ import { existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const BASE_URL = 'http://localhost:5200'
+const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const ENV_FILE = resolve(PROJECT_ROOT, '.env')
+
+if (existsSync(ENV_FILE) && typeof process.loadEnvFile === 'function') {
+  process.loadEnvFile(ENV_FILE)
+}
+
+const BASE_URL =
+  process.env.MDE_DEV_ORIGIN ??
+  process.env.MDE_APP_ORIGIN ??
+  process.env.VITE_MDE_APP_ORIGIN ??
+  'http://localhost:5250'
 const STATUS_URL = `${BASE_URL}/api/mde-status`
 const OPEN_URL = `${BASE_URL}/api/mde-open`
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 // Resolve all CLI args to absolute paths, exit early if any missing
 const args = process.argv.slice(2)

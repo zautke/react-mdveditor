@@ -1,0 +1,35 @@
+services:
+  frontend-prod:
+    build:
+      context: .
+      target: runtime
+    depends_on:
+      url-sidecar:
+        condition: service_healthy
+    environment:
+      MDE_SIDECAR_INTERNAL_PORT: ${MDE_SIDECAR_INTERNAL_PORT}
+    ports:
+      - "${MDE_APP_PORT}:8080"
+    restart: unless-stopped
+
+  url-sidecar:
+    build:
+      context: ./sidecar
+    environment:
+      MDE_SIDECAR_INTERNAL_PORT: ${MDE_SIDECAR_INTERNAL_PORT}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import os, urllib.request
+          port = os.environ.get("MDE_SIDECAR_INTERNAL_PORT", "5280")
+          urllib.request.urlopen(f"http://127.0.0.1:{port}/health")
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    ports:
+      - "${MDE_URL_SIDECAR_PORT}:${MDE_SIDECAR_INTERNAL_PORT}"
+    restart: unless-stopped

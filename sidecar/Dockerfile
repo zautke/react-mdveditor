@@ -8,6 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY server.py .
 
-EXPOSE 8787
+ENV MDE_SIDECAR_INTERNAL_PORT=5280
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8787"]
+EXPOSE 5280
+
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${MDE_SIDECAR_INTERNAL_PORT:-5280}"]

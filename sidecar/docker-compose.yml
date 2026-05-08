@@ -1,11 +1,20 @@
 services:
   url-sidecar:
     build: .
+    environment:
+      MDE_SIDECAR_INTERNAL_PORT: "${MDE_SIDECAR_INTERNAL_PORT:-5280}"
     ports:
-      - "${MDE_URL_SIDECAR_PORT:-8787}:8787"
+      - "${MDE_URL_SIDECAR_PORT:-5280}:${MDE_SIDECAR_INTERNAL_PORT:-5280}"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import os, urllib.request
+          port = os.environ.get("MDE_SIDECAR_INTERNAL_PORT", "5280")
+          urllib.request.urlopen(f"http://127.0.0.1:{port}/health")
       interval: 30s
       timeout: 5s
       retries: 3

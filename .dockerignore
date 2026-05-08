@@ -1,0 +1,13 @@
+.DS_Store
+.git
+.gitignore
+.playwright-mcp
+.pnpm-store
+.ruff_cache
+.serena
+.trees
+dist
+logs
+node_modules
+sidecar/.venv
+test-results
