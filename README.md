@@ -41,6 +41,20 @@ To run the frontend locally:
 pnpm dev
 ```
 
+To install the `mdeo` convenience launcher into `~/.local/bin`:
+
+```bash
+bash scripts/install-mdeo.sh
+```
+
+From PowerShell:
+
+```powershell
+pwsh -File scripts/install-mdeo.ps1
+```
+
+`mdeo <file.md>` opens files in the running dev instance at `http://adagio.local:5250` and starts it if needed.
+
 To run the sidecar locally:
 
 ```bash

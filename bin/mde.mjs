@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execSync, spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,11 +18,12 @@ const BASE_URL =
   'http://localhost:5250'
 const STATUS_URL = `${BASE_URL}/api/mde-status`
 const OPEN_URL = `${BASE_URL}/api/mde-open`
+const COMMAND_NAME = process.env.MDE_CLI_NAME ?? 'mde'
 
 // Resolve all CLI args to absolute paths, exit early if any missing
 const args = process.argv.slice(2)
 if (args.length === 0) {
-  console.error('Usage: mde <file1> [file2] ...')
+  console.error(`Usage: ${COMMAND_NAME} <file1> [file2] ...`)
   process.exit(1)
 }
 
@@ -58,6 +59,21 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms))
 }
 
+function openBrowser(url) {
+  if (process.platform === 'darwin') {
+    return spawnSync('open', [url], { stdio: 'ignore' })
+  }
+
+  if (process.platform === 'win32') {
+    return spawnSync('cmd', ['/c', 'start', '', url], {
+      stdio: 'ignore',
+      windowsHide: true,
+    })
+  }
+
+  return spawnSync('xdg-open', [url], { stdio: 'ignore' })
+}
+
 const serverWasRunning = await isServerReady()
 
 if (!serverWasRunning) {
@@ -76,7 +92,10 @@ if (!serverWasRunning) {
   }
 
   console.log('Opening browser...')
-  execSync(`open ${BASE_URL}`)
+  const browserResult = openBrowser(BASE_URL)
+  if (browserResult.status !== 0) {
+    console.warn(`Could not open browser automatically for ${BASE_URL}`)
+  }
   // Give the browser time to connect HMR before we POST
   await sleep(800)
 }

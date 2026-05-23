@@ -42,6 +42,20 @@ Default dev URL:
 http://adagio.local:5250
 ```
 
+Install the `mdeo` helper into `~/.local/bin`:
+
+```bash
+bash scripts/install-mdeo.sh
+```
+
+PowerShell equivalent:
+
+```powershell
+pwsh -File scripts/install-mdeo.ps1
+```
+
+The helper opens files in the default mdeditor instance on `http://adagio.local:5250` and will cold-start the dev server if it is not already running.
+
 Sidecar:
 
 ```bash
