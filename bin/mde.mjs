@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -19,22 +19,116 @@ const BASE_URL =
 const STATUS_URL = `${BASE_URL}/api/mde-status`
 const OPEN_URL = `${BASE_URL}/api/mde-open`
 const COMMAND_NAME = process.env.MDE_CLI_NAME ?? 'mde'
+const SUPPORTED_EXTENSIONS = [
+  '.url.html',
+  '.markdown',
+  '.mermaid',
+  '.html',
+  '.htm',
+  '.jsx',
+  '.tsx',
+  '.dot',
+  '.gv',
+  '.json',
+  '.mmd',
+  '.mdx',
+  '.md',
+]
+const SKIP_DIRECTORIES = new Set([
+  '.git',
+  '.cache',
+  '.pnpm-store',
+  '.playwright-mcp',
+  'dist',
+  'build',
+  'node_modules',
+  'logs',
+  'test-results',
+])
 
-// Resolve all CLI args to absolute paths, exit early if any missing
+// Resolve all CLI args to absolute paths, expanding folders to all supported
+// document files they contain.
 const args = process.argv.slice(2)
 if (args.length === 0) {
-  console.error(`Usage: ${COMMAND_NAME} <file1> [file2] ...`)
+  console.error(`Usage: ${COMMAND_NAME} <file|folder> [file|folder] ...`)
   process.exit(1)
 }
 
 const filePaths = []
+const seenPaths = new Set()
+const errors = []
+
+function isSupportedDocumentFile(filename) {
+  const lower = filename.toLowerCase()
+  return SUPPORTED_EXTENSIONS.find(ext => lower.endsWith(ext)) ?? null
+}
+
+function shouldSkipDirectory(name) {
+  return name.startsWith('.') || SKIP_DIRECTORIES.has(name)
+}
+
+function addFilePath(absPath) {
+  if (seenPaths.has(absPath)) return
+  seenPaths.add(absPath)
+  filePaths.push(absPath)
+}
+
+function collectSupportedFiles(absPath) {
+  const stats = statSync(absPath)
+  if (stats.isFile()) {
+    const ext = isSupportedDocumentFile(absPath)
+    if (ext) {
+      addFilePath(absPath)
+      return 1
+    }
+    errors.push(`Unsupported file type: ${absPath}`)
+    return 0
+  }
+
+  if (!stats.isDirectory()) {
+    errors.push(`Unsupported path type: ${absPath}`)
+    return 0
+  }
+
+  const entries = readdirSync(absPath, { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  let foundAny = 0
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      if (shouldSkipDirectory(entry.name)) continue
+      const nested = resolve(absPath, entry.name)
+      foundAny += collectSupportedFiles(nested)
+      continue
+    }
+
+    if (!entry.isFile()) continue
+
+    const ext = isSupportedDocumentFile(entry.name)
+    if (!ext) continue
+
+    foundAny += 1
+    addFilePath(resolve(absPath, entry.name))
+  }
+
+  return foundAny
+}
+
 for (const arg of args) {
   const abs = resolve(arg)
   if (!existsSync(abs)) {
     console.error(`File not found: ${abs}`)
     process.exit(1)
   }
-  filePaths.push(abs)
+  const matchCount = collectSupportedFiles(abs)
+  if (matchCount === 0 && statSync(abs).isDirectory()) {
+    errors.push(`No supported document files found in directory: ${abs}`)
+  }
+}
+
+if (filePaths.length === 0) {
+  for (const err of errors) console.error(err)
+  process.exit(1)
 }
 
 async function isServerReady() {
@@ -110,4 +204,5 @@ const data = await res.json()
 if (data.errors && data.errors.length > 0) {
   for (const err of data.errors) console.error(err)
 }
+for (const err of errors) console.error(err)
 console.log(`Opened ${data.opened ?? 0} file(s) in mdeditor`)

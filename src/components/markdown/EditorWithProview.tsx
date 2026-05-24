@@ -27,6 +27,7 @@ interface EditorDocument {
   title: string
   content: string
   kind: string
+  filePath?: string
 }
 
 // ── Initial content ─────────────────────────────────────────────────
@@ -298,7 +299,11 @@ function App() {
     let lastId = ''
     setDocuments(docs => {
       let next = [...docs]
+      const seenFilePaths = new Set(
+        next.map(doc => doc.filePath).filter((filePath): filePath is string => Boolean(filePath))
+      )
       for (const file of files) {
+        if (seenFilePaths.has(file.filePath)) continue
         const ext = file.filePath.includes('.')
           ? `.${file.filePath.split('.').pop() ?? ''}`
           : ''
@@ -306,7 +311,8 @@ function App() {
           ?? documentTypeRegistry.detect(file.content)
         const newId = generateDocId()
         lastId = newId
-        next = [...next, { id: newId, title: file.title, content: file.content, kind }]
+        next = [...next, { id: newId, title: file.title, content: file.content, kind, filePath: file.filePath }]
+        seenFilePaths.add(file.filePath)
       }
       return next
     })
