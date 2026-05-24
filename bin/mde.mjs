@@ -16,9 +16,18 @@ const BASE_URL =
   process.env.MDE_APP_ORIGIN ??
   process.env.VITE_MDE_APP_ORIGIN ??
   'http://localhost:5250'
-const STATUS_URL = `${BASE_URL}/api/mde-status`
-const OPEN_URL = `${BASE_URL}/api/mde-open`
 const COMMAND_NAME = process.env.MDE_CLI_NAME ?? 'mde'
+const DEV_PORT = Number.parseInt(process.env.MDE_DEV_PORT ?? '', 10) || (() => {
+  try {
+    return Number.parseInt(new URL(BASE_URL).port, 10) || 5250
+  } catch {
+    return 5250
+  }
+})()
+const LOOPBACK_ORIGINS = [
+  `http://127.0.0.1:${DEV_PORT}`,
+  `http://localhost:${DEV_PORT}`,
+]
 const SUPPORTED_EXTENSIONS = [
   '.url.html',
   '.markdown',
@@ -57,6 +66,8 @@ if (args.length === 0) {
 const filePaths = []
 const seenPaths = new Set()
 const errors = []
+const DEV_SERVER_START_TIMEOUT_MS =
+  Number.parseInt(process.env.MDE_DEV_START_TIMEOUT_MS ?? '', 10) || 60_000
 
 function isSupportedDocumentFile(filename) {
   const lower = filename.toLowerCase()
@@ -72,6 +83,27 @@ function addFilePath(absPath) {
   seenPaths.add(absPath)
   filePaths.push(absPath)
 }
+
+function normalizeOrigin(origin) {
+  try {
+    return new URL(origin).origin
+  } catch {
+    return null
+  }
+}
+
+function uniqueOrigins(origins) {
+  return [...new Set(origins.filter((origin) => typeof origin === 'string'))]
+}
+
+const READY_ORIGINS = uniqueOrigins([
+  normalizeOrigin(BASE_URL) ?? BASE_URL,
+  ...LOOPBACK_ORIGINS,
+])
+const STARTUP_ORIGINS = uniqueOrigins([
+  ...LOOPBACK_ORIGINS,
+  normalizeOrigin(BASE_URL) ?? BASE_URL,
+])
 
 function collectSupportedFiles(absPath) {
   const stats = statSync(absPath)
@@ -114,6 +146,35 @@ function collectSupportedFiles(absPath) {
   return foundAny
 }
 
+async function isServerReady(baseUrl) {
+  try {
+    const res = await fetch(`${baseUrl}/api/mde-status`, {
+      signal: AbortSignal.timeout(1000),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+async function resolveReadyOrigin(origins, timeoutMs = 0) {
+  const deadline = timeoutMs > 0 ? Date.now() + timeoutMs : 0
+
+  while (timeoutMs === 0 || Date.now() < deadline) {
+    for (const origin of origins) {
+      if (await isServerReady(origin)) return origin
+    }
+    if (timeoutMs === 0) break
+    await new Promise(r => setTimeout(r, 500))
+  }
+
+  return null
+}
+
+async function waitForServer(origins, timeoutMs = DEV_SERVER_START_TIMEOUT_MS) {
+  return resolveReadyOrigin(origins, timeoutMs)
+}
+
 for (const arg of args) {
   const abs = resolve(arg)
   if (!existsSync(abs)) {
@@ -129,24 +190,6 @@ for (const arg of args) {
 if (filePaths.length === 0) {
   for (const err of errors) console.error(err)
   process.exit(1)
-}
-
-async function isServerReady() {
-  try {
-    const res = await fetch(STATUS_URL, { signal: AbortSignal.timeout(1000) })
-    return res.ok
-  } catch {
-    return false
-  }
-}
-
-async function waitForServer(timeoutMs = 30_000) {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    if (await isServerReady()) return true
-    await new Promise(r => setTimeout(r, 500))
-  }
-  return false
 }
 
 function sleep(ms) {
@@ -168,9 +211,9 @@ function openBrowser(url) {
   return spawnSync('xdg-open', [url], { stdio: 'ignore' })
 }
 
-const serverWasRunning = await isServerReady()
+let activeBaseUrl = await resolveReadyOrigin(READY_ORIGINS)
 
-if (!serverWasRunning) {
+if (!activeBaseUrl) {
   console.log('Starting dev server...')
   const child = spawn('pnpm', ['dev'], {
     cwd: PROJECT_ROOT,
@@ -179,22 +222,22 @@ if (!serverWasRunning) {
   })
   child.unref()
 
-  const ready = await waitForServer(30_000)
-  if (!ready) {
-    console.error('Dev server did not start within 30s')
+  activeBaseUrl = await waitForServer(STARTUP_ORIGINS)
+  if (!activeBaseUrl) {
+    console.error(`Dev server did not start within ${Math.round(DEV_SERVER_START_TIMEOUT_MS / 1000)}s`)
     process.exit(1)
   }
 
   console.log('Opening browser...')
-  const browserResult = openBrowser(BASE_URL)
+  const browserResult = openBrowser(activeBaseUrl)
   if (browserResult.status !== 0) {
-    console.warn(`Could not open browser automatically for ${BASE_URL}`)
+    console.warn(`Could not open browser automatically for ${activeBaseUrl}`)
   }
   // Give the browser time to connect HMR before we POST
   await sleep(800)
 }
 
-const res = await fetch(OPEN_URL, {
+const res = await fetch(`${activeBaseUrl}/api/mde-open`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ filePaths }),
