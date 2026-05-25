@@ -17,7 +17,7 @@ MDE_DEV_PORT=5250
 MDE_URL_SIDECAR_PORT=5280
 MDE_SIDECAR_INTERNAL_PORT=5280
 MDE_APP_ORIGIN=http://adagio.local:5200
-MDE_DEV_ORIGIN=http://adagio.local:5250
+MDE_DEV_ORIGIN=https://adagio.local:5250
 VITE_MDE_APP_ORIGIN=http://adagio.local:5200
 VITE_MDE_EXTRACT_PATH=/api/extract
 ```
@@ -33,7 +33,7 @@ pnpm typecheck
 pnpm lint
 ```
 
-Local Vite development now uses `MDE_DEV_PORT`, so the default dev URL is `http://adagio.local:5250` when your `.env` matches the canonical contract.
+Local Vite development now uses `MDE_DEV_PORT`, so the default dev URL is `https://adagio.local:5250` when your `.env` matches the canonical contract.
 
 To run the frontend locally:
 
@@ -53,7 +53,15 @@ From PowerShell:
 pwsh -File scripts/install-mdeo.ps1
 ```
 
-`mdeo <file.md>` opens files in the running dev instance at `http://adagio.local:5250` and starts it if needed.
+`mdeo <file.md>` opens files in the running dev instance at `https://adagio.local:5250` first, then the same adagio host over `http://adagio.local:5250` if the TLS listener is unavailable, retries the chosen server up to 3 times on error, and only uses local `https://127.0.0.1:5250` when no adagio dev server is already available.
+
+The dev HTTPS CA is pinned in `~/.local/state/mdeditor/dev-https` and mirrored into `docker/dev-https/`. For shell verification, prefer:
+
+```bash
+curl --cacert docker/dev-https/ca.crt -f https://adagio.local:5250/ping
+```
+
+If the pinned CA ever drifts, `mdeo` will refuse to rotate it silently. Restore the canonical state files instead of deleting them.
 
 To run the sidecar locally:
 
@@ -71,12 +79,13 @@ The production stack is defined in [compose.yml](/Volumes/FLOUNDER/dev/mdeditor/
 
 The remote dev stack is layered on [compose.dev.yml](/Volumes/FLOUNDER/dev/mdeditor/compose.dev.yml). It publishes:
 
-- dev frontend: `http://adagio.local:5250`
+- dev frontend: `https://adagio.local:5250`
 
 Deploy from `largo` against the remote Docker engine on `adagio`:
 
 ```bash
-export DOCKER_HOST=ssh://adagio
+unset DOCKER_HOST
+docker context use adagio-ssh
 docker compose up -d --build
 docker compose -f compose.yml -f compose.dev.yml up -d --build frontend-dev
 ```
@@ -98,8 +107,8 @@ docker compose -f compose.yml -f compose.dev.yml config
 Runtime checks after deployment:
 
 ```bash
-curl -f http://adagio.local:5200
-curl -f http://adagio.local:5250
+curl -f http://adagio.local:5200/ping
+curl --cacert docker/dev-https/ca.crt -f https://adagio.local:5250/ping
 curl -f http://adagio.local:5280/health
 docker ps
 ```
@@ -108,5 +117,6 @@ Browser verification must prove:
 
 - production app behavior on `http://adagio.local:5200`
 - successful same-origin `/api/extract` through the production frontend
+- prod health on `http://adagio.local:5200/ping`
+- dev health on `https://adagio.local:5250/ping`
 - sidecar health on `http://adagio.local:5280/health`
-- dev smoke on `http://adagio.local:5250`

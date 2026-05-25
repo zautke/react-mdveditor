@@ -29,6 +29,12 @@ export function mdeServerPlugin(): Plugin {
       server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
         const url = req.url ?? ''
 
+        if (req.method === 'GET' && url === '/ping') {
+          res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
+          res.end('pong')
+          return
+        }
+
         if (req.method === 'GET' && url === '/api/mde-status') {
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ ok: true }))

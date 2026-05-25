@@ -1,4 +1,6 @@
 import path from 'path'
+import { existsSync, readFileSync } from 'fs'
+import { homedir } from 'os'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -7,6 +9,29 @@ import { mdeServerPlugin } from './src/lib/vite-plugin-mde-server'
 function parsePort(value: string | undefined, fallback: number): number {
   const port = Number.parseInt(value ?? '', 10)
   return Number.isFinite(port) ? port : fallback
+}
+
+function loadDevHttpsConfig() {
+  const candidateDirs = [
+    path.resolve(homedir(), '.local', 'state', 'mdeditor', 'dev-https'),
+    path.resolve(__dirname, 'docker/dev-https'),
+  ]
+
+  for (const dir of candidateDirs) {
+    const certFile = path.resolve(dir, 'server.crt')
+    const keyFile = path.resolve(dir, 'server.key')
+
+    if (!existsSync(certFile) || !existsSync(keyFile)) {
+      continue
+    }
+
+    return {
+      cert: readFileSync(certFile),
+      key: readFileSync(keyFile),
+    }
+  }
+
+  return undefined
 }
 
 export default defineConfig(({ mode }) => {
@@ -38,6 +63,7 @@ export default defineConfig(({ mode }) => {
       port: devPort,
       host: true,
       allowedHosts: [host, 'localhost', '127.0.0.1'],
+      https: loadDevHttpsConfig(),
       proxy: {
         '/api/extract': {
           target: sidecarOrigin,

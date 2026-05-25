@@ -28,8 +28,8 @@ This document is the active browser-testing reference for the deployed mdeditor 
 
 Target surfaces:
 
-- production app: `http://adagio.local:5200`
-- remote dev app: `http://adagio.local:5250`
+- production app: `http://adagio.local:5200/ping`
+- remote dev app: `https://adagio.local:5250/ping`
 - sidecar ops endpoint: `http://adagio.local:5280/health`
 
 The app must continue to use same-origin `/api/extract`. Browser verification should prove that path succeeds through the frontend and should not treat direct app-to-sidecar calls as acceptable behavior.
@@ -39,11 +39,12 @@ The app must continue to use same-origin `/api/extract`. Browser verification sh
 Before any browser interaction:
 
 ```bash
-export DOCKER_HOST=ssh://adagio
+unset DOCKER_HOST
+docker context use adagio-ssh
 lsof -ti:5200 | xargs -r kill
 docker ps
-curl -f http://adagio.local:5200
-curl -f http://adagio.local:5250
+curl -f http://adagio.local:5200/ping
+curl --cacert docker/dev-https/ca.crt -f https://adagio.local:5250/ping
 curl -f http://adagio.local:5280/health
 ```
 
@@ -94,7 +95,7 @@ Run these on `http://adagio.local:5200`.
 
 ## Remote Dev Smoke
 
-Run this on `http://adagio.local:5250`.
+Run this on `https://adagio.local:5250`.
 
 - app loads
 - markdown preview updates
@@ -107,8 +108,8 @@ Run these during or immediately around browser testing:
 
 ```bash
 docker ps
-curl -f http://adagio.local:5200
-curl -f http://adagio.local:5250
+curl -f http://adagio.local:5200/ping
+curl --cacert docker/dev-https/ca.crt -f https://adagio.local:5250/ping
 curl -f http://adagio.local:5280/health
 ```
 

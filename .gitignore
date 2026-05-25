@@ -31,3 +31,5 @@ dist-ssr
 .worktrees/**
 
 .playwright-mcp/
+.cache/mdeditor-https/
+docker/dev-https/

@@ -26,6 +26,10 @@ CMD ["sh", "-c", "pnpm dev --host 0.0.0.0 --port ${MDE_DEV_PORT:-5250}"]
 
 FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
 
+USER root
+
+RUN apk add --no-cache curl
+
 COPY --from=build --chown=101:101 /app/dist /usr/share/nginx/html
 COPY --chown=101:101 nginx.conf /etc/nginx/nginx.conf.template
 COPY --chmod=755 --chown=101:101 docker/nginx-entrypoint.sh /docker-entrypoint.sh

@@ -8,6 +8,16 @@ services:
         condition: service_healthy
     environment:
       MDE_SIDECAR_INTERNAL_PORT: ${MDE_SIDECAR_INTERNAL_PORT}
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -fsS
+        - http://127.0.0.1:8080/ping
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     ports:
       - "${MDE_APP_PORT}:8080"
     restart: unless-stopped

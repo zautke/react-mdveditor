@@ -6,13 +6,13 @@ This protocol is for verification against the deployed remote stack, not an arbi
 
 Canonical targets:
 
-- production: `http://adagio.local:5200`
-- remote dev: `http://adagio.local:5250`
+- production: `http://adagio.local:5200/ping`
+- remote dev: `https://adagio.local:5250/ping`
 - sidecar ops: `http://adagio.local:5280/health`
 
 ## Hard Rules
 
-1. Export `DOCKER_HOST=ssh://adagio` before Docker commands.
+1. `unset DOCKER_HOST` and use `docker context use adagio-ssh` before Docker commands.
 2. Kill any local process listening on `5200` before verifying production.
 3. Treat `/api/extract` as a same-origin frontend path.
 4. Capture evidence for every claim: screenshot or snapshot, console, network, and container state.
@@ -20,7 +20,8 @@ Canonical targets:
 ## Shell Sequence
 
 ```bash
-export DOCKER_HOST=ssh://adagio
+unset DOCKER_HOST
+docker context use adagio-ssh
 lsof -ti:5200 | xargs -r kill
 pnpm typecheck
 pnpm lint
@@ -30,8 +31,8 @@ docker compose -f compose.yml -f compose.dev.yml config
 docker compose up -d --build
 docker compose -f compose.yml -f compose.dev.yml up -d --build frontend-dev
 docker ps
-curl -f http://adagio.local:5200
-curl -f http://adagio.local:5250
+curl -f http://adagio.local:5200/ping
+curl --cacert docker/dev-https/ca.crt -f https://adagio.local:5250/ping
 curl -f http://adagio.local:5280/health
 ```
 
@@ -64,7 +65,7 @@ Remote dev `5250`:
 Pass only if all of the following are directly observed:
 
 - `http://adagio.local:5200` responds and behaves correctly
-- `http://adagio.local:5250` responds and smokes cleanly
+- `https://adagio.local:5250` responds and smokes cleanly
 - `http://adagio.local:5280/health` responds with a healthy sidecar
 - production extraction succeeds through same-origin `/api/extract`
 - no unresolved blocking console or network failures remain

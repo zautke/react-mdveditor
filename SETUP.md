@@ -23,7 +23,7 @@ MDE_DEV_PORT=5250
 MDE_URL_SIDECAR_PORT=5280
 MDE_SIDECAR_INTERNAL_PORT=5280
 MDE_APP_ORIGIN=http://adagio.local:5200
-MDE_DEV_ORIGIN=http://adagio.local:5250
+MDE_DEV_ORIGIN=https://adagio.local:5250
 VITE_MDE_APP_ORIGIN=http://adagio.local:5200
 VITE_MDE_EXTRACT_PATH=/api/extract
 ```
@@ -39,7 +39,7 @@ pnpm dev
 Default dev URL:
 
 ```text
-http://adagio.local:5250
+https://adagio.local:5250
 ```
 
 Install the `mdeo` helper into `~/.local/bin`:
@@ -54,7 +54,15 @@ PowerShell equivalent:
 pwsh -File scripts/install-mdeo.ps1
 ```
 
-The helper opens files in the default mdeditor instance on `http://adagio.local:5250` and will cold-start the dev server if it is not already running.
+The helper opens files in the default mdeditor instance on `https://adagio.local:5250` first, then the same adagio host over `http://adagio.local:5250` if the TLS listener is unavailable, retries the chosen server up to 3 times on error, and only uses local `https://127.0.0.1:5250` when no adagio dev server is already available.
+
+The dev HTTPS CA is pinned in `~/.local/state/mdeditor/dev-https` and mirrored into `docker/dev-https/`. For shell verification, use the repo CA file:
+
+```bash
+curl --cacert docker/dev-https/ca.crt -f https://adagio.local:5250/ping
+```
+
+If the pinned CA drifts, restore the state files rather than generating a new root; `mdeo` treats that trust anchor as stable.
 
 Sidecar:
 
@@ -72,23 +80,25 @@ Production services:
 
 Remote dev services:
 
-- `frontend-dev` on `http://adagio.local:5250`
+- `frontend-dev` on `https://adagio.local:5250`
 - shared `url-sidecar` on `http://adagio.local:5280`
 
 Deploy with the SSH-backed Docker engine:
 
 ```bash
-export DOCKER_HOST=ssh://adagio
+unset DOCKER_HOST
+docker context use adagio-ssh
 docker compose up -d --build
 docker compose -f compose.yml -f compose.dev.yml up -d --build frontend-dev
 ```
 
 ## Shell Configuration
 
-The persistent Docker target must be:
+The persistent Docker target must be the SSH-backed context, with `DOCKER_HOST` unset:
 
 ```bash
-export DOCKER_HOST=ssh://adagio
+unset DOCKER_HOST
+docker context use adagio-ssh
 ```
 
 Before editing `~/.bashrc.local`, back it up. If the SSH-backed engine path fails, restore the backup before retrying.
@@ -109,8 +119,8 @@ pnpm lint
 pnpm build
 docker compose config
 docker compose -f compose.yml -f compose.dev.yml config
-curl -f http://adagio.local:5200
-curl -f http://adagio.local:5250
+curl -f http://adagio.local:5200/ping
+curl --cacert docker/dev-https/ca.crt -f https://adagio.local:5250/ping
 curl -f http://adagio.local:5280/health
 docker ps
 ```

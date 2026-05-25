@@ -2,8 +2,8 @@
 
 ## Target Surfaces
 
-- production app: `http://adagio.local:5200`
-- remote dev app: `http://adagio.local:5250`
+- production app: `http://adagio.local:5200/ping`
+- remote dev app: `https://adagio.local:5250/ping`
 - sidecar ops endpoint: `http://adagio.local:5280/health`
 
 The frontend extraction flow must remain same-origin. Browser verification should observe requests to `/api/extract` on the frontend origin, not direct calls from the app to the sidecar port.
@@ -21,7 +21,8 @@ docker compose -f compose.yml -f compose.dev.yml config
 ## Deployment Preflight
 
 ```bash
-export DOCKER_HOST=ssh://adagio
+unset DOCKER_HOST
+docker context use adagio-ssh
 lsof -ti:5200 | xargs -r kill
 docker compose up -d --build
 docker compose -f compose.yml -f compose.dev.yml up -d --build frontend-dev
@@ -33,8 +34,8 @@ Collect shell evidence for:
 
 ```bash
 docker ps
-curl -f http://adagio.local:5200
-curl -f http://adagio.local:5250
+curl -f http://adagio.local:5200/ping
+curl --cacert docker/dev-https/ca.crt -f https://adagio.local:5250/ping
 curl -f http://adagio.local:5280/health
 ```
 

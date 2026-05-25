@@ -15,6 +15,32 @@ services:
       MDE_URL_SIDECAR_PORT: ${MDE_URL_SIDECAR_PORT}
       VITE_MDE_APP_ORIGIN: ${VITE_MDE_APP_ORIGIN}
       VITE_MDE_EXTRACT_PATH: ${VITE_MDE_EXTRACT_PATH}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - |
+          const https = require('node:https')
+          const port = process.env.MDE_DEV_PORT || '5250'
+          const req = https.get({
+            hostname: '127.0.0.1',
+            port,
+            path: '/ping',
+            rejectUnauthorized: false,
+          }, res => {
+            res.resume()
+            if (res.statusCode < 200 || res.statusCode >= 300) process.exit(1)
+          })
+          req.on('error', () => process.exit(1))
+          req.setTimeout(5000, () => {
+            req.destroy()
+            process.exit(1)
+          })
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     ports:
       - "${MDE_DEV_PORT}:${MDE_DEV_PORT}"
     restart: unless-stopped
