@@ -202,10 +202,49 @@ RenderPane.displayName = 'RenderPane'
 
 interface MdeFilePayload { title: string; content: string; filePath: string }
 
+interface SavePickerFileHandle {
+  readonly name: string
+  createWritable: () => Promise<{
+    write: (data: Blob) => Promise<void>
+    close: () => Promise<void>
+  }>
+}
+
+interface SavePickerOptions {
+  suggestedName: string
+  startIn?: 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos'
+  types: Array<{
+    description: string
+    accept: Record<string, string[]>
+  }>
+}
+
+type SavePickerWindow = Window & typeof globalThis & {
+  showSaveFilePicker?: (options: SavePickerOptions) => Promise<SavePickerFileHandle>
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 let docCounter = 1
 const generateDocId = () => `doc-${Date.now()}-${docCounter++}`
+
+const getDownloadFileName = (title: string | undefined, extension: string) => {
+  const baseName = (title?.trim() || 'document')
+  return baseName.toLowerCase().endsWith(extension.toLowerCase())
+    ? baseName
+    : `${baseName}${extension}`
+}
+
+const saveBlobWithAnchor = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
 
 /**
  * Detect LaTeX delimiters and convert to markdown-compatible math.
@@ -510,6 +549,14 @@ function App() {
     ))
   }, [activeDocId])
 
+  const handleRenameTab = useCallback((tabId: string, title: string) => {
+    const nextTitle = title.trim()
+    if (!nextTitle) return
+    setDocuments(docs => docs.map(d =>
+      d.id === tabId ? { ...d, title: nextTitle } : d
+    ))
+  }, [])
+
   const handleTabChange = useCallback((tabId: string) => {
     setActiveDocId(tabId)
   }, [])
@@ -571,18 +618,41 @@ function App() {
     e.target.value = ''
   }, [])
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const plugin = documentTypeRegistry.get(activeKind)
     const blob = new Blob([activeContent], { type: plugin.exportMimeType })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${activeDoc?.title || 'document'}${plugin.exportExtension}`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }, [activeContent, activeKind, activeDoc?.title])
+    const filename = getDownloadFileName(activeDoc?.title, plugin.exportExtension)
+    const savePickerWindow = window as SavePickerWindow
+
+    if (savePickerWindow.showSaveFilePicker) {
+      try {
+        const handle = await savePickerWindow.showSaveFilePicker({
+          // Uses the current tab title as the Save dialog's default file name.
+          suggestedName: filename,
+          startIn: 'downloads',
+          types: [
+            {
+              description: `${plugin.label} file`,
+              accept: {
+                [plugin.exportMimeType]: [plugin.exportExtension],
+              },
+            },
+          ],
+        })
+        const writable = await handle.createWritable()
+        await writable.write(blob)
+        await writable.close()
+        handleRenameTab(activeDocId, handle.name)
+        return
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        console.warn('[FileSave] Save picker failed, falling back to browser download.', error)
+      }
+    }
+
+    saveBlobWithAnchor(blob, filename)
+    handleRenameTab(activeDocId, filename)
+  }, [activeContent, activeKind, activeDoc?.title, activeDocId, handleRenameTab])
 
   // ── URL preview inline-fetch event listener ──────────────────────
   // UrlPreview's EmptyState dispatches 'url-preview-fetched' when a
@@ -733,6 +803,7 @@ function App() {
               onNewTab={() => handleNewTab('markdown')}
               newTabMenuItems={newTabMenuItems}
               onDeleteTab={handleDeleteTab}
+              onRenameTab={handleRenameTab}
               onReorderTabs={handleReorderTabs}
               variant="capsule"
               showNewButton

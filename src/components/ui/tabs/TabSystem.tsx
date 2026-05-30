@@ -46,6 +46,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       onTabChange,
       onNewTab,
       onDeleteTab,
+      onRenameTab,
       onReorderTabs,
       showNewButton = false,
       newTabMenuItems,
@@ -261,6 +262,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
                           closeButtonShape={closeButtonShape}
                           closeButtonVisibility={closeButtonVisibility}
                           onDelete={handleDelete}
+                          onRename={onRenameTab}
                           isNew={newTabIds.has(tab.id)}
                           triggerClassName={styles.trigger()}
                           isDndEnabled={isDndEnabled}

@@ -62,6 +62,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: devPort,
       host: true,
+      origin: env.MDE_DEV_ORIGIN,
       allowedHosts: [host, 'localhost', '127.0.0.1'],
       https: loadDevHttpsConfig(),
       proxy: {

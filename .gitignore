@@ -33,3 +33,6 @@ dist-ssr
 .playwright-mcp/
 .cache/mdeditor-https/
 docker/dev-https/
+
+# Local development TLS material
+certs/dev/**

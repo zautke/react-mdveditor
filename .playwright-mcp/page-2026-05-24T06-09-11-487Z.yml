@@ -1,0 +1,144 @@
+- main "Markdown editor application" [ref=e3]:
+  - group "Editor and preview panes" [ref=e4]:
+    - region "Markdown source editor" [ref=e5]:
+      - heading "Editor" [level=3] [ref=e7]
+      - textbox "Editor" [ref=e8]:
+        - /placeholder: Start typing...
+        - text: "# React Markdown Demo This is a **comprehensive** markdown renderer with *full* features: ## Features - [x] GitHub Flavored Markdown - [x] Syntax highlighting - [x] Tables & Task lists - [x] Math equations (MathJax) - [x] **Mermaid diagrams** --- ## Mermaid Diagrams ### Flowchart ```mermaid flowchart TD A[Start] --> B{Is it working?} B -->|Yes| C[Great!] B -->|No| D[Debug] D --> B C --> E[End] ``` ### Sequence Diagram ```mermaid sequenceDiagram participant Alice participant Bob Alice->>Bob: Hello Bob! Bob-->>Alice: Hi Alice! Alice->>Bob: How are you? Bob-->>Alice: Great, thanks! ``` --- ## Math Rendering Inline: $E = mc^2$ | Block: $$ \\int_{a}^{b} f(x)\\,dx = F(b) - F(a) $$ ## Code Highlighting ```typescript interface User { id: number name: string } const getUser = (id: number): User | undefined => users.find(user => user.id === id) ``` ## Table Example | Feature | Supported | Notes | |---------|-----------|-------| | Markdown | ✅ | Full CommonMark | | Mermaid | ✅ | 7 diagram types! | | Math | ✅ | MathJax support | > **Tip:** Drop a file onto this editor to load it!"
+      - generic [ref=e9]: Write markdown here. The preview updates automatically in the adjacent panel.
+    - generic [ref=e10]:
+      - button "Collapse editor pane" [expanded] [ref=e12]:
+        - img
+      - generic [ref=e13]:
+        - toolbar "Document actions" [ref=e14]:
+          - button "Upload file to new tab" [ref=e15] [cursor=pointer]:
+            - img
+          - button "Download Untitled-1 as file" [ref=e16] [cursor=pointer]:
+            - img
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - tablist "Document tabs" [ref=e20]:
+                - tab "Untitled-1" [selected] [ref=e22] [cursor=pointer]:
+                  - generic [ref=e24]:
+                    - img [ref=e26]
+                    - generic "Untitled-1" [ref=e29]
+              - status [ref=e30]
+            - generic [ref=e33]:
+              - button "Add new tab" [ref=e34]:
+                - img [ref=e35]
+              - button "Choose new tab type" [ref=e36]:
+                - img [ref=e37]
+          - tabpanel "Untitled-1" [ref=e40]:
+            - document "Rendered preview content" [ref=e41]:
+              - generic [ref=e42]:
+                - heading "React Markdown Demo" [level=1] [ref=e43]
+                - paragraph [ref=e44]:
+                  - text: This is a
+                  - strong [ref=e45]: comprehensive
+                  - text: markdown renderer with
+                  - emphasis [ref=e46]: full
+                  - text: "features:"
+                - heading "Features" [level=2] [ref=e47]
+                - list [ref=e48]:
+                  - listitem [ref=e49]:
+                    - checkbox [checked] [disabled] [ref=e50]
+                    - text: GitHub Flavored Markdown
+                  - listitem [ref=e51]:
+                    - checkbox [checked] [disabled] [ref=e52]
+                    - text: Syntax highlighting
+                  - listitem [ref=e53]:
+                    - checkbox [checked] [disabled] [ref=e54]
+                    - text: Tables & Task lists
+                  - listitem [ref=e55]:
+                    - checkbox [checked] [disabled] [ref=e56]
+                    - text: Math equations (MathJax)
+                  - listitem [ref=e57]:
+                    - checkbox [checked] [disabled] [ref=e58]
+                    - strong [ref=e59]: Mermaid diagrams
+                - separator [ref=e60]
+                - heading "Mermaid Diagrams" [level=2] [ref=e61]
+                - heading "Flowchart" [level=3] [ref=e62]
+                - generic [ref=e64]: Loading diagram…
+                - heading "Sequence Diagram" [level=3] [ref=e65]
+                - generic [ref=e67]: Loading diagram…
+                - separator [ref=e68]
+                - heading "Math Rendering" [level=2] [ref=e69]
+                - paragraph [ref=e70]:
+                  - text: "Inline:"
+                  - img [ref=e72]
+                  - text: "| Block:"
+                - img [ref=e87]
+                - heading "Code Highlighting" [level=2] [ref=e131]
+                - generic [ref=e133]:
+                  - generic [ref=e134]:
+                    - button "Copy code to clipboard" [ref=e135]:
+                      - img [ref=e137]
+                    - button "Show line numbers" [ref=e140]:
+                      - img [ref=e141]
+                  - code [ref=e145]:
+                    - generic [ref=e146]:
+                      - generic [ref=e147]: interface
+                      - generic [ref=e149]: User
+                      - generic [ref=e151]: "{"
+                    - generic [ref=e153]:
+                      - generic [ref=e154]: id
+                      - generic [ref=e155]: ":"
+                      - generic [ref=e157]: number
+                    - generic [ref=e159]:
+                      - generic [ref=e160]: name
+                      - generic [ref=e161]: ":"
+                      - generic [ref=e163]: string
+                    - generic [ref=e166]: "}"
+                    - generic [ref=e169]:
+                      - generic [ref=e170]: const
+                      - generic [ref=e171]: getUser
+                      - generic [ref=e172]: =
+                      - generic [ref=e174]: (
+                      - generic [ref=e175]: id
+                      - generic [ref=e176]: ":"
+                      - generic [ref=e178]: number
+                      - generic [ref=e179]: )
+                      - generic [ref=e180]: ":"
+                      - generic [ref=e181]: User
+                      - generic [ref=e182]: "|"
+                      - generic [ref=e184]: undefined
+                      - generic [ref=e186]: =>
+                    - generic [ref=e188]:
+                      - generic [ref=e189]: users
+                      - generic [ref=e190]: .
+                      - generic [ref=e191]: find
+                      - generic [ref=e192]: (
+                      - generic [ref=e193]: user
+                      - generic [ref=e194]: =>
+                      - generic [ref=e195]: user
+                      - generic [ref=e196]: .
+                      - generic [ref=e197]: id
+                      - generic [ref=e198]: ===
+                      - generic [ref=e199]: id
+                      - generic [ref=e200]: )
+                - heading "Table Example" [level=2] [ref=e201]
+                - table [ref=e203]:
+                  - rowgroup [ref=e204]:
+                    - row "Feature Supported Notes" [ref=e205]:
+                      - columnheader "Feature" [ref=e206]
+                      - columnheader "Supported" [ref=e207]
+                      - columnheader "Notes" [ref=e208]
+                  - rowgroup [ref=e209]:
+                    - row "Markdown ✅ Full CommonMark" [ref=e210]:
+                      - cell "Markdown" [ref=e211]
+                      - cell "✅" [ref=e212]
+                      - cell "Full CommonMark" [ref=e213]
+                    - row "Mermaid ✅ 7 diagram types!" [ref=e214]:
+                      - cell "Mermaid" [ref=e215]
+                      - cell "✅" [ref=e216]
+                      - cell "7 diagram types!" [ref=e217]
+                    - row "Math ✅ MathJax support" [ref=e218]:
+                      - cell "Math" [ref=e219]
+                      - cell "✅" [ref=e220]
+                      - cell "MathJax support" [ref=e221]
+                - blockquote [ref=e222]:
+                  - paragraph [ref=e223]:
+                    - strong [ref=e224]: "Tip:"
+                    - text: Drop a file onto this editor to load it!
+  - status [ref=e225]

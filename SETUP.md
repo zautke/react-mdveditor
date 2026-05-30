@@ -42,6 +42,14 @@ Default dev URL:
 https://adagio.local:5250
 ```
 
+### Secure HTTPS Development
+
+The repo also supports the secure development origin `https://adagio.local:5250` for File System Access API features like `showSaveFilePicker()`.
+
+On macOS, Chrome will only trust that origin after the local development CA is installed into the machine trust store. Use the profile in `public/dev-ca/adagio-local-dev-ca.mobileconfig` on the Mac you want to trust, or import the certificate in Keychain Access and set it to trust as a root CA.
+
+If you need a browser that trusts the URL without any local trust setup, you need a publicly trusted certificate on a real delegated domain. `adagio.local` cannot be made universally trusted by the server alone.
+
 Install the `mdeo` helper into `~/.local/bin`:
 
 ```bash

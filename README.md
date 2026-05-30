@@ -53,6 +53,10 @@ From PowerShell:
 pwsh -File scripts/install-mdeo.ps1
 ```
 
+For secure-context features like `showSaveFilePicker()`, use `https://adagio.local:5250`. On macOS, install the trust profile from `public/dev-ca/adagio-local-dev-ca.mobileconfig` once on the machine you are using.
+
+See [docs/dockerized-web-app-container-lockdown-runbook.md](docs/dockerized-web-app-container-lockdown-runbook.md) for the project-agnostic HTTPS, trust, Docker access, and verification pattern.
+
 `mdeo <file.md>` opens files in the running dev instance at `https://adagio.local:5250` first, then the same adagio host over `http://adagio.local:5250` if the TLS listener is unavailable, retries the chosen server up to 3 times on error, and only uses local `https://127.0.0.1:5250` when no adagio dev server is already available.
 
 The dev HTTPS CA is pinned in `~/.local/state/mdeditor/dev-https` and mirrored into `docker/dev-https/`. For shell verification, prefer:
@@ -68,6 +72,29 @@ To run the sidecar locally:
 ```bash
 cd sidecar
 bash run.sh
+```
+
+### Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start dev server on port **5250** with HMR |
+| `pnpm build` | Production build with code splitting |
+| `pnpm preview` | Serve the production build locally |
+| `pnpm typecheck` | TypeScript strict-mode type checking |
+| `pnpm lint` | ESLint with zero-warning tolerance |
+
+## Architecture
+
+### Markdown Processing Pipeline
+
+```
+User Input → react-markdown → remark-gfm (GFM)
+                             → remark-math (equations)
+           → rehype-raw (HTML) → rehype-slug (heading IDs)
+                               → rehype-mathjax (render math)
+           → react-syntax-highlighter (code blocks)
+           → MermaidDiagram (mermaid fenced blocks) → DOM
 ```
 
 ## Docker Deployment
