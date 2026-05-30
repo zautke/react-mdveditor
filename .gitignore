@@ -28,3 +28,6 @@ dist-ssr
 .env.local
 .env.*.local
 .trees/**
+
+# Local development TLS material
+certs/dev/**

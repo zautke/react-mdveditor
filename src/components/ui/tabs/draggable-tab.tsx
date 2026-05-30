@@ -77,6 +77,7 @@ export interface DraggableTabProps {
   closeButtonShape: CloseButtonShape
   closeButtonVisibility: CloseButtonVisibility
   onDelete?: (tabId: string) => void
+  onRename?: (tabId: string, label: string) => void
   isNew?: boolean
   triggerClassName: string
   isDndEnabled: boolean
@@ -84,7 +85,7 @@ export interface DraggableTabProps {
   isSortingActive: boolean
 }
 
-const DraggableTab = forwardRef<HTMLButtonElement, DraggableTabProps>(
+const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
   (
     {
       tab,
@@ -95,6 +96,7 @@ const DraggableTab = forwardRef<HTMLButtonElement, DraggableTabProps>(
       closeButtonShape,
       closeButtonVisibility,
       onDelete,
+      onRename,
       isNew,
       triggerClassName,
       isDndEnabled,
@@ -161,40 +163,49 @@ const DraggableTab = forwardRef<HTMLButtonElement, DraggableTabProps>(
         {...listeners}
       >
         <TabsPrimitive.Trigger
+          asChild
           ref={ref}
           value={tab.id}
           disabled={tab.disabled}
-          className={cn(triggerClassName, "group relative w-full")}
-          style={
-            tab.color
-              ? ({ "--tab-accent": tab.color } as React.CSSProperties)
-              : undefined
-          }
-          data-tab-color={tab.color ? "" : undefined}
-          aria-roledescription={isDndEnabled ? "draggable tab" : undefined}
         >
-          <TabName
-            icon={tab.icon}
-            label={tab.label}
-            iconColor={
+          <div
+            className={cn(
+              triggerClassName,
+              "group relative w-full",
+              "data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+            )}
+            style={
               tab.color
-                ? {
-                    color: `color-mix(in oklch, ${tab.color} 75%, black)`,
-                  }
+                ? ({ "--tab-accent": tab.color } as React.CSSProperties)
                 : undefined
             }
-          />
-          {showCloseButton && tab.closable !== false && onDelete && (
-            <TabCloseButton
-              tabId={tab.id}
-              tabLabel={tab.label}
-              onDelete={onDelete}
-              position={closeButtonPosition}
-              shape={closeButtonShape}
-              visibility={closeButtonVisibility}
-              disabled={tab.disabled}
+            data-tab-color={tab.color ? "" : undefined}
+            aria-roledescription={isDndEnabled ? "draggable tab" : undefined}
+          >
+            <TabName
+              icon={tab.icon}
+              label={tab.label}
+              onRename={onRename ? (label) => onRename(tab.id, label) : undefined}
+              iconColor={
+                tab.color
+                  ? {
+                      color: `color-mix(in oklch, ${tab.color} 75%, black)`,
+                    }
+                  : undefined
+              }
             />
-          )}
+            {showCloseButton && tab.closable !== false && onDelete && (
+              <TabCloseButton
+                tabId={tab.id}
+                tabLabel={tab.label}
+                onDelete={onDelete}
+                position={closeButtonPosition}
+                shape={closeButtonShape}
+                visibility={closeButtonVisibility}
+                disabled={tab.disabled}
+              />
+            )}
+          </div>
         </TabsPrimitive.Trigger>
       </motion.div>
     )

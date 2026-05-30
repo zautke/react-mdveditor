@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadCertificateFileName</key>
+      <string>adagio-local-dev-ca.crt</string>
+      <key>PayloadContent</key>
+      <data>MIIFMDCCAxigAwIBAgIUCXtEDMeFdnbYT0Dsx8t8Sjv7B80wDQYJKoZIhvcNAQELBQAwHjEcMBoGA1UEAwwTQWRhZ2lvIExvY2FsIERldiBDQTAeFw0yNjA1MjMyMTQyMTJaFw0zNjA1MjAyMTQyMTJaMB4xHDAaBgNVBAMME0FkYWdpbyBMb2NhbCBEZXYgQ0EwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCz4K6VXi/zIucJ09BKFl0M+SRo2rdBXtzUqcPqysjFmx6RLhfTYBDCYWtjpVmhEbgSemdx0asCib8Sbj0KBDScdzbFIClojFWWeFsFvcmAKSAmGURtxLNPUe8M9NaB/E/c6CbCVm6P2PlJ7BJOhNrQcN7Dhk5uAH2q4bO8vxasdf58M6bJIh+IYJzavABmL5mKwtGrBiUq7TkNbeYc/LY4bk/CSknITKpMjqxLaEad1+hVTMHumnzd8sK7cnAu7AT7p5jJ669/V7J3FefXAn/b5mRU7sorBqfoTwve+q4VagjhTkHg1HcGY1/TyeYes6ThNlJAHbdhEaN/s/rC6eGhmtoEBMCqGoiOTatIhKsyt6lqGM41mBUyjqUw5QE3KRjm0RHSLOC0JS/gIpZRXxhsZ3dXLe2UpIJnLpjF9vUBXnaKGQEDPBEKO3PCzO5UREQiL458vfyLGbpRvsPKgDscbSXfcwWQCRoGx2WtG75MOLCJD86CdI3sWran89YkEajPuaN8eOjzkqHZDv2ShBnTXY9GtbaKy6gjX2YwEwYJWrh2JFLNg115vXGxAL4beTxXjLpo52XIA7nvod1lKfzKtYfKaHmYRcrA0bKi2x2xUg2xM/mJeh3TM8/qajquDJZc8Z/mv7fEbvG1zm3arwehhfazafysBSrPMNhbe6HOzwIDAQABo2YwZDAdBgNVHQ4EFgQU0qWoQSkVtZYhPsp/VxUnbaxolMIwHwYDVR0jBBgwFoAU0qWoQSkVtZYhPsp/VxUnbaxolMIwEgYDVR0TAQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwDQYJKoZIhvcNAQELBQADggIBAEeYYq0iHcGjPHQw9xN3c2NROqrSTsOyx5GfpPjiaJK/V5HPMqN7k+eKueBgfEKJPtHYMvjhbOu6HIA/j5RsKKSmjv8Q4yEJTLs/pKBwGxuvdKjDsbiP2H9VaBSss25OxJOhUS9hvNmJUkeiolJelmclJUD3ipmht+nE2cgpBsoTuFjZib2FD0mLveRD0mglV8xT8W9M1B4FbBejH8G6WZDwAoedrLoN/bqUct2TfpBs9P7jQTwK0Rbp5gnBirsZ/G6/ZXg0qdulAkEOuKYs9aZoe43m50QgHloXUK7p1z2f0ZG4FOAnSDDUd0aOzs8QeRR9zR5q0mV/GxmPvFSsdXsohHb3IrGznRFB1vMRGrXX7lcHHrS/ST3hmyEqhyFN0vloVuCIcwRk2HgkVf4Hu4wOxr/zKZmOSWake7oWU9VgkY/eAXDrg3EaQwUx9RaiG64qTIheV7Hrtsiq50yH+MR7iSIeoFmj7v1UNbZgFWk30OAXn41sEgT/7+vroKCr6rB0HaN5rn9N2O+yIAIOikui/c1+BiY+aDDEKv2bWyRzVXxIfrUVA9jdNAgOxC8/gB8baTQldYv92ufdCRzONmL5h5RRwtSKZQ+WUS4+QDgJyVHl3Skb/61N1uUIOnvT2w30IUUII/GcM+oTUzaiNB9q/QBOh0ntAKaDeThhPrBF</data>
+      <key>PayloadDescription</key>
+      <string>Adds the Adagio local development CA as a trusted root certificate.</string>
+      <key>PayloadDisplayName</key>
+      <string>Adagio Local Dev CA</string>
+      <key>PayloadIdentifier</key>
+      <string>local.adagio.devca.root</string>
+      <key>PayloadType</key>
+      <string>com.apple.security.root</string>
+      <key>PayloadUUID</key>
+      <string>6D428A3D-3E12-42B0-97F6-5A4D11C9C7B8</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+    </dict>
+  </array>
+  <key>PayloadDescription</key>
+  <string>Installs the trusted root CA used to serve adagio.local over HTTPS during development.</string>
+  <key>PayloadDisplayName</key>
+  <string>Adagio Local Dev CA</string>
+  <key>PayloadIdentifier</key>
+  <string>local.adagio.devca.profile</string>
+  <key>PayloadRemovalDisallowed</key>
+  <false/>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadUUID</key>
+  <string>8F5A4A5E-1C4E-4B8A-AF45-66F48F2A8E0D</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>

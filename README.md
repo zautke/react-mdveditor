@@ -54,6 +54,10 @@ pnpm dev
 
 Open **http://localhost:5200** to see the editor.
 
+For secure-context features like `showSaveFilePicker()`, use `https://adagio.local:5250`. On macOS, install the trust profile from `public/dev-ca/adagio-local-dev-ca.mobileconfig` once on the machine you are using.
+
+See [docs/dockerized-web-app-container-lockdown-runbook.md](docs/dockerized-web-app-container-lockdown-runbook.md) for the project-agnostic HTTPS, trust, Docker access, and verification pattern.
+
 ### Scripts
 
 | Command | Description |

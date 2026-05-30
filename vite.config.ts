@@ -1,42 +1,96 @@
+import fs from 'fs'
 import path from 'path'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { mdeServerPlugin } from './src/lib/vite-plugin-mde-server'
 
-export default defineConfig({
-  plugins: [
-    react({
-      jsxRuntime: 'automatic'
-    }),
-    tailwindcss(),
-    mdeServerPlugin(),
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+function parsePort(value: string | undefined, fallback: number): number {
+  const port = Number.parseInt(value ?? '', 10)
+  return Number.isFinite(port) ? port : fallback
+}
+
+function parseBoolean(value: string | undefined): boolean {
+  return value === '1' || value?.toLowerCase() === 'true'
+}
+
+function resolveOptionalPath(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  return path.isAbsolute(value) ? value : path.resolve(__dirname, value)
+}
+
+export default defineConfig(({ mode }) => {
+  const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') }
+  const appPort = parsePort(env.MDE_APP_PORT, 5200)
+  const devPort = parsePort(env.MDE_DEV_PORT, 5250)
+  const sidecarPort = parsePort(
+    env.MDE_SIDECAR_INTERNAL_PORT ?? env.MDE_URL_SIDECAR_PORT,
+    5280,
+  )
+  const host = env.MDE_HOST ?? 'localhost'
+  const devHttps = parseBoolean(env.MDE_DEV_HTTPS)
+  const tlsKeyPath = resolveOptionalPath(env.MDE_DEV_TLS_KEY_PATH)
+  const tlsCertPath = resolveOptionalPath(env.MDE_DEV_TLS_CERT_PATH)
+  const sidecarOrigin =
+    env.MDE_EXTRACT_PROXY_ORIGIN ?? `http://localhost:${sidecarPort}`
+  const devOrigin =
+    env.MDE_DEV_ORIGIN ?? `${devHttps ? 'https' : 'http'}://${host}:${devPort}`
+
+  const https = devHttps && tlsKeyPath && tlsCertPath
+    ? {
+        key: fs.readFileSync(tlsKeyPath),
+        cert: fs.readFileSync(tlsCertPath),
+      }
+    : undefined
+
+  return {
+    plugins: [
+      react({
+        jsxRuntime: 'automatic'
+      }),
+      tailwindcss(),
+      mdeServerPlugin(),
+    ],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
-  server: {
-    port: 5200,
-    host: true,
-    allowedHosts: ['*.local', 'largo.local'],
-  },
-  build: {
-    minify: 'esbuild',
-    sourcemap: false,
-    target: 'esnext',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          markdown: ['react-markdown', 'react-syntax-highlighter', 'remark-gfm', 'rehype-raw', 'rehype-slug'],
-          'react-preview': ['react-runner']
+    server: {
+      port: devPort,
+      host: true,
+      https,
+      origin: devOrigin,
+      allowedHosts: [host, 'localhost', '127.0.0.1'],
+      proxy: {
+        '/api/extract': {
+          target: sidecarOrigin,
+          changeOrigin: true,
+          rewrite: (p: string) => p.replace(/^\/api/, ''),
+        },
+      },
+    },
+    preview: {
+      port: appPort,
+      host: true,
+      allowedHosts: [host, 'localhost', '127.0.0.1'],
+    },
+    build: {
+      minify: 'esbuild',
+      sourcemap: false,
+      target: 'esnext',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+            markdown: ['react-markdown', 'react-syntax-highlighter', 'remark-gfm', 'rehype-raw', 'rehype-slug'],
+            'react-preview': ['react-runner']
+          }
         }
       }
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-markdown']
     }
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'react-markdown']
   }
 })
