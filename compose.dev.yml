@@ -44,3 +44,23 @@ services:
     ports:
       - "${MDE_DEV_PORT}:${MDE_DEV_PORT}"
     restart: unless-stopped
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync
+          path: ./public
+          target: /app/public
+        - action: sync
+          path: ./index.html
+          target: /app/index.html
+        - action: sync+restart
+          path: ./vite.config.ts
+          target: /app/vite.config.ts
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+        - action: rebuild
+          path: ./Dockerfile
