@@ -46,9 +46,16 @@ https://adagio.local:5250
 
 The repo also supports the secure development origin `https://adagio.local:5250` for File System Access API features like `showSaveFilePicker()`.
 
-On macOS, Chrome will only trust that origin after the local development CA is installed into the machine trust store. Use the profile in `public/dev-ca/adagio-local-dev-ca.mobileconfig` on the Mac you want to trust, or import the certificate in Keychain Access and set it to trust as a root CA.
+Run once per machine to trust the dev CA in the local browser:
 
-If you need a browser that trusts the URL without any local trust setup, you need a publicly trusted certificate on a real delegated domain. `adagio.local` cannot be made universally trusted by the server alone.
+**Windows** (PowerShell, no admin required):
+```powershell
+pwsh -File scripts/trust-dev-ca.ps1
+```
+
+**macOS**: install the profile in `public/dev-ca/adagio-local-dev-ca.mobileconfig`, or import `public/dev-ca/adagio-local-dev-ca.crt` in Keychain Access and set it to trust as a root CA.
+
+After running, open a new Chrome tab — no browser restart needed.
 
 Install the `mdeo` helper into `~/.local/bin`:
 
