@@ -806,6 +806,8 @@ function App() {
               onRenameTab={handleRenameTab}
               onReorderTabs={handleReorderTabs}
               variant="capsule"
+              skin="editor"
+              density="compact"
               showNewButton
               showCloseButtons
               className="flex-1"

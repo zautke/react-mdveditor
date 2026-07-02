@@ -314,19 +314,41 @@
   --alert-danger-bg:         var(--danger-bg);
 
   /* ============================================
-     Tabs + Menu Surfaces (Terracotta Light)
-     Tri-tone: bar (back), tab (fore), hover
+     Tab Skin Contract (default: editor light)
      ============================================ */
-  --app-bg:                  var(--tab-bg);
-  --tabs-bar-bg:             var(--color-fog);
-  --tabs-bar-border:         var(--color-fog);
-  --tabs-bar-border-strong:  color-mix(in oklab, var(--color-charcoal) 35%, var(--color-fog));
-  --tab-bg:                  var(--color-cream);
-  --tab-hover-bg:            var(--color-parchment);
-  --tab-active-bg:           var(--color-cream);
-  --tab-text:                var(--foreground);
+  --app-bg:                  var(--tab-active-bg);
+  --tabs-bar-bg:             color-mix(in oklab, var(--background) 88%, var(--border));
+  --tabs-list-bg:            color-mix(in oklab, var(--background) 72%, var(--border));
+  --tabs-bar-border:         color-mix(in oklab, var(--border) 82%, var(--foreground));
+  --tabs-bar-border-strong:  color-mix(in oklab, var(--foreground) 28%, var(--border));
+  --tabs-list-shadow:        0 1px 2px color-mix(in oklab, black 8%, transparent);
+  --tab-bg:                  color-mix(in oklab, var(--background) 94%, var(--border));
+  --tab-border:              color-mix(in oklab, var(--border) 72%, transparent);
+  --tab-hover-bg:            color-mix(in oklab, var(--background) 78%, var(--border));
+  --tab-hover-border:        color-mix(in oklab, var(--foreground) 18%, var(--border));
+  --tab-active-bg:           var(--background);
+  --tab-active-border:       color-mix(in oklab, var(--foreground) 20%, var(--border));
+  --tab-text:                var(--muted-foreground);
   --tab-active-text:         var(--foreground);
-  --tab-shadow:              var(--shadow-mexican-soft);
+  --tab-disabled-bg:         color-mix(in oklab, var(--background) 70%, var(--border));
+  --tab-disabled-text:       color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  --tab-action-fg:           color-mix(in oklab, var(--muted-foreground) 88%, var(--foreground));
+  --tab-indicator-active:    var(--tab-accent);
+  --tab-indicator-muted:     color-mix(in oklch, var(--tab-accent) 38%, transparent);
+  --tab-indicator-size:      2px;
+  --tab-accent:              var(--primary);
+  --tab-focus-ring:          var(--ring);
+  --tab-focus-offset:        2px;
+  --tab-focus-offset-color:  var(--background);
+  --tab-close-hover-bg:      color-mix(in oklab, var(--destructive) 14%, transparent);
+  --tab-close-hover-fg:      var(--destructive);
+  --tab-shadow:              0 1px 2px color-mix(in oklab, black 10%, transparent);
+  --tab-drag-shadow:         0 14px 34px color-mix(in oklab, black 20%, transparent);
+  --tab-control-height:      2rem;
+  --tab-motion-duration-standard: 180ms;
+  --tab-motion-duration-reduced: 90ms;
+  --tab-motion-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --tab-motion-ease-reduced: linear;
   --menu-bg:                 var(--card);
   --menu-border:             var(--border);
   --menu-shadow:             var(--shadow-mexican-elevated);
@@ -517,23 +539,189 @@
   --alert-danger-bg:         var(--danger-bg);
 
   /* ============================================
-     Tabs + Menu Surfaces (Terracotta Dark)
-     Tri-tone: bar (back), tab (fore), hover
+     Tab Skin Contract (default: editor dark)
      ============================================ */
-  --app-bg:                  var(--tab-bg);
+  --app-bg:                  var(--tab-active-bg);
+  --tabs-bar-bg:             color-mix(in oklab, var(--background) 86%, black);
+  --tabs-list-bg:            color-mix(in oklab, var(--background) 76%, var(--border));
+  --tabs-bar-border:         color-mix(in oklab, var(--border) 88%, black);
+  --tabs-bar-border-strong:  color-mix(in oklab, var(--foreground) 18%, var(--border));
+  --tabs-list-shadow:        0 1px 2px color-mix(in oklab, black 35%, transparent);
+  --tab-bg:                  color-mix(in oklab, var(--card) 78%, var(--background));
+  --tab-border:              color-mix(in oklab, var(--border) 72%, transparent);
+  --tab-hover-bg:            color-mix(in oklab, var(--card) 88%, var(--foreground) 4%);
+  --tab-hover-border:        color-mix(in oklab, var(--foreground) 18%, var(--border));
+  --tab-active-bg:           var(--card);
+  --tab-active-border:       color-mix(in oklab, var(--foreground) 20%, var(--border));
+  --tab-text:                var(--muted-foreground);
+  --tab-active-text:         var(--foreground);
+  --tab-disabled-bg:         color-mix(in oklab, var(--background) 78%, black);
+  --tab-disabled-text:       color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  --tab-action-fg:           color-mix(in oklab, var(--muted-foreground) 88%, var(--foreground));
+  --tab-indicator-active:    var(--tab-accent);
+  --tab-indicator-muted:     color-mix(in oklch, var(--tab-accent) 40%, transparent);
+  --tab-indicator-size:      2px;
+  --tab-accent:              var(--primary);
+  --tab-focus-ring:          var(--ring);
+  --tab-focus-offset:        2px;
+  --tab-focus-offset-color:  var(--background);
+  --tab-close-hover-bg:      color-mix(in oklab, var(--destructive) 18%, transparent);
+  --tab-close-hover-fg:      var(--destructive);
+  --tab-shadow:              0 1px 2px color-mix(in oklab, black 35%, transparent);
+  --tab-drag-shadow:         0 14px 34px color-mix(in oklab, black 55%, transparent);
+  --tab-control-height:      2rem;
+  --tab-motion-duration-standard: 180ms;
+  --tab-motion-duration-reduced: 90ms;
+  --tab-motion-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --tab-motion-ease-reduced: linear;
+  --menu-bg:                 var(--popover);
+  --menu-border:             var(--border);
+  --menu-shadow:             var(--shadow-mexican-elevated);
+
+}
+
+:where([data-density="compact"]) {
+  --tab-control-height: 1.75rem;
+}
+
+:where([data-density="comfortable"]) {
+  --tab-control-height: 2rem;
+}
+
+:where([data-motion="reduced"]) {
+  --tab-motion-duration: var(--tab-motion-duration-reduced);
+  --tab-motion-ease: var(--tab-motion-ease-reduced);
+}
+
+:where([data-motion="none"]) {
+  --tab-motion-duration: 0ms;
+  --tab-motion-ease: linear;
+}
+
+:where([data-tab-skin="chrome"]) {
+  --tabs-bar-bg:             var(--color-fog);
+  --tabs-list-bg:            var(--color-fog);
+  --tabs-bar-border:         var(--color-fog);
+  --tabs-bar-border-strong:  color-mix(in oklab, var(--color-charcoal) 35%, var(--color-fog));
+  --tab-bg:                  var(--color-cream);
+  --tab-hover-bg:            var(--color-parchment);
+  --tab-active-bg:           var(--color-cream);
+  --tab-border:              color-mix(in oklab, var(--color-fog) 80%, transparent);
+  --tab-hover-border:        var(--color-fog);
+  --tab-active-border:       var(--tabs-bar-border-strong);
+  --tab-text:                var(--foreground);
+  --tab-active-text:         var(--foreground);
+  --tab-shadow:              var(--shadow-mexican-soft);
+}
+
+:where([data-tab-skin="quiet"]) {
+  --tabs-bar-bg:             transparent;
+  --tabs-list-bg:            transparent;
+  --tabs-list-shadow:        none;
+  --tabs-bar-border:         color-mix(in oklab, var(--border) 70%, transparent);
+  --tabs-bar-border-strong:  var(--tabs-bar-border);
+  --tab-bg:                  transparent;
+  --tab-border:              transparent;
+  --tab-hover-bg:            color-mix(in oklab, var(--muted) 55%, transparent);
+  --tab-hover-border:        transparent;
+  --tab-active-bg:           transparent;
+  --tab-active-border:       transparent;
+  --tab-shadow:              none;
+}
+
+:where([data-tab-skin="contrast"]) {
+  --tabs-bar-bg:             Canvas;
+  --tabs-list-bg:            Canvas;
+  --tabs-bar-border:         CanvasText;
+  --tabs-bar-border-strong:  CanvasText;
+  --tabs-list-shadow:        none;
+  --tab-bg:                  Canvas;
+  --tab-border:              CanvasText;
+  --tab-hover-bg:            Highlight;
+  --tab-hover-border:        Highlight;
+  --tab-active-bg:           Highlight;
+  --tab-active-border:       Highlight;
+  --tab-text:                CanvasText;
+  --tab-active-text:         HighlightText;
+  --tab-disabled-bg:         Canvas;
+  --tab-disabled-text:       GrayText;
+  --tab-action-fg:           CanvasText;
+  --tab-indicator-active:    Highlight;
+  --tab-indicator-muted:     CanvasText;
+  --tab-focus-ring:          Highlight;
+  --tab-close-hover-bg:      Highlight;
+  --tab-close-hover-fg:      HighlightText;
+  --tab-shadow:              none;
+  --tab-drag-shadow:         none;
+}
+
+.dark :where([data-tab-skin="chrome"]) {
   --tabs-bar-bg:             var(--color-obsidian);
+  --tabs-list-bg:            var(--color-obsidian);
   --tabs-bar-border:         var(--border);
   --tabs-bar-border-strong:  color-mix(in oklab, var(--color-obsidian) 70%, black);
   --tab-bg:                  var(--color-slate-dark);
   --tab-hover-bg:            var(--color-ash);
   --tab-active-bg:           var(--color-slate-dark);
+  --tab-border:              color-mix(in oklab, var(--border) 82%, transparent);
+  --tab-hover-border:        var(--border);
+  --tab-active-border:       var(--tabs-bar-border-strong);
   --tab-text:                var(--color-cream-bright);
   --tab-active-text:         var(--color-cream-bright);
   --tab-shadow:              var(--shadow-mexican-soft);
-  --menu-bg:                 var(--popover);
-  --menu-border:             var(--border);
-  --menu-shadow:             var(--shadow-mexican-elevated);
+}
 
+.dark :where([data-tab-skin="quiet"]) {
+  --tabs-bar-bg:             transparent;
+  --tabs-list-bg:            transparent;
+  --tabs-list-shadow:        none;
+  --tabs-bar-border:         color-mix(in oklab, var(--border) 70%, transparent);
+  --tabs-bar-border-strong:  var(--tabs-bar-border);
+  --tab-bg:                  transparent;
+  --tab-border:              transparent;
+  --tab-hover-bg:            color-mix(in oklab, var(--muted) 60%, transparent);
+  --tab-hover-border:        transparent;
+  --tab-active-bg:           transparent;
+  --tab-active-border:       transparent;
+  --tab-shadow:              none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where([data-motion="standard"], [data-motion="reduced"]) {
+    --tab-motion-duration: 0ms;
+    --tab-motion-ease: linear;
+  }
+}
+
+@media (forced-colors: active) {
+  :where([data-tab-skin]) {
+    --tabs-bar-bg: Canvas;
+    --tabs-list-bg: Canvas;
+    --tabs-bar-border: CanvasText;
+    --tabs-bar-border-strong: CanvasText;
+    --tabs-list-shadow: none;
+    --tab-bg: Canvas;
+    --tab-border: CanvasText;
+    --tab-hover-bg: Highlight;
+    --tab-hover-border: Highlight;
+    --tab-active-bg: Highlight;
+    --tab-active-border: Highlight;
+    --tab-text: CanvasText;
+    --tab-active-text: HighlightText;
+    --tab-disabled-bg: Canvas;
+    --tab-disabled-text: GrayText;
+    --tab-action-fg: ButtonText;
+    --tab-indicator-active: Highlight;
+    --tab-indicator-muted: CanvasText;
+    --tab-focus-ring: Highlight;
+    --tab-close-hover-bg: Highlight;
+    --tab-close-hover-fg: HighlightText;
+    --tab-shadow: none;
+    --tab-drag-shadow: none;
+    --menu-bg: Canvas;
+    --menu-border: CanvasText;
+    --menu-shadow: none;
+  }
 }
 
 @theme inline {
@@ -627,17 +815,17 @@
 /* Active tab with custom accent color */
 [data-state="active"][data-tab-color] {
   background: color-mix(in oklch, var(--tab-accent) 18%, var(--tab-active-bg));
-  border-bottom-color: var(--tab-accent);
+  border-bottom-color: var(--tab-indicator-active);
 }
 
 /* Active tab top glow — inset accent stripe at top edge */
 [data-state="active"][data-tab-color] {
-  box-shadow: inset 0 2px 0 var(--tab-accent), var(--tab-shadow);
+  box-shadow: inset 0 var(--tab-indicator-size) 0 var(--tab-indicator-active), var(--tab-shadow);
 }
 
 /* Inactive tab subtle bottom stripe — hints at doctype color */
 [data-tab-color]:not([data-state="active"]) {
-  border-bottom: 2px solid color-mix(in oklch, var(--tab-accent) 35%, transparent);
+  border-bottom: var(--tab-indicator-size) solid var(--tab-indicator-muted);
 }
 
 /* Tab system responsive sizing defaults */

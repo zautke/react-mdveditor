@@ -3,7 +3,7 @@
 import * as React from "react"
 import { forwardRef } from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
-import { motion } from "motion/react"
+import { motion as Motion } from "motion/react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
@@ -17,37 +17,57 @@ import type {
   CloseButtonPosition,
   CloseButtonShape,
   CloseButtonVisibility,
+  TabMotion,
 } from "./types"
 
 // ── Animation configuration ─────────────────────────────────────────
 
-const ANIMATION_DURATION = 0.2
 const ANIMATION_DISTANCE = 30
+const REDUCED_ANIMATION_DISTANCE = 12
 
-const getTabAnimations = (orientation: TabOrientation) => {
+const getTabAnimations = (orientation: TabOrientation, motion: TabMotion) => {
   const isHorizontal = orientation === "horizontal"
+  const duration = motion === "none" ? 0 : motion === "reduced" ? 0.12 : 0.2
+  const distance = motion === "reduced" ? REDUCED_ANIMATION_DISTANCE : ANIMATION_DISTANCE
+
+  if (motion === "none") {
+    return {
+      initial: false,
+      animate: {
+        opacity: 1,
+        scale: 1,
+        ...(isHorizontal ? { x: 0 } : { y: 0 }),
+        transition: { duration: 0 },
+      },
+      exit: {
+        opacity: 0,
+        ...(isHorizontal ? { x: 0 } : { y: 0 }),
+        transition: { duration: 0 },
+      },
+    }
+  }
 
   return {
     initial: {
       opacity: 0,
       scale: 0.8,
-      ...(isHorizontal ? { x: ANIMATION_DISTANCE } : { y: ANIMATION_DISTANCE }),
+      ...(isHorizontal ? { x: distance } : { y: distance }),
     },
     animate: {
       opacity: 1,
       scale: 1,
       ...(isHorizontal ? { x: 0 } : { y: 0 }),
       transition: {
-        duration: ANIMATION_DURATION,
+        duration,
         ease: [0.4, 0, 0.2, 1] as const,
       },
     },
     exit: {
       opacity: 0,
       scale: 0.8,
-      ...(isHorizontal ? { x: -ANIMATION_DISTANCE } : { y: -ANIMATION_DISTANCE }),
+      ...(isHorizontal ? { x: -distance } : { y: -distance }),
       transition: {
-        duration: ANIMATION_DURATION,
+        duration,
         ease: [0.4, 0, 1, 1] as const,
       },
     },
@@ -67,6 +87,9 @@ export interface SortableTabProps {
   onDelete?: (tabId: string) => void
   isNew?: boolean
   triggerClassName: string
+  tabNameClassName?: string
+  closeButtonClassName?: string
+  motion: TabMotion
   isDndEnabled: boolean
 }
 
@@ -83,11 +106,14 @@ const SortableTab = forwardRef<HTMLButtonElement, SortableTabProps>(
       onDelete,
       isNew,
       triggerClassName,
+      tabNameClassName,
+      closeButtonClassName,
+      motion,
       isDndEnabled,
     },
     ref
   ) => {
-    const animations = getTabAnimations(orientation)
+    const animations = getTabAnimations(orientation, motion)
 
     const {
       attributes,
@@ -115,9 +141,9 @@ const SortableTab = forwardRef<HTMLButtonElement, SortableTabProps>(
     }
 
     return (
-      <motion.div
+      <Motion.div
         ref={setNodeRef}
-        layout={!isDragging}
+        layout={motion !== "none" && !isDragging}
         layoutId={`tab-${tab.id}`}
         initial={isNew ? animations.initial : false}
         animate={animations.animate}
@@ -142,10 +168,11 @@ const SortableTab = forwardRef<HTMLButtonElement, SortableTabProps>(
           <TabName
             icon={tab.icon}
             label={tab.label}
+            className={tabNameClassName}
             iconColor={
               tab.color
                 ? {
-                    color: `color-mix(in oklch, ${tab.color} 75%, black)`,
+                    color: "color-mix(in oklch, var(--tab-accent) 80%, var(--tab-active-text))",
                   }
                 : undefined
             }
@@ -158,10 +185,11 @@ const SortableTab = forwardRef<HTMLButtonElement, SortableTabProps>(
               shape={closeButtonShape}
               visibility={closeButtonVisibility}
               disabled={tab.disabled}
+              className={closeButtonClassName}
             />
           )}
         </TabsPrimitive.Trigger>
-      </motion.div>
+      </Motion.div>
     )
   }
 )

@@ -24,6 +24,25 @@ export interface NewTabMenuItem {
 export type TabOrientation = "horizontal" | "vertical"
 
 export type TabVariant = "chrome" | "capsule" | "underline" | "pills" | "boxed" | "minimal"
+export type TabSkin = "editor" | "chrome" | "quiet" | "contrast"
+export type TabDensity = "compact" | "comfortable"
+export type TabMotion = "standard" | "reduced" | "none"
+export type TabSystemSlot =
+  | "root"
+  | "bar"
+  | "scrollContainer"
+  | "list"
+  | "trigger"
+  | "tabName"
+  | "closeButton"
+  | "newButton"
+  | "newButtonGroup"
+  | "newButtonMenu"
+  | "newButtonMenuItem"
+  | "scrollArrow"
+  | "content"
+  | "dragOverlay"
+  | "actionSeparator"
 
 export type CloseButtonPosition = "inside" | "outside" | "overlap"
 export type CloseButtonShape = "circle" | "square" | "none"
@@ -50,6 +69,15 @@ export interface TabSystemProps {
 
   /** Visual style variant */
   variant?: TabVariant
+
+  /** Token-backed skin scope. Does not change tab behavior or layout variant. */
+  skin?: TabSkin
+
+  /** Density token scope for trigger height and compact spacing. */
+  density?: TabDensity
+
+  /** Motion policy for CSS transitions and tab enter/exit animation. */
+  motion?: TabMotion
 
   /** Array of tab items */
   tabs: TabItem[]
@@ -98,6 +126,9 @@ export interface TabSystemProps {
 
   /** Additional CSS classes for the root element */
   className?: string
+
+  /** Slot-level CSS class overrides for embedding applications. */
+  classNames?: Partial<Record<TabSystemSlot, string>>
 
   /** Content to render for each tab (keyed by tab ID) */
   children?: React.ReactNode

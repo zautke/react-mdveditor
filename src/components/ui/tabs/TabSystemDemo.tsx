@@ -6,7 +6,7 @@ import { FileText, Settings, User, Bell, Home } from "lucide-react"
 import { Copy, FileText as FeatherFileText, GitBranch, Upload } from "react-feather"
 
 import { TabSystem, TabContent } from "./TabSystem"
-import type { TabItem, TabVariant, TabOrientation } from "./types"
+import type { TabDensity, TabItem, TabMotion, TabOrientation, TabSkin, TabVariant } from "./types"
 
 /**
  * TabSystemDemo - Interactive demonstration of all TabSystem features
@@ -14,16 +14,20 @@ import type { TabItem, TabVariant, TabOrientation } from "./types"
 export function TabSystemDemo() {
   // Demo state
   const [variant, setVariant] = useState<TabVariant>("chrome")
+  const [skin, setSkin] = useState<TabSkin>("editor")
+  const [density, setDensity] = useState<TabDensity>("compact")
+  const [motion, setMotion] = useState<TabMotion>("standard")
   const [orientation, setOrientation] = useState<TabOrientation>("horizontal")
   const [showCloseButtons, setShowCloseButtons] = useState(true)
   const [showNewButton, setShowNewButton] = useState(true)
 
   // Tab data
   const [tabs, setTabs] = useState<TabItem[]>([
-    { id: "home", label: "Home", icon: <Home className="h-4 w-4" /> },
-    { id: "documents", label: "Documents", icon: <FileText className="h-4 w-4" /> },
+    { id: "home", label: "Home", icon: <Home className="h-4 w-4" />, color: "oklch(0.64 0.16 35)" },
+    { id: "documents", label: "Documents", icon: <FileText className="h-4 w-4" />, color: "oklch(0.65 0.14 235)" },
+    { id: "long", label: "Very Long Document Name With Version Notes.md", icon: <FileText className="h-4 w-4" />, color: "oklch(0.68 0.15 145)" },
     { id: "profile", label: "Profile", icon: <User className="h-4 w-4" /> },
-    { id: "settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
+    { id: "disabled", label: "Disabled", icon: <Settings className="h-4 w-4" />, disabled: true },
   ])
   const [activeTab, setActiveTab] = useState("home")
 
@@ -35,6 +39,7 @@ export function TabSystemDemo() {
         id: newId,
         label: `New Tab ${prev.length + 1}`,
         icon: <Bell className="h-4 w-4" />,
+        color: "oklch(0.72 0.14 80)",
       },
     ])
     setActiveTab(newId)
@@ -48,6 +53,7 @@ export function TabSystemDemo() {
         id: newId,
         label: `Mermaid ${prev.length + 1}`,
         icon: <GitBranch className="h-4 w-4" />,
+        color: "oklch(0.66 0.15 160)",
       },
     ])
     setActiveTab(newId)
@@ -84,7 +90,10 @@ export function TabSystemDemo() {
     [activeTab]
   )
 
-  const variants: TabVariant[] = ["chrome", "underline", "pills", "boxed", "minimal"]
+  const variants: TabVariant[] = ["chrome", "capsule", "underline", "pills", "boxed", "minimal"]
+  const skins: TabSkin[] = ["editor", "chrome", "quiet", "contrast"]
+  const densities: TabDensity[] = ["compact", "comfortable"]
+  const motions: TabMotion[] = ["standard", "reduced", "none"]
   const menuItems = [
     {
       id: "new-markdown",
@@ -139,6 +148,51 @@ export function TabSystemDemo() {
         </div>
 
         <div className="space-y-1">
+          <label className="text-sm font-medium">Skin</label>
+          <select
+            value={skin}
+            onChange={(e) => setSkin(e.target.value as TabSkin)}
+            className="block w-32 px-3 py-2 rounded-md border bg-background"
+          >
+            {skins.map((value) => (
+              <option key={value} value={value}>
+                {value.charAt(0).toUpperCase() + value.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Density</label>
+          <select
+            value={density}
+            onChange={(e) => setDensity(e.target.value as TabDensity)}
+            className="block w-36 px-3 py-2 rounded-md border bg-background"
+          >
+            {densities.map((value) => (
+              <option key={value} value={value}>
+                {value.charAt(0).toUpperCase() + value.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Motion</label>
+          <select
+            value={motion}
+            onChange={(e) => setMotion(e.target.value as TabMotion)}
+            className="block w-32 px-3 py-2 rounded-md border bg-background"
+          >
+            {motions.map((value) => (
+              <option key={value} value={value}>
+                {value.charAt(0).toUpperCase() + value.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
           <label className="text-sm font-medium">Orientation</label>
           <select
             value={orientation}
@@ -184,6 +238,9 @@ export function TabSystemDemo() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           variant={variant}
+          skin={skin}
+          density={density}
+          motion={motion}
           orientation={orientation}
           showNewButton={showNewButton}
           showCloseButtons={showCloseButtons}
@@ -217,17 +274,50 @@ export function TabSystemDemo() {
               <h3 className="text-sm font-medium mb-3 capitalize">{v}</h3>
               <TabSystem
                 tabs={[
-                  { id: "1", label: "Tab One" },
-                  { id: "2", label: "Tab Two" },
-                  { id: "3", label: "Tab Three" },
+                  { id: "1", label: "Tab One", color: "oklch(0.64 0.16 35)" },
+                  { id: "2", label: "Long Label With Accent", color: "oklch(0.65 0.14 235)" },
+                  { id: "3", label: "Disabled", disabled: true },
                 ]}
                 activeTab="1"
                 onTabChange={() => {}}
                 variant={v}
+                skin={skin}
+                density={density}
+                motion={motion}
               >
                 <TabContent value="1">
                   <div className="p-4 text-sm text-muted-foreground">
                     Content preview for {v} variant
+                  </div>
+                </TabContent>
+              </TabSystem>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">All Skins</h2>
+        <div className="grid gap-6">
+          {skins.map((value) => (
+            <div key={value} className="border rounded-lg p-4">
+              <h3 className="text-sm font-medium mb-3 capitalize">{value}</h3>
+              <TabSystem
+                tabs={[
+                  { id: "1", label: "Active Accent", color: "oklch(0.64 0.16 35)" },
+                  { id: "2", label: "Inactive Accent", color: "oklch(0.65 0.14 235)" },
+                  { id: "3", label: "Disabled", disabled: true },
+                ]}
+                activeTab="1"
+                onTabChange={() => {}}
+                variant={variant}
+                skin={value}
+                density={density}
+                motion={motion}
+              >
+                <TabContent value="1">
+                  <div className="p-4 text-sm text-muted-foreground">
+                    Content preview for {value} skin
                   </div>
                 </TabContent>
               </TabSystem>

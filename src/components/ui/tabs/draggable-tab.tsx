@@ -3,7 +3,7 @@
 import * as React from "react"
 import { forwardRef } from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
-import { motion } from "motion/react"
+import { motion as Motion } from "motion/react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import type { AnimateLayoutChanges } from "@dnd-kit/sortable"
@@ -18,37 +18,57 @@ import type {
   CloseButtonPosition,
   CloseButtonShape,
   CloseButtonVisibility,
+  TabMotion,
 } from "./types"
 
 // ── Animation configuration ─────────────────────────────────────────
 
-const ANIMATION_DURATION = 0.2
 const ANIMATION_DISTANCE = 30
+const REDUCED_ANIMATION_DISTANCE = 12
 
-const getTabAnimations = (orientation: TabOrientation) => {
+const getTabAnimations = (orientation: TabOrientation, motion: TabMotion) => {
   const axis = orientation === "horizontal" ? "x" : "y"
+  const duration = motion === "none" ? 0 : motion === "reduced" ? 0.12 : 0.2
+  const distance = motion === "reduced" ? REDUCED_ANIMATION_DISTANCE : ANIMATION_DISTANCE
+
+  if (motion === "none") {
+    return {
+      initial: false,
+      animate: {
+        opacity: 1,
+        scale: 1,
+        [axis]: 0,
+        transition: { duration: 0 },
+      },
+      exit: {
+        opacity: 0,
+        [axis]: 0,
+        transition: { duration: 0 },
+      },
+    }
+  }
 
   return {
     initial: {
       opacity: 0,
       scale: 0.8,
-      [axis]: ANIMATION_DISTANCE,
+      [axis]: distance,
     },
     animate: {
       opacity: 1,
       scale: 1,
       [axis]: 0,
       transition: {
-        duration: ANIMATION_DURATION,
+        duration,
         ease: [0.4, 0, 0.2, 1],
       },
     },
     exit: {
       opacity: 0,
       scale: 0.8,
-      [axis]: -ANIMATION_DISTANCE,
+      [axis]: -distance,
       transition: {
-        duration: ANIMATION_DURATION,
+        duration,
         ease: [0.4, 0, 1, 1],
       },
     },
@@ -80,6 +100,9 @@ export interface DraggableTabProps {
   onRename?: (tabId: string, label: string) => void
   isNew?: boolean
   triggerClassName: string
+  tabNameClassName?: string
+  closeButtonClassName?: string
+  motion: TabMotion
   isDndEnabled: boolean
   /** Whether any tab is currently being dragged (from DndContext) */
   isSortingActive: boolean
@@ -99,12 +122,15 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
       onRename,
       isNew,
       triggerClassName,
+      tabNameClassName,
+      closeButtonClassName,
+      motion,
       isDndEnabled,
       isSortingActive,
     },
     ref
   ) => {
-    const animations = getTabAnimations(orientation)
+    const animations = getTabAnimations(orientation, motion)
 
     const {
       attributes,
@@ -120,7 +146,7 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
       // active drag — dnd-kit's CSS transforms handle displacement.
       animateLayoutChanges: disableLayoutDuringDrag,
       transition: {
-        duration: 200,
+        duration: motion === "none" ? 0 : motion === "reduced" ? 120 : 200,
         easing: "cubic-bezier(0.25, 1, 0.5, 1)",
       },
     })
@@ -147,11 +173,11 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
     const { role: _dndRole, ...safeAttributes } = attributes
 
     return (
-      <motion.div
+      <Motion.div
         ref={setNodeRef}
         // Disable framer-motion layout when ANY drag is active — dnd-kit
         // manages displacement transforms; layout fights them and causes jank.
-        layout={!isSortingActive}
+        layout={motion !== "none" && !isSortingActive}
         layoutId={`tab-${tab.id}`}
         initial={isNew ? animations.initial : false}
         animate={animations.animate}
@@ -186,10 +212,11 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
               icon={tab.icon}
               label={tab.label}
               onRename={onRename ? (label) => onRename(tab.id, label) : undefined}
+              className={tabNameClassName}
               iconColor={
                 tab.color
                   ? {
-                      color: `color-mix(in oklch, ${tab.color} 75%, black)`,
+                      color: "color-mix(in oklch, var(--tab-accent) 80%, var(--tab-active-text))",
                     }
                   : undefined
               }
@@ -203,11 +230,12 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
                 shape={closeButtonShape}
                 visibility={closeButtonVisibility}
                 disabled={tab.disabled}
+                className={closeButtonClassName}
               />
             )}
           </div>
         </TabsPrimitive.Trigger>
-      </motion.div>
+      </Motion.div>
     )
   }
 )

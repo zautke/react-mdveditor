@@ -23,10 +23,11 @@ interface TabCloseButtonProps {
   shape: CloseButtonShape
   visibility: CloseButtonVisibility
   disabled?: boolean
+  className?: string
 }
 
 const TabCloseButton = forwardRef<HTMLSpanElement, TabCloseButtonProps>(
-  ({ tabId, tabLabel, onDelete, position, shape, visibility, disabled }, ref) => {
+  ({ tabId, tabLabel, onDelete, position, shape, visibility, disabled, className }, ref) => {
     const handleClick = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -64,7 +65,8 @@ const TabCloseButton = forwardRef<HTMLSpanElement, TabCloseButtonProps>(
             closePosition: position,
             closeShape: shape,
             closeVisibility: visibility,
-          }).closeButton()
+          }).closeButton(),
+          className
         )}
         aria-label={tabLabel ? `Close ${tabLabel} tab` : "Close tab"}
       >

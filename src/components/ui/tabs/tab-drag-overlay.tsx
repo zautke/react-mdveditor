@@ -13,12 +13,14 @@ import type { TabItem } from "./types"
 export interface TabDragOverlayProps {
   tab: TabItem
   triggerClassName: string
+  tabNameClassName?: string
+  className?: string
 }
 
-function TabDragOverlay({ tab, triggerClassName }: TabDragOverlayProps) {
+function TabDragOverlay({ tab, triggerClassName, tabNameClassName, className }: TabDragOverlayProps) {
   return (
     <div
-      className="shadow-lg rounded-md opacity-90 pointer-events-none"
+      className={cn("shadow-[var(--tab-drag-shadow)] rounded-md opacity-90 pointer-events-none", className)}
       style={{ containerType: "inline-size" as React.CSSProperties["containerType"] }}
       aria-hidden="true"
     >
@@ -35,9 +37,10 @@ function TabDragOverlay({ tab, triggerClassName }: TabDragOverlayProps) {
         <TabName
           icon={tab.icon}
           label={tab.label}
+          className={tabNameClassName}
           iconColor={
             tab.color
-              ? { color: `color-mix(in oklch, ${tab.color} 75%, black)` }
+              ? { color: "color-mix(in oklch, var(--tab-accent) 80%, var(--tab-active-text))" }
               : undefined
           }
         />

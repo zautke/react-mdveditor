@@ -2,12 +2,12 @@
 
 import * as React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion as Motion } from "motion/react"
 import { ChevronDown, Plus } from "react-feather"
 
 import { cn } from "@/lib/utils"
 import { IconLabel } from "@/components/ui/icon-label"
-import type { TabOrientation, NewTabMenuItem } from "./types"
+import type { TabOrientation, NewTabMenuItem, TabMotion } from "./types"
 
 // ── NewTabDropdown ──────────────────────────────────────────────────
 // Split button: left side creates default new tab, right side opens a
@@ -19,7 +19,11 @@ export interface NewTabDropdownProps {
   menuItems: NewTabMenuItem[]
   newButtonClassName: string
   orientation: TabOrientation
+  motion?: TabMotion
   className?: string
+  groupClassName?: string
+  menuClassName?: string
+  menuItemClassName?: string
 }
 
 function NewTabDropdown({
@@ -27,7 +31,11 @@ function NewTabDropdown({
   menuItems,
   newButtonClassName,
   orientation,
+  motion = "standard",
   className,
+  groupClassName,
+  menuClassName,
+  menuItemClassName,
 }: NewTabDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [activeMenuIndex, setActiveMenuIndex] = useState(0)
@@ -131,13 +139,27 @@ function NewTabDropdown({
       : "left-full top-0 ml-2"
 
   const menuId = "new-tab-menu"
+  const menuMotion = motion === "none"
+    ? {
+        initial: false as const,
+        animate: { opacity: 1, scale: 1, x: 0, y: 0 },
+        exit: { opacity: 0 },
+        transition: { duration: 0 },
+      }
+    : {
+        initial: { opacity: 0, scale: motion === "reduced" ? 0.97 : 0, x: motion === "reduced" ? 0 : 6, y: motion === "reduced" ? 2 : 6 },
+        animate: { opacity: 1, scale: 1, x: 0, y: 0 },
+        exit: { opacity: 0, scale: motion === "reduced" ? 0.97 : 0.85, x: motion === "reduced" ? 0 : 6, y: motion === "reduced" ? 2 : 6 },
+        transition: { duration: motion === "reduced" ? 0.1 : 0.16, ease: [0.2, 0.8, 0.2, 1] as const },
+      }
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
       <div
         className={cn(
           "inline-flex overflow-hidden rounded-md border border-[color:var(--tabs-bar-border)] bg-[color:var(--tab-bg)]",
-          orientation === "vertical" ? "w-full" : ""
+          orientation === "vertical" ? "w-full" : "",
+          groupClassName
         )}
       >
         <button
@@ -172,42 +194,44 @@ function NewTabDropdown({
 
       <AnimatePresence>
         {isOpen && menuItems.length > 0 && (
-          <motion.div
+          <Motion.div
             ref={menuRef}
             key="new-tab-menu"
             id={menuId}
-            initial={{ opacity: 0, scale: 0, x: 6, y: 6 }}
-            animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, x: 6, y: 6 }}
-            transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
+            initial={menuMotion.initial}
+            animate={menuMotion.animate}
+            exit={menuMotion.exit}
+            transition={menuMotion.transition}
             className={cn(
               "absolute z-50 min-w-[220px] origin-top-right rounded-lg border p-1 shadow-[var(--menu-shadow)]",
               "bg-[color:var(--menu-bg)] border-[color:var(--menu-border)]",
-              menuPositionClass
+              menuPositionClass,
+              menuClassName
             )}
             role="menu"
             aria-label="New tab type"
             onKeyDown={handleMenuKeyDown}
           >
             {menuItems.map((item, index) => (
-              <motion.button
+              <Motion.button
                 key={item.id}
                 type="button"
                 role="menuitem"
                 tabIndex={index === activeMenuIndex ? 0 : -1}
                 onClick={() => handleMenuItemSelect(item)}
                 disabled={item.disabled}
-                initial={{ opacity: 0, x: -8, y: 8 }}
+                initial={motion === "none" ? false : { opacity: 0, x: motion === "reduced" ? 0 : -8, y: motion === "reduced" ? 2 : 8 }}
                 animate={{ opacity: 1, x: 0, y: 0 }}
                 transition={{
-                  duration: 0.12,
+                  duration: motion === "none" ? 0 : motion === "reduced" ? 0.08 : 0.12,
                   ease: [0.2, 0.8, 0.2, 1],
-                  delay: 0.04 + index * 0.03,
+                  delay: motion === "standard" ? 0.04 + index * 0.03 : 0,
                 }}
                 className={cn(
-                  "flex w-full items-center rounded-md px-3 py-2 text-sm text-[color:var(--tab-active-text)] transition-colors",
-                  "hover:bg-[color:var(--tab-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  "disabled:pointer-events-none disabled:opacity-50"
+                  "flex w-full items-center rounded-md px-3 py-2 text-sm text-[color:var(--tab-active-text)] transition-colors duration-[var(--tab-motion-duration)] ease-[var(--tab-motion-ease)]",
+                  "hover:bg-[color:var(--tab-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tab-focus-ring)]",
+                  "disabled:pointer-events-none disabled:text-[color:var(--tab-disabled-text)] disabled:opacity-100",
+                  menuItemClassName
                 )}
               >
                 <IconLabel
@@ -217,9 +241,9 @@ function NewTabDropdown({
                   gutter={10}
                   className="w-full"
                 />
-              </motion.button>
+              </Motion.button>
             ))}
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>

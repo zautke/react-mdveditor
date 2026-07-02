@@ -1,8 +1,9 @@
 "use client"
 
 import { forwardRef } from "react"
-import { motion } from "motion/react"
+import { motion as Motion } from "motion/react"
 import { Plus } from "react-feather"
+import type { TabMotion } from "./types"
 
 // ── NewTabButton ────────────────────────────────────────────────────
 // Simple animated plus-icon button for adding a new tab.
@@ -11,22 +12,26 @@ import { Plus } from "react-feather"
 export interface NewTabButtonProps {
   onClick: () => void
   className?: string
+  motion?: TabMotion
 }
 
 const NewTabButton = forwardRef<HTMLButtonElement, NewTabButtonProps>(
-  ({ onClick, className }, ref) => {
+  ({ onClick, className, motion = "standard" }, ref) => {
+    const hoverScale = motion === "standard" ? { scale: 1.05 } : undefined
+    const tapScale = motion === "none" ? undefined : { scale: 0.95 }
+
     return (
-      <motion.button
+      <Motion.button
         ref={ref}
         type="button"
         onClick={onClick}
         className={className}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={hoverScale}
+        whileTap={tapScale}
         aria-label="Add new tab"
       >
         <Plus className="h-4 w-4" aria-hidden="true" />
-      </motion.button>
+      </Motion.button>
     )
   }
 )

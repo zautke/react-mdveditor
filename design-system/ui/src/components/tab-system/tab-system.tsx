@@ -33,6 +33,9 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
     {
       orientation = "horizontal",
       variant = "underline",
+      skin = "editor",
+      density = "comfortable",
+      motion = "standard",
       tabs,
       activeTab,
       onTabChange,
@@ -48,6 +51,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       tabMinWidth,
       tabMaxWidth,
       className,
+      classNames,
       children,
       // v2 stub - grouping not implemented yet
       grouping: _grouping,
@@ -65,6 +69,12 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
           closeVisibility: closeButtonVisibility,
         }),
       [variant, orientation, closeButtonPosition, closeButtonShape, closeButtonVisibility]
+    )
+
+    const slot = useCallback(
+      (slotName: keyof NonNullable<TabSystemProps["classNames"]>, className?: string) =>
+        cn(className, classNames?.[slotName]),
+      [classNames]
     )
 
     // ── Track newly added tabs for enter animation ─────────────
@@ -149,11 +159,19 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
         <NewTabControl
           onNewTab={onNewTab}
           menuItems={menuItems}
-          newButtonClassName={styles.newButton()}
+          newButtonClassName={slot("newButton", styles.newButton())}
           orientation={orientation}
+          motion={motion}
+          groupClassName={classNames?.newButtonGroup}
+          menuClassName={classNames?.newButtonMenu}
+          menuItemClassName={classNames?.newButtonMenuItem}
         />
       ) : (
-        <NewTabButton onClick={onNewTab} className={styles.newButton()} />
+        <NewTabButton
+          onClick={onNewTab}
+          className={slot("newButton", styles.newButton())}
+          motion={motion}
+        />
       ))
 
     const sortingStrategy =
@@ -177,22 +195,28 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
         value={activeTab}
         onValueChange={onTabChange}
         orientation={orientation}
-        className={cn(styles.root(), className)}
+        className={slot("root", cn(styles.root(), className))}
         style={rootStyle}
+        data-tab-skin={skin}
+        data-density={density}
+        data-motion={motion}
       >
         {/* Tab bar: scroll arrows + scrollable list + pinned action */}
-        <div className={styles.bar()}>
+        <div className={slot("bar", styles.bar())}>
           {/* Left scroll arrow */}
           {canScrollLeft && (
             <ScrollArrow
               direction="left"
               onClick={doScrollLeft}
-              className={styles.scrollArrow()}
+              className={slot("scrollArrow", styles.scrollArrow())}
             />
           )}
 
           {/* Scrollable container */}
-          <div ref={scrollContainerRef as React.Ref<HTMLDivElement>} className={styles.scrollContainer()}>
+          <div
+            ref={scrollContainerRef as React.Ref<HTMLDivElement>}
+            className={slot("scrollContainer", styles.scrollContainer())}
+          >
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -206,7 +230,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
               >
                 <LayoutGroup>
                   <TabsPrimitive.List
-                    className={cn(styles.list(), "flex-1 min-w-0")}
+                    className={slot("list", cn(styles.list(), "flex-1 min-w-0"))}
                     style={{ position: "relative" }}
                   >
                     <AnimatePresence mode="popLayout" initial={false}>
@@ -222,7 +246,10 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
                           closeButtonVisibility={closeButtonVisibility}
                           onDelete={handleDelete}
                           isNew={newTabIds.has(tab.id)}
-                          triggerClassName={styles.trigger()}
+                          triggerClassName={slot("trigger", styles.trigger())}
+                          tabNameClassName={classNames?.tabName}
+                          closeButtonClassName={classNames?.closeButton}
+                          motion={motion}
                           isDndEnabled={isDndEnabled}
                         />
                       ))}
@@ -235,7 +262,9 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
                 {activeTab_item ? (
                   <TabDragOverlayContent
                     tab={activeTab_item}
-                    triggerClassName={styles.trigger()}
+                    triggerClassName={slot("trigger", styles.trigger())}
+                    tabNameClassName={classNames?.tabName}
+                    className={classNames?.dragOverlay}
                   />
                 ) : null}
               </DragOverlay>
@@ -247,7 +276,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
             <ScrollArrow
               direction="right"
               onClick={doScrollRight}
-              className={styles.scrollArrow()}
+              className={slot("scrollArrow", styles.scrollArrow())}
             />
           )}
 
@@ -258,7 +287,8 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
                 "flex-shrink-0",
                 orientation === "horizontal"
                   ? "border-l border-[color:var(--tabs-bar-border)] pl-1 ml-1"
-                  : "border-t border-[color:var(--tabs-bar-border)] pt-1 mt-1 w-full"
+                  : "border-t border-[color:var(--tabs-bar-border)] pt-1 mt-1 w-full",
+                classNames?.actionSeparator
               )}
             >
               {newTabControlEl}
@@ -267,7 +297,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
         </div>
 
         {/* Tab content area */}
-        <div className={styles.content()}>
+        <div className={slot("content", styles.content())}>
           {children}
         </div>
       </TabsPrimitive.Root>

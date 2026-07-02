@@ -7,15 +7,17 @@ import type { TabItem } from "./types"
 interface TabOverlayProps {
   tab: TabItem
   triggerClassName: string
+  tabNameClassName?: string
+  className?: string
 }
 
 /**
  * TabDragOverlayContent — presentational copy of the dragged tab,
  * rendered inside a DragOverlay portal so it floats above everything.
  */
-const TabDragOverlayContent = ({ tab, triggerClassName }: TabOverlayProps) => (
+const TabDragOverlayContent = ({ tab, triggerClassName, tabNameClassName, className }: TabOverlayProps) => (
   <div
-    className="shadow-lg rounded-md opacity-90 pointer-events-none"
+    className={cn("shadow-[var(--tab-drag-shadow)] rounded-md opacity-90 pointer-events-none", className)}
     style={{ containerType: "inline-size" as React.CSSProperties["containerType"] }}
   >
     <div
@@ -31,9 +33,10 @@ const TabDragOverlayContent = ({ tab, triggerClassName }: TabOverlayProps) => (
       <TabName
         icon={tab.icon}
         label={tab.label}
+        className={tabNameClassName}
         iconColor={
           tab.color
-            ? { color: `color-mix(in oklch, ${tab.color} 75%, black)` }
+            ? { color: "color-mix(in oklch, var(--tab-accent) 80%, var(--tab-active-text))" }
             : undefined
         }
       />

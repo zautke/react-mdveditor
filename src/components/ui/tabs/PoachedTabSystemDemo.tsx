@@ -4,7 +4,7 @@ import * as React from "react"
 import { useMemo, useState } from "react"
 import { TabSystem, TabContent } from "./TabSystem"
 import { SettingsDropdown } from "./settings-dropdown"
-import type { TabItem, TabVariant } from "./types"
+import type { TabDensity, TabItem, TabSkin, TabVariant } from "./types"
 
 function DemoPanel({ eyebrow, title, body }: { eyebrow: string; title: string; body: string }) {
   return (
@@ -22,7 +22,7 @@ export function PoachedTabSystemDemo() {
   const initialTabs = useMemo<{ tab: TabItem; panel: React.ReactNode; closable?: boolean }[]>(
     () => [
       {
-        tab: { id: 'overview', label: 'Overview' },
+        tab: { id: 'overview', label: 'Overview', color: 'oklch(0.64 0.16 35)' },
         panel: (
           <DemoPanel
             eyebrow="Import proof"
@@ -32,7 +32,7 @@ export function PoachedTabSystemDemo() {
         ),
       },
       {
-        tab: { id: 'tokens', label: 'Tokens' },
+        tab: { id: 'tokens', label: 'Tokens', color: 'oklch(0.65 0.14 235)' },
         panel: (
           <DemoPanel
             eyebrow="Design tokens"
@@ -43,7 +43,7 @@ export function PoachedTabSystemDemo() {
         closable: true,
       },
       {
-        tab: { id: 'composed', label: 'Composed API' },
+        tab: { id: 'composed', label: 'Composed API With A Long Label', color: 'oklch(0.68 0.15 145)' },
         panel: (
           <DemoPanel
             eyebrow="Composed components"
@@ -53,6 +53,16 @@ export function PoachedTabSystemDemo() {
         ),
         closable: true,
       },
+      {
+        tab: { id: 'disabled', label: 'Disabled', disabled: true },
+        panel: (
+          <DemoPanel
+            eyebrow="Disabled state"
+            title="Disabled tabs keep token styling"
+            body="The disabled trigger remains in the roving tab list but cannot be activated."
+          />
+        ),
+      },
     ],
     []
   )
@@ -61,6 +71,8 @@ export function PoachedTabSystemDemo() {
   const [activeTab, setActiveTab] = useState(initialTabs[0]?.tab.id)
   const [newTabCount, setNewTabCount] = useState(1)
   const [variant, setVariant] = useState<TabVariant>("chrome")
+  const [skin, setSkin] = useState<TabSkin>("editor")
+  const [density, setDensity] = useState<TabDensity>("compact")
 
   const tabs: TabItem[] = tabData.map(t => t.tab)
 
@@ -87,7 +99,7 @@ export function PoachedTabSystemDemo() {
     const label = `New ${newTabCount}`
 
     const nextTab = {
-      tab: { id, label },
+      tab: { id, label, color: 'oklch(0.72 0.14 80)' },
       closable: true,
       panel: (
         <DemoPanel
@@ -112,10 +124,36 @@ export function PoachedTabSystemDemo() {
             Adapted from the Next.js worktree to run on our implementation.
           </p>
         </div>
-        <SettingsDropdown
-          currentVariant={variant}
-          onVariantChange={setVariant}
-        />
+        <div className="flex flex-wrap items-end gap-3">
+          <SettingsDropdown
+            currentVariant={variant}
+            onVariantChange={setVariant}
+          />
+          <label className="space-y-1 text-sm font-medium">
+            <span className="block">Skin</span>
+            <select
+              value={skin}
+              onChange={(event) => setSkin(event.target.value as TabSkin)}
+              className="block rounded-md border bg-background px-3 py-2"
+            >
+              {(["editor", "chrome", "quiet", "contrast"] satisfies TabSkin[]).map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm font-medium">
+            <span className="block">Density</span>
+            <select
+              value={density}
+              onChange={(event) => setDensity(event.target.value as TabDensity)}
+              className="block rounded-md border bg-background px-3 py-2"
+            >
+              {(["compact", "comfortable"] satisfies TabDensity[]).map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <section className="rounded-[calc(var(--tabsys-radius,0.5rem)+0.75rem)] border border-border/70 bg-card/70 p-6 shadow-sm backdrop-blur-sm">
@@ -126,6 +164,8 @@ export function PoachedTabSystemDemo() {
           onDeleteTab={handleClose}
           onNewTab={handleNewTab}
           variant={variant}
+          skin={skin}
+          density={density}
           showNewButton={true}
           showCloseButtons={true}
         >
