@@ -49,8 +49,16 @@ xcodebuild \
 BUILT_APP="build/Build/Products/Release/$APP_NAME.app"
 [ -d "$BUILT_APP" ] || { echo "build failed: $BUILT_APP missing" >&2; exit 1; }
 
-echo "==> Re-signing bundle ad-hoc (deep)"
-codesign --force --deep --sign - "$BUILT_APP"
+echo "==> Re-signing ad-hoc (appex WITH sandbox entitlements, then app)"
+# NB: do NOT use `--deep` here — it re-signs the embedded appex WITHOUT its
+# entitlements, stripping com.apple.security.app-sandbox. macOS 26+ then
+# silently refuses to load the FinderSync appex ("plug-ins must be sandboxed")
+# and the menu item never appears. Sign the appex with its entitlements first,
+# then the outer app.
+codesign --force --sign - \
+  --entitlements "$SCRIPT_DIR/Extension/OpenInMDEFinder.entitlements" \
+  "$BUILT_APP/Contents/PlugIns/OpenInMDEFinder.appex"
+codesign --force --sign - "$BUILT_APP"
 
 echo "==> Installing to $DEST_APP"
 mkdir -p "$DEST_DIR"
