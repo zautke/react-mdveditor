@@ -45,6 +45,12 @@ export default defineConfig(({ mode }) => {
   const host = env.MDE_HOST ?? 'localhost'
   const sidecarOrigin =
     env.MDE_EXTRACT_PROXY_ORIGIN ?? `http://localhost:${sidecarPort}`
+  const dbSidecarPort = parsePort(
+    env.MDE_DB_SIDECAR_INTERNAL_PORT ?? env.MDE_DB_SIDECAR_PORT,
+    15280,
+  )
+  const dbSidecarOrigin =
+    env.MDE_DB_PROXY_ORIGIN ?? `http://localhost:${dbSidecarPort}`
 
   return {
     plugins: [
@@ -70,6 +76,11 @@ export default defineConfig(({ mode }) => {
           target: sidecarOrigin,
           changeOrigin: true,
           rewrite: (p: string) => p.replace(/^\/api/, ''),
+        },
+        '/api/db': {
+          target: dbSidecarOrigin,
+          changeOrigin: true,
+          rewrite: (p: string) => p.replace(/^\/api\/db/, ''),
         },
       },
     },

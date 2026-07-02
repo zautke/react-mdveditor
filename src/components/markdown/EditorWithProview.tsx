@@ -264,25 +264,12 @@ function convertLatexDelimiters(text: string): string {
 // ── Main component ──────────────────────────────────────────────────
 
 function App() {
-  // Multi-document state — restored from localStorage
-  const [documents, setDocuments] = useState<EditorDocument[]>(() => {
-    const saved = loadState<EditorDocument[]>('documents', [])
-    if (saved.length > 0) {
-      // Migration: add `kind` to documents saved before the registry existed
-      return saved.map(doc => ({
-        ...doc,
-        kind: doc.kind ?? documentTypeRegistry.detect(doc.content),
-      }))
-    }
-    return [{ id: 'doc-1', title: 'Untitled-1', content: initialContent, kind: 'markdown' }]
-  })
-  const [activeDocId, setActiveDocId] = useState(() => {
-    const saved = loadState<string>('activeDocId', '')
-    return saved || 'doc-1'
-  })
-  const [isExpanded, setIsExpanded] = useState(() =>
-    loadState<boolean>('isExpanded', false)
-  )
+  // Multi-document state — hydrated from the SQLite sidecar after mount.
+  const [documents, setDocuments] = useState<EditorDocument[]>(() => [
+    { id: 'doc-1', title: 'Untitled-1', content: initialContent, kind: 'markdown' },
+  ])
+  const [activeDocId, setActiveDocId] = useState('doc-1')
+  const [isExpanded, setIsExpanded] = useState(false)
   const [arrowOpacity, setArrowOpacity] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [urlModalOpen, setUrlModalOpen] = useState(false)
@@ -290,22 +277,30 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Gates the persistence effects so the initial defaults aren't written back
+  // before the sidecar has hydrated real state (which would clobber the DB).
+  const hydratedRef = useRef(false)
+
   // ── User settings ───────────────────────────────────────────────
   const { settings } = useUserSettings()
 
   // ── Persistence ─────────────────────────────────────────────────
+  // Each effect is gated on `hydratedRef` — see the hydration effect below.
 
   useEffect(() => {
-    const timer = setTimeout(() => saveState('documents', documents), 500)
+    if (!hydratedRef.current) return
+    const timer = setTimeout(() => { void saveState('documents', documents) }, 500)
     return () => clearTimeout(timer)
   }, [documents])
 
   useEffect(() => {
-    saveState('activeDocId', activeDocId)
+    if (!hydratedRef.current) return
+    void saveState('activeDocId', activeDocId)
   }, [activeDocId])
 
   useEffect(() => {
-    saveState('isExpanded', isExpanded)
+    if (!hydratedRef.current) return
+    void saveState('isExpanded', isExpanded)
   }, [isExpanded])
 
   // ── Derived values ──────────────────────────────────────────────
@@ -358,16 +353,44 @@ function App() {
     if (lastId) setActiveDocId(lastId)
   }, [])
 
-  // Mount: fetch queued files; HMR: receive live files from CLI
+  // Mount: hydrate persisted state from the sidecar, THEN apply CLI-queued files
+  // on top — so hydration never clobbers freshly-opened documents. Setting
+  // `hydratedRef` last is what unlocks the persistence effects above.
   useEffect(() => {
-    fetch('/api/mde-pending')
-      .then(r => r.json() as Promise<{ files: MdeFilePayload[] }>)
-      .then(({ files }) => { if (files.length > 0) openExternalFiles(files) })
-      .catch(() => { /* not in dev mode or no server — ignore */ })
+    let cancelled = false
+    void (async () => {
+      const [savedDocs, savedActive, savedExpanded] = await Promise.all([
+        loadState<EditorDocument[]>('documents', []),
+        loadState<string>('activeDocId', ''),
+        loadState<boolean>('isExpanded', false),
+      ])
+      if (cancelled) return
+      if (savedDocs.length > 0) {
+        // Migration: backfill `kind` for documents saved before the registry existed.
+        setDocuments(savedDocs.map(doc => ({
+          ...doc,
+          kind: doc.kind ?? documentTypeRegistry.detect(doc.content),
+        })))
+        if (savedActive) setActiveDocId(savedActive)
+      }
+      setIsExpanded(savedExpanded)
+      hydratedRef.current = true
+
+      // CLI: apply files queued by `mde file.md`, appended after hydration.
+      try {
+        const r = await fetch('/api/mde-pending')
+        const { files } = (await r.json()) as { files: MdeFilePayload[] }
+        if (!cancelled && files.length > 0) openExternalFiles(files)
+      } catch {
+        // Not in dev mode or no server — ignore.
+      }
+    })()
 
     if (import.meta.hot) {
       import.meta.hot.on('mde:open-files', (data: { files: MdeFilePayload[] }) => openExternalFiles(data.files))
     }
+
+    return () => { cancelled = true }
   }, [openExternalFiles])
 
   // Tabs — include plugin icon for each document.
@@ -534,6 +557,8 @@ function App() {
             title: documentTypeRegistry.stripExtension(file.name),
             content: converted,
             kind,
+            // Browsers only expose the filename for dropped files (no OS path).
+            filePath: file.name,
           }
           setDocuments(docs => [...docs, newDoc])
           setActiveDocId(newId)
@@ -609,6 +634,8 @@ function App() {
           title: documentTypeRegistry.stripExtension(file.name),
           content: converted,
           kind,
+          // Browsers only expose the filename for uploaded files (no OS path).
+          filePath: file.name,
         }
         setDocuments(docs => [...docs, newDoc])
         setActiveDocId(newId)

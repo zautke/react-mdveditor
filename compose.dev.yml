@@ -7,10 +7,15 @@ services:
     depends_on:
       url-sidecar:
         condition: service_healthy
+      db-sidecar:
+        condition: service_healthy
     environment:
       MDE_APP_PORT: ${MDE_APP_PORT}
       MDE_DEV_PORT: ${MDE_DEV_PORT}
       MDE_EXTRACT_PROXY_ORIGIN: http://url-sidecar:${MDE_SIDECAR_INTERNAL_PORT}
+      MDE_DB_PROXY_ORIGIN: http://db-sidecar:${MDE_DB_SIDECAR_INTERNAL_PORT}
+      MDE_DB_SIDECAR_PORT: ${MDE_DB_SIDECAR_PORT}
+      MDE_DB_SIDECAR_INTERNAL_PORT: ${MDE_DB_SIDECAR_INTERNAL_PORT}
       MDE_HOST: ${MDE_HOST}
       MDE_URL_SIDECAR_PORT: ${MDE_URL_SIDECAR_PORT}
       VITE_MDE_APP_ORIGIN: ${VITE_MDE_APP_ORIGIN}
