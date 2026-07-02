@@ -351,6 +351,15 @@ function App() {
     setActiveDocId(newId)
   }, [])
 
+  // Bridge: expose createDocFromText as window.mdeCreateDoc so a `.tsx` document
+  // rendered in a tab (e.g. examples/open-in-mde-button.tsx) can create new docs.
+  useEffect(() => {
+    ;(window as unknown as { mdeCreateDoc?: (t: string) => void }).mdeCreateDoc = createDocFromText
+    return () => {
+      delete (window as unknown as { mdeCreateDoc?: (t: string) => void }).mdeCreateDoc
+    }
+  }, [createDocFromText])
+
   // openExternalFiles — stable callback for CLI file injection via /api/mde-open or HMR
   const openExternalFiles = useCallback((files: MdeFilePayload[]) => {
     if (files.length === 0) return
