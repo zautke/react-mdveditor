@@ -74,6 +74,14 @@ const SKIP_DIRECTORIES = new Set([
 // Resolve all CLI args to absolute paths, expanding folders to all supported
 // document files they contain.
 const args = process.argv.slice(2)
+
+// SSoT hook: `--print-extensions` emits the canonical allowlist (one per line)
+// so external launchers (e.g. open_in_mde) never hardcode a divergent copy.
+if (args.includes('--print-extensions') || args.includes('-E')) {
+  process.stdout.write(SUPPORTED_EXTENSIONS.join('\n') + '\n')
+  process.exit(0)
+}
+
 if (args.length === 0) {
   console.error(`Usage: ${COMMAND_NAME} <file|folder> [file|folder] ...`)
   process.exit(1)
