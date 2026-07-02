@@ -52,7 +52,9 @@ resolve_script_dir() {
 SCRIPT_DIR="$(resolve_script_dir)"
 REPO_ROOT="${MDE_REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 MDE_ENTRY="$REPO_ROOT/bin/mde.mjs"
-ORIGIN="${MDE_DEV_ORIGIN:-https://adagio.local:5250}"
+# mde.mjs picks the live origin dynamically by probing MDE_CANDIDATE_ORIGINS;
+# report that candidate set rather than asserting a single fixed origin.
+ORIGIN="${MDE_CANDIDATE_ORIGINS:-auto}"
 
 # --- exit codes (contract) ----------------------------------------------------
 EX_OK=0        # >=1 supported file opened (also dry-run / -E / -h success)
@@ -213,7 +215,7 @@ if node "$MDE_ENTRY" "${KEPT[@]}"; then
   if [ "$JSON" -eq 1 ]; then
     emit_json
   else
-    warn "opened ${#KEPT[@]} file(s) in MDE ($ORIGIN)"
+    warn "opened ${#KEPT[@]} file(s) in MDE"
   fi
   exit "$EX_OK"
 else

@@ -11,6 +11,17 @@ export interface MdeFileData {
 
 const pendingFiles: MdeFileData[] = []
 
+/**
+ * Heartbeat payload — the single source of truth for what a live MDE server
+ * answers on its ping endpoints. Decoupled + reusable: any probe (the mde CLI
+ * candidate-origin loop, a healthcheck, a load balancer) can rely on this exact
+ * shape. `service: 'mde'` lets a prober distinguish MDE from an unrelated
+ * server that happens to occupy the same port.
+ */
+export function mdeHeartbeat(): { ok: true; service: 'mde' } {
+  return { ok: true, service: 'mde' }
+}
+
 function readFileSafe(filePath: string): MdeFileData | { error: string } {
   const abs = path.resolve(filePath)
   if (!fs.existsSync(abs)) return { error: `File not found: ${abs}` }
@@ -32,6 +43,14 @@ export function mdeServerPlugin(): Plugin {
         if (req.method === 'GET' && url === '/ping') {
           res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
           res.end('pong')
+          return
+        }
+
+        // Heartbeat: the canonical endpoint the mde CLI probes across candidate
+        // origins to find a live MDE before sending files.
+        if (req.method === 'GET' && url === '/api/ping') {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify(mdeHeartbeat()))
           return
         }
 

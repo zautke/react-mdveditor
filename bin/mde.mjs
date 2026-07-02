@@ -21,9 +21,30 @@ const FORBIDDEN_LOCAL_PORTS = [5251, 5252, 5253, 5254]
 const PROD_ORIGIN = normalizeOrigin(
   process.env.MDE_APP_ORIGIN ?? 'http://adagio.local:5200',
 )
-const PRIMARY_DEV_ORIGIN = normalizeOrigin(
-  process.env.MDE_DEV_ORIGIN ?? 'https://adagio.local:5250',
-)
+// Candidate origins probed (in order) to find a running MDE before sending
+// files — first to answer /api/ping wins. Configured via MDE_CANDIDATE_ORIGINS
+// (comma-separated full origins); defaults to local prod + dev. adagio.local is
+// intentionally omitted here while its network path is unreliable.
+const DEFAULT_CANDIDATE_ORIGINS = [
+  `http://127.0.0.1:${process.env.MDE_APP_PORT ?? '5200'}`,
+  `https://127.0.0.1:${process.env.MDE_DEV_PORT ?? String(LOCAL_DEV_PORT)}`,
+]
+function getCandidateOrigins() {
+  const raw = (process.env.MDE_CANDIDATE_ORIGINS ?? '').trim()
+  const list = raw
+    ? raw.split(',').map(s => s.trim()).filter(Boolean)
+    : DEFAULT_CANDIDATE_ORIGINS
+  const origins = []
+  for (const entry of list) {
+    try {
+      origins.push(new URL(entry).origin)
+    } catch {
+      console.warn(`Ignoring invalid MDE_CANDIDATE_ORIGINS entry: ${entry}`)
+    }
+  }
+  return origins.length > 0 ? origins : DEFAULT_CANDIDATE_ORIGINS
+}
+
 const MAX_SERVER_ERRORS = 3
 const DEV_HTTPS_DIR = resolve(homedir(), '.local', 'state', 'mdeditor', 'dev-https')
 const DEV_HTTPS_REPO_DIR = resolve(PROJECT_ROOT, 'docker', 'dev-https')
@@ -343,6 +364,17 @@ function collectSupportedFiles(absPath) {
 }
 
 async function isServerReady(baseUrl) {
+  // Canonical heartbeat first: GET /api/ping -> { ok: true, service: 'mde' }.
+  // Guards against an unrelated server occupying the same port.
+  try {
+    const beat = await requestJson(baseUrl, '/api/ping')
+    if (beat.ok && beat.json && beat.json.ok === true && beat.json.service === 'mde') {
+      return true
+    }
+  } catch {
+    // Fall through to legacy probes for older servers.
+  }
+
   try {
     const ping = await requestJson(baseUrl, '/ping')
     if (ping.ok && (ping.text.trim().length === 0 || ping.text.trim().toLowerCase() === 'pong')) {
@@ -747,22 +779,6 @@ function isSuccessfulOpen(data) {
   return (data?.opened ?? 0) > 0 && (!Array.isArray(data?.errors) || data.errors.length === 0)
 }
 
-function hasOpenErrors(data) {
-  return Array.isArray(data?.errors) && data.errors.length > 0
-}
-
-function isAdagioDevOrigin(origin) {
-  const hostname = getOriginHostname(origin)
-  const port = getOriginPort(origin)
-  return hostname === 'adagio.local' && port === String(LOCAL_DEV_PORT)
-}
-
-function hasOnlyFileNotFoundErrors(data) {
-  return hasOpenErrors(data) && data.errors.every(
-    err => typeof err === 'string' && err.startsWith('File not found:'),
-  )
-}
-
 function getOriginHostname(origin) {
   try {
     return new URL(origin).hostname
@@ -961,34 +977,21 @@ async function openFilesWithRecovery(origin) {
   return { ok: false, origin: currentOrigin, data: lastData, errorCount }
 }
 
-let activeBaseUrl = await resolveReadyOrigin([PRIMARY_DEV_ORIGIN])
-
-if (!activeBaseUrl && isAdagioDevOrigin(PRIMARY_DEV_ORIGIN)) {
-  const restarted = await restartRemoteDevServer()
-  if (restarted) {
-    activeBaseUrl = await waitForServer([PRIMARY_DEV_ORIGIN])
-  }
-}
+// Probe candidate origins (in order) via the /api/ping heartbeat and send to
+// the first live MDE. If none respond, cold-start a local dev server so a
+// right-click still works (preserves the mdeo cold-open behaviour).
+const candidateOrigins = getCandidateOrigins()
+let activeBaseUrl = await resolveReadyOrigin(candidateOrigins)
 
 if (!activeBaseUrl) {
-  activeBaseUrl = await resolveReadyOrigin([LOCAL_DEV_ORIGIN])
-  if (!activeBaseUrl) {
-    await launchLocalDevServer()
-    activeBaseUrl = LOCAL_DEV_ORIGIN
-  }
+  console.log(
+    `No running MDE on candidate origins (${candidateOrigins.join(', ')}); starting local dev server...`,
+  )
+  await launchLocalDevServer()
+  activeBaseUrl = await resolveReadyOrigin([LOCAL_DEV_ORIGIN]) ?? LOCAL_DEV_ORIGIN
 }
 
 let result = await openFilesWithRecovery(activeBaseUrl)
-
-if (!result.ok && isAdagioDevOrigin(result.origin) && hasOnlyFileNotFoundErrors(result.data)) {
-  const localReadyOrigin = await resolveReadyOrigin([LOCAL_DEV_ORIGIN])
-
-  if (!localReadyOrigin) {
-    await launchLocalDevServer()
-  }
-
-  result = await openFilesWithRecovery(LOCAL_DEV_ORIGIN)
-}
 
 const data = result.data
 activeBaseUrl = result.origin
