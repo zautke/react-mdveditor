@@ -103,6 +103,7 @@ export const mermaidPlugin: DocumentTypePlugin = {
   detect: isMermaidText,
   priority: 10,
   renderer: MermaidRendererWrapper,
+  layout: 'split',
   fileExtensions: ['.mmd', '.mermaid'],
   exportMimeType: 'text/plain',
   exportExtension: '.mmd',

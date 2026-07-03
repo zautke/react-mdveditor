@@ -103,6 +103,7 @@ export const reactComponentPlugin: DocumentTypePlugin = {
   detect: isReactText,
   priority: 8,
   renderer: ReactPreview,
+  layout: 'split',
   fileExtensions: ['.jsx', '.tsx'],
   exportMimeType: 'text/javascript',
   exportExtension: '.tsx',

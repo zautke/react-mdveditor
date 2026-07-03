@@ -54,6 +54,7 @@ export const htmlPlugin: DocumentTypePlugin = {
   detect: isHtmlText,
   priority: 5,
   renderer: HtmlPreview,
+  layout: 'split',
   fileExtensions: ['.html', '.htm'],
   exportMimeType: 'text/html',
   exportExtension: '.html',
