@@ -816,8 +816,58 @@ ensureDevHttpsMaterial()
 
 cleanupForbiddenLocalPorts()
 
+// Focus an already-open MDE tab in Chrome (matched by host:port) instead of
+// spawning a new one every launch. Injected files reach that tab over the dev
+// server's WebSocket, so focusing the existing tab is enough — we only open a
+// new tab when none is found. Returns a non-zero status if Chrome isn't
+// available or Automation is denied, so the caller can fall back to `open`.
+function focusOrOpenChromeTab(url) {
+  let matchToken
+  try {
+    matchToken = new URL(url).host // host + port, e.g. "127.0.0.1:5250"
+  } catch {
+    matchToken = url
+  }
+
+  const script = `on run argv
+  set targetURL to item 1 of argv
+  set matchToken to item 2 of argv
+  tell application "Google Chrome"
+    set found to false
+    repeat with w in windows
+      set tabIndex to 0
+      repeat with t in tabs of w
+        set tabIndex to tabIndex + 1
+        if (URL of t) contains matchToken then
+          set active tab index of w to tabIndex
+          set index of w to 1
+          set found to true
+          exit repeat
+        end if
+      end repeat
+      if found then exit repeat
+    end repeat
+    if not found then
+      if (count of windows) is 0 then
+        make new window
+        set URL of active tab of front window to targetURL
+      else
+        tell front window to make new tab with properties {URL:targetURL}
+      end if
+    end if
+    activate
+  end tell
+end run`
+
+  return spawnSync('osascript', ['-e', script, url, matchToken], { stdio: 'ignore' })
+}
+
 function openBrowser(url) {
   if (process.platform === 'darwin') {
+    // Prefer reusing an existing MDE tab in Chrome (single-tab behaviour).
+    const reused = focusOrOpenChromeTab(url)
+    if (reused.status === 0) return reused
+    // Chrome not installed / Automation denied — fall back to the default handler.
     return spawnSync('open', [url], { stdio: 'ignore' })
   }
 
