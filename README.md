@@ -24,6 +24,15 @@ VITE_MDE_EXTRACT_PATH=/api/extract
 
 The frontend extraction contract stays same-origin. The app calls `/api/extract`, and the deployed frontend proxies that path to the `url-sidecar` service.
 
+Persistence is also same-origin. The app calls `/api/db`, and Vite/Nginx proxy
+that path to the SQLite `db-sidecar` service. See
+[docs/data-persistence.md](/Volumes/FLOUNDER/dev/mdeditor/docs/data-persistence.md)
+for the environment variables, DSL/API, DDL-equivalent schema, and initial
+setup. See
+[docs/pgadmin-postgres-browser-setup.md](/Volumes/FLOUNDER/dev/mdeditor/docs/pgadmin-postgres-browser-setup.md)
+for the local pgAdmin browser setup against the currently running Postgres
+container.
+
 ## Local Setup
 
 ```bash

@@ -63,7 +63,7 @@ services:
         - |
           const http = require('node:http')
           const port = process.env.MDE_DB_SIDECAR_INTERNAL_PORT || '15280'
-          http.get(`http://127.0.0.1:${port}/health`, res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))
+          http.get('http://127.0.0.1:' + port + '/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))
       interval: 30s
       timeout: 5s
       retries: 3
