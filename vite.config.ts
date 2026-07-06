@@ -11,7 +11,25 @@ function parsePort(value: string | undefined, fallback: number): number {
   return Number.isFinite(port) ? port : fallback
 }
 
-function loadDevHttpsConfig() {
+function loadDevHttpsConfig(env: Record<string, string | undefined>) {
+  // Config SSoT: honor the cert/key paths declared in .env first. These resolve
+  // identically on the host and inside the dev container (cwd === repo root),
+  // so HTTPS works in both without duplicating certs into docker/dev-https.
+  if (
+    env.MDE_DEV_HTTPS === 'true' &&
+    env.MDE_DEV_TLS_CERT_PATH &&
+    env.MDE_DEV_TLS_KEY_PATH
+  ) {
+    const certFile = path.resolve(__dirname, env.MDE_DEV_TLS_CERT_PATH)
+    const keyFile = path.resolve(__dirname, env.MDE_DEV_TLS_KEY_PATH)
+    if (existsSync(certFile) && existsSync(keyFile)) {
+      return {
+        cert: readFileSync(certFile),
+        key: readFileSync(keyFile),
+      }
+    }
+  }
+
   const candidateDirs = [
     path.resolve(homedir(), '.local', 'state', 'mdeditor', 'dev-https'),
     path.resolve(__dirname, 'docker/dev-https'),
@@ -64,7 +82,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       origin: env.MDE_DEV_ORIGIN,
       allowedHosts: [host, 'localhost', '127.0.0.1'],
-      https: loadDevHttpsConfig(),
+      https: loadDevHttpsConfig(env),
       proxy: {
         '/api/extract': {
           target: sidecarOrigin,
