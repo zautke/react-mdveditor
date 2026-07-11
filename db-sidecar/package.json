@@ -1,0 +1,15 @@
+{
+  "name": "@mdeditor/db-sidecar",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SQLite persistence sidecar for mdeditor (node:sqlite KV store, zero dependencies)",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node server.ts",
+    "dev": "node --watch server.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

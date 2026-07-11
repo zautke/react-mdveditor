@@ -1,0 +1,6 @@
+# Runtime SQLite database + WAL/SHM sidecar files (never commit user data)
+data/
+*.db
+*.db-wal
+*.db-shm
+node_modules/

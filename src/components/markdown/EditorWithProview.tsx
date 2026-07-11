@@ -5,12 +5,13 @@ import { TabSystem, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { loadState, saveState } from '@/lib/storage'
+import { loadState, saveState, subscribe, markDeleted, flushOnUnload } from '@/lib/storage'
 import { documentTypeRegistry } from '@/lib/document-types'
 import { validateFile } from '@/lib/file-validation'
 import { isHttpUrl } from '@/lib/url-validation'
 import { UrlInputModal } from '@/components/markdown/UrlInputModal'
 import { SettingsDialog } from '@/components/ui/settings-dialog'
+import { PersistenceStatus } from '@/components/ui/persistence-status'
 import { useUserSettings } from '@/lib/user-settings'
 import { fetchUrlContent } from '@/lib/url-fetch'
 import type { FetchUrlResult } from '@/lib/url-fetch'
@@ -27,6 +28,7 @@ interface EditorDocument {
   title: string
   content: string
   kind: string
+  persistedToFileSystem: boolean
   filePath?: string
 }
 
@@ -264,25 +266,18 @@ function convertLatexDelimiters(text: string): string {
 // ── Main component ──────────────────────────────────────────────────
 
 function App() {
-  // Multi-document state — restored from localStorage
-  const [documents, setDocuments] = useState<EditorDocument[]>(() => {
-    const saved = loadState<EditorDocument[]>('documents', [])
-    if (saved.length > 0) {
-      // Migration: add `kind` to documents saved before the registry existed
-      return saved.map(doc => ({
-        ...doc,
-        kind: doc.kind ?? documentTypeRegistry.detect(doc.content),
-      }))
-    }
-    return [{ id: 'doc-1', title: 'Untitled-1', content: initialContent, kind: 'markdown' }]
-  })
-  const [activeDocId, setActiveDocId] = useState(() => {
-    const saved = loadState<string>('activeDocId', '')
-    return saved || 'doc-1'
-  })
-  const [isExpanded, setIsExpanded] = useState(() =>
-    loadState<boolean>('isExpanded', false)
-  )
+  // Multi-document state — hydrated from the SQLite sidecar after mount.
+  const [documents, setDocuments] = useState<EditorDocument[]>(() => [
+    {
+      id: 'doc-1',
+      title: 'Untitled-1',
+      content: initialContent,
+      kind: 'markdown',
+      persistedToFileSystem: false,
+    },
+  ])
+  const [activeDocId, setActiveDocId] = useState('doc-1')
+  const [isExpanded, setIsExpanded] = useState(false)
   const [arrowOpacity, setArrowOpacity] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [urlModalOpen, setUrlModalOpen] = useState(false)
@@ -290,22 +285,30 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Gates the persistence effects so the initial defaults aren't written back
+  // before the sidecar has hydrated real state (which would clobber the DB).
+  const hydratedRef = useRef(false)
+
   // ── User settings ───────────────────────────────────────────────
   const { settings } = useUserSettings()
 
   // ── Persistence ─────────────────────────────────────────────────
+  // Each effect is gated on `hydratedRef` — see the hydration effect below.
 
   useEffect(() => {
-    const timer = setTimeout(() => saveState('documents', documents), 500)
+    if (!hydratedRef.current) return
+    const timer = setTimeout(() => { void saveState('documents', documents) }, 500)
     return () => clearTimeout(timer)
   }, [documents])
 
   useEffect(() => {
-    saveState('activeDocId', activeDocId)
+    if (!hydratedRef.current) return
+    void saveState('activeDocId', activeDocId)
   }, [activeDocId])
 
   useEffect(() => {
-    saveState('isExpanded', isExpanded)
+    if (!hydratedRef.current) return
+    void saveState('isExpanded', isExpanded)
   }, [isExpanded])
 
   // ── Derived values ──────────────────────────────────────────────
@@ -326,6 +329,7 @@ function App() {
         title: plugin.defaultTitle(docs.length + 1),
         content: plugin.defaultContent,
         kind: plugin.kind,
+        persistedToFileSystem: false,
       }
       return [...docs, newDoc]
     })
@@ -350,7 +354,17 @@ function App() {
           ?? documentTypeRegistry.detect(file.content)
         const newId = generateDocId()
         lastId = newId
-        next = [...next, { id: newId, title: file.title, content: file.content, kind, filePath: file.filePath }]
+        next = [
+          ...next,
+          {
+            id: newId,
+            title: file.title,
+            content: file.content,
+            kind,
+            persistedToFileSystem: true,
+            filePath: file.filePath,
+          },
+        ]
         seenFilePaths.add(file.filePath)
       }
       return next
@@ -358,17 +372,84 @@ function App() {
     if (lastId) setActiveDocId(lastId)
   }, [])
 
-  // Mount: fetch queued files; HMR: receive live files from CLI
+  // Mount: hydrate persisted state from the sidecar, THEN apply CLI-queued files
+  // on top — so hydration never clobbers freshly-opened documents. Setting
+  // `hydratedRef` last is what unlocks the persistence effects above.
   useEffect(() => {
-    fetch('/api/mde-pending')
-      .then(r => r.json() as Promise<{ files: MdeFilePayload[] }>)
-      .then(({ files }) => { if (files.length > 0) openExternalFiles(files) })
-      .catch(() => { /* not in dev mode or no server — ignore */ })
+    let cancelled = false
+    void (async () => {
+      const [savedDocs, savedActive, savedExpanded] = await Promise.all([
+        loadState<EditorDocument[]>('documents', []),
+        loadState<string>('activeDocId', ''),
+        loadState<boolean>('isExpanded', false),
+      ])
+      if (cancelled) return
+      if (savedDocs.length > 0) {
+        // Migration: backfill `kind` for documents saved before the registry existed.
+        setDocuments(savedDocs.map(doc => ({
+          ...doc,
+          kind: doc.kind ?? documentTypeRegistry.detect(doc.content),
+          persistedToFileSystem: doc.persistedToFileSystem ?? Boolean(doc.filePath),
+        })))
+        if (savedActive) setActiveDocId(savedActive)
+      }
+      setIsExpanded(savedExpanded)
+
+      // Saves are now allowed. This does NOT mean "write to the database": when the
+      // sidecar is unreachable, `saveState` buffers to localStorage and refuses to
+      // PUT, because writing our (possibly default) view back would destroy the real
+      // documents. That invariant lives in storage.ts; here we only ensure the
+      // initial render isn't itself treated as a user edit.
+      hydratedRef.current = true
+
+      // CLI: apply files queued by `mde file.md`, appended after hydration.
+      try {
+        const r = await fetch('/api/mde-pending')
+        const { files } = (await r.json()) as { files: MdeFilePayload[] }
+        if (!cancelled && files.length > 0) openExternalFiles(files)
+      } catch {
+        // Not in dev mode or no server — ignore.
+      }
+    })()
 
     if (import.meta.hot) {
       import.meta.hot.on('mde:open-files', (data: { files: MdeFilePayload[] }) => openExternalFiles(data.files))
     }
+
+    return () => { cancelled = true }
   }, [openExternalFiles])
+
+  // Self-heal: when storage reconnects, it merges anything we buffered offline over
+  // the authoritative server state. Adopt that merged result so the UI shows the
+  // documents we could not see while the sidecar was down.
+  useEffect(() => {
+    return subscribe(async (next) => {
+      if (next !== 'online') return
+      const merged = await loadState<EditorDocument[]>('documents', [])
+      if (merged.length === 0) return
+      setDocuments(merged.map(doc => ({
+        ...doc,
+        kind: doc.kind ?? documentTypeRegistry.detect(doc.content),
+        persistedToFileSystem: doc.persistedToFileSystem ?? Boolean(doc.filePath),
+      })))
+    })
+  }, [])
+
+  // The documents save is debounced 500ms; without this, closing the tab right after
+  // typing loses those edits. sendBeacon survives unload where fetch does not.
+  useEffect(() => {
+    const flush = () => {
+      if (document.visibilityState !== 'hidden') return
+      flushOnUnload('documents', documents)
+      flushOnUnload('activeDocId', activeDocId)
+    }
+    document.addEventListener('visibilitychange', flush)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', flush)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [documents, activeDocId])
 
   // Tabs — include plugin icon for each document.
   // Memoized with a metadata fingerprint so content edits (which update `documents`)
@@ -464,7 +545,7 @@ function App() {
     const title = result.meta.title ?? result.meta.siteName ?? 'Web Article'
     setDocuments(docs => [
       ...docs,
-      { id: newId, title, content: result.content, kind: 'url' },
+      { id: newId, title, content: result.content, kind: 'url', persistedToFileSystem: false },
     ])
     setActiveDocId(newId)
   }, [])
@@ -499,12 +580,13 @@ function App() {
       const detectedKind = documentTypeRegistry.detect(converted)
       const newId = generateDocId()
       setDocuments(docs => {
-        const newDoc: EditorDocument = {
-          id: newId,
-          title: documentTypeRegistry.get(detectedKind).defaultTitle(docs.length + 1),
-          content: converted,
-          kind: detectedKind,
-        }
+          const newDoc: EditorDocument = {
+            id: newId,
+            title: documentTypeRegistry.get(detectedKind).defaultTitle(docs.length + 1),
+            content: converted,
+            kind: detectedKind,
+            persistedToFileSystem: false,
+          }
         return [...docs, newDoc]
       })
       setActiveDocId(newId)
@@ -534,6 +616,9 @@ function App() {
             title: documentTypeRegistry.stripExtension(file.name),
             content: converted,
             kind,
+            persistedToFileSystem: true,
+            // Browsers only expose the filename for dropped files (no OS path).
+            filePath: file.name,
           }
           setDocuments(docs => [...docs, newDoc])
           setActiveDocId(newId)
@@ -565,6 +650,9 @@ function App() {
     if (documents.length <= 1) return
     const idx = documents.findIndex(d => d.id === tabId)
     const newDocs = documents.filter(d => d.id !== tabId)
+    // Tombstone the id so a reconnect merge cannot resurrect a document the user
+    // deleted while storage was offline.
+    markDeleted(tabId)
     setDocuments(newDocs)
     if (activeDocId === tabId) {
       const newActiveIdx = Math.min(idx, newDocs.length - 1)
@@ -609,6 +697,9 @@ function App() {
           title: documentTypeRegistry.stripExtension(file.name),
           content: converted,
           kind,
+          persistedToFileSystem: true,
+          // Browsers only expose the filename for uploaded files (no OS path).
+          filePath: file.name,
         }
         setDocuments(docs => [...docs, newDoc])
         setActiveDocId(newId)
@@ -642,7 +733,16 @@ function App() {
         const writable = await handle.createWritable()
         await writable.write(blob)
         await writable.close()
-        handleRenameTab(activeDocId, handle.name)
+        setDocuments(docs => docs.map(d =>
+          d.id === activeDocId
+            ? {
+                ...d,
+                title: handle.name,
+                persistedToFileSystem: true,
+                filePath: d.filePath ?? handle.name,
+              }
+            : d
+        ))
         return
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return
@@ -651,8 +751,17 @@ function App() {
     }
 
     saveBlobWithAnchor(blob, filename)
-    handleRenameTab(activeDocId, filename)
-  }, [activeContent, activeKind, activeDoc?.title, activeDocId, handleRenameTab])
+    setDocuments(docs => docs.map(d =>
+      d.id === activeDocId
+        ? {
+            ...d,
+            title: filename,
+            persistedToFileSystem: true,
+            filePath: d.filePath ?? filename,
+          }
+        : d
+    ))
+  }, [activeContent, activeKind, activeDoc?.title, activeDocId])
 
   // ── URL preview inline-fetch event listener ──────────────────────
   // UrlPreview's EmptyState dispatches 'url-preview-fetched' when a
@@ -662,7 +771,9 @@ function App() {
       const { documentId, result } = (e as CustomEvent<{ documentId: string; result: FetchUrlResult }>).detail
       const nextTitle = result.meta.title ?? result.meta.siteName ?? 'Web Article'
       setDocuments(docs => docs.map(d =>
-        d.id === documentId ? { ...d, title: nextTitle, content: result.content, kind: 'url' } : d
+        d.id === documentId
+          ? { ...d, title: nextTitle, content: result.content, kind: 'url', persistedToFileSystem: false }
+          : d
       ))
     }
     window.addEventListener('url-preview-fetched', handler)
@@ -698,6 +809,9 @@ function App() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {/* Surfaces degraded persistence — silent save failures are how data gets lost */}
+      <PersistenceStatus />
+
       {/* Hidden file input — accepts all text formats (runtime blacklist validates) */}
       <input
         ref={fileInputRef}

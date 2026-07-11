@@ -6,8 +6,11 @@ services:
     depends_on:
       url-sidecar:
         condition: service_healthy
+      db-sidecar:
+        condition: service_healthy
     environment:
       MDE_SIDECAR_INTERNAL_PORT: ${MDE_SIDECAR_INTERNAL_PORT}
+      MDE_DB_SIDECAR_INTERNAL_PORT: ${MDE_DB_SIDECAR_INTERNAL_PORT}
     healthcheck:
       test:
         - CMD
@@ -43,3 +46,31 @@ services:
     ports:
       - "${MDE_URL_SIDECAR_PORT}:${MDE_SIDECAR_INTERNAL_PORT}"
     restart: unless-stopped
+
+  db-sidecar:
+    build:
+      context: ./db-sidecar
+    environment:
+      MDE_DB_SIDECAR_INTERNAL_PORT: ${MDE_DB_SIDECAR_INTERNAL_PORT}
+      MDE_DB_PATH: /data/mdeditor.db
+    volumes:
+      - db-sidecar-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - |
+          const http = require('node:http')
+          const port = process.env.MDE_DB_SIDECAR_INTERNAL_PORT || '15280'
+          http.get('http://127.0.0.1:' + port + '/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    ports:
+      - "${MDE_DB_SIDECAR_PORT}:${MDE_DB_SIDECAR_INTERNAL_PORT}"
+    restart: unless-stopped
+
+volumes:
+  db-sidecar-data:
