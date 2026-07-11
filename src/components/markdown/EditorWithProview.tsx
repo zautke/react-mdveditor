@@ -5,12 +5,13 @@ import { TabSystem, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { loadState, saveState } from '@/lib/storage'
+import { loadState, saveState, subscribe, markDeleted, flushOnUnload } from '@/lib/storage'
 import { documentTypeRegistry } from '@/lib/document-types'
 import { validateFile } from '@/lib/file-validation'
 import { isHttpUrl } from '@/lib/url-validation'
 import { UrlInputModal } from '@/components/markdown/UrlInputModal'
 import { SettingsDialog } from '@/components/ui/settings-dialog'
+import { PersistenceStatus } from '@/components/ui/persistence-status'
 import { useUserSettings } from '@/lib/user-settings'
 import { fetchUrlContent } from '@/lib/url-fetch'
 import type { FetchUrlResult } from '@/lib/url-fetch'
@@ -393,6 +394,12 @@ function App() {
         if (savedActive) setActiveDocId(savedActive)
       }
       setIsExpanded(savedExpanded)
+
+      // Saves are now allowed. This does NOT mean "write to the database": when the
+      // sidecar is unreachable, `saveState` buffers to localStorage and refuses to
+      // PUT, because writing our (possibly default) view back would destroy the real
+      // documents. That invariant lives in storage.ts; here we only ensure the
+      // initial render isn't itself treated as a user edit.
       hydratedRef.current = true
 
       // CLI: apply files queued by `mde file.md`, appended after hydration.
@@ -411,6 +418,38 @@ function App() {
 
     return () => { cancelled = true }
   }, [openExternalFiles])
+
+  // Self-heal: when storage reconnects, it merges anything we buffered offline over
+  // the authoritative server state. Adopt that merged result so the UI shows the
+  // documents we could not see while the sidecar was down.
+  useEffect(() => {
+    return subscribe(async (next) => {
+      if (next !== 'online') return
+      const merged = await loadState<EditorDocument[]>('documents', [])
+      if (merged.length === 0) return
+      setDocuments(merged.map(doc => ({
+        ...doc,
+        kind: doc.kind ?? documentTypeRegistry.detect(doc.content),
+        persistedToFileSystem: doc.persistedToFileSystem ?? Boolean(doc.filePath),
+      })))
+    })
+  }, [])
+
+  // The documents save is debounced 500ms; without this, closing the tab right after
+  // typing loses those edits. sendBeacon survives unload where fetch does not.
+  useEffect(() => {
+    const flush = () => {
+      if (document.visibilityState !== 'hidden') return
+      flushOnUnload('documents', documents)
+      flushOnUnload('activeDocId', activeDocId)
+    }
+    document.addEventListener('visibilitychange', flush)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', flush)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [documents, activeDocId])
 
   // Tabs — include plugin icon for each document.
   // Memoized with a metadata fingerprint so content edits (which update `documents`)
@@ -611,6 +650,9 @@ function App() {
     if (documents.length <= 1) return
     const idx = documents.findIndex(d => d.id === tabId)
     const newDocs = documents.filter(d => d.id !== tabId)
+    // Tombstone the id so a reconnect merge cannot resurrect a document the user
+    // deleted while storage was offline.
+    markDeleted(tabId)
     setDocuments(newDocs)
     if (activeDocId === tabId) {
       const newActiveIdx = Math.min(idx, newDocs.length - 1)
@@ -767,6 +809,9 @@ function App() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {/* Surfaces degraded persistence — silent save failures are how data gets lost */}
+      <PersistenceStatus />
+
       {/* Hidden file input — accepts all text formats (runtime blacklist validates) */}
       <input
         ref={fileInputRef}

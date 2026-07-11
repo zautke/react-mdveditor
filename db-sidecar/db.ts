@@ -15,6 +15,19 @@ import { DatabaseSync } from 'node:sqlite'
 import { dirname } from 'node:path'
 import { mkdirSync } from 'node:fs'
 
+/**
+ * Thrown when a write would destroy existing data in a way no legitimate user
+ * action produces (today: an empty `documents` payload against a non-empty
+ * table). The HTTP layer maps this to 409 so the client can tell the difference
+ * between "rejected as unsafe" and a generic failure.
+ */
+export class DestructiveWriteError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DestructiveWriteError'
+  }
+}
+
 export interface KvStore {
   /** Every persisted key mapped to its app-facing value. */
   getAll(): Record<string, unknown>
@@ -195,6 +208,21 @@ export function openKvStore(dbPath: string): KvStore {
 
   function writeDocuments(value: unknown): void {
     if (!Array.isArray(value)) return
+
+    // Destructive-write guard. Persisting documents is a DELETE-then-INSERT, so an
+    // empty payload would wipe every document. A client that lost its state (e.g. it
+    // failed to hydrate because this sidecar was briefly unreachable) must never be
+    // able to destroy the database that way — clearing every document is not a real
+    // user action. Refuse it; the route turns this into a 409.
+    if (value.length === 0) {
+      const { count } = documentCountStmt.get() as { count: number }
+      if (count > 0) {
+        throw new DestructiveWriteError(
+          `refusing to delete ${count} document(s) for an empty payload`,
+        )
+      }
+    }
+
     const now = Date.now()
     db.exec('BEGIN')
     try {

@@ -15,7 +15,8 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
-import { openKvStore } from './db.ts'
+import { DestructiveWriteError, openKvStore } from './db.ts'
+import { startBackups } from './backup.ts'
 
 const PORT = Number.parseInt(
   process.env.MDE_DB_SIDECAR_INTERNAL_PORT ?? process.env.MDE_DB_SIDECAR_PORT ?? '15280',
@@ -75,7 +76,9 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 
     const key = stateKey(pathname)
 
-    if (method === 'PUT' && key !== null) {
+    // POST is accepted as an alias for PUT: navigator.sendBeacon (used to flush the
+    // last edits on page hide) can only issue POST.
+    if ((method === 'PUT' || method === 'POST') && key !== null) {
       const raw = await readBody(req)
       let parsed: { value?: unknown }
       try {
@@ -97,12 +100,18 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 
     sendJson(res, 404, { error: 'Not found' })
   } catch (err) {
+    // A write rejected as unsafe is a client-correctable conflict, not a server fault.
+    if (err instanceof DestructiveWriteError) {
+      sendJson(res, 409, { error: err.message, code: 'destructive_write_rejected' })
+      return
+    }
     sendJson(res, 500, { error: err instanceof Error ? err.message : 'Internal error' })
   }
 })
 
 server.listen(PORT, HOST, () => {
   console.log(`[db-sidecar] listening on http://${HOST}:${PORT} (db: ${DB_PATH})`)
+  startBackups(DB_PATH)
 })
 
 function shutdown(): void {

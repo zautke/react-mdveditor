@@ -9,7 +9,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { loadState, saveState } from '@/lib/storage'
+import { loadState, saveState, subscribe } from '@/lib/storage'
 import { DEFAULT_SETTINGS } from '@/lib/user-settings-types'
 import type { UserSettings } from '@/lib/user-settings-types'
 
@@ -35,13 +35,22 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS)
 
   // Hydrate persisted settings from the sidecar after mount, merged over
-  // defaults so newly-added keys are backfilled.
+  // defaults so newly-added keys are backfilled. Writes made while the sidecar is
+  // unreachable are buffered by `storage` rather than sent, so they cannot clobber
+  // the stored settings; we re-adopt the merged value once it reconnects.
   useEffect(() => {
     let cancelled = false
-    void loadState<Partial<UserSettings>>(STORAGE_KEY, {}).then(persisted => {
-      if (!cancelled) setSettings({ ...DEFAULT_SETTINGS, ...persisted })
-    })
-    return () => { cancelled = true }
+
+    const hydrate = () => {
+      void loadState<Partial<UserSettings>>(STORAGE_KEY, {}).then(persisted => {
+        if (!cancelled) setSettings({ ...DEFAULT_SETTINGS, ...persisted })
+      })
+    }
+
+    hydrate()
+    const unsubscribe = subscribe(status => { if (status === 'online') hydrate() })
+
+    return () => { cancelled = true; unsubscribe() }
   }, [])
 
   const updateSettings = useCallback((patch: Partial<UserSettings>) => {
