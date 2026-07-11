@@ -8,8 +8,8 @@
  * the react-refresh only-export-components lint rule.
  */
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import { loadState, saveState } from '@/lib/storage'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { loadState, saveState, subscribe } from '@/lib/storage'
 import { DEFAULT_SETTINGS } from '@/lib/user-settings-types'
 import type { UserSettings } from '@/lib/user-settings-types'
 
@@ -32,23 +32,38 @@ const UserSettingsContext = createContext<UserSettingsContextValue | null>(null)
 // ── Provider ────────────────────────────────────────────────────────
 
 export function UserSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<UserSettings>(() => {
-    const persisted = loadState<Partial<UserSettings>>(STORAGE_KEY, {})
-    // Merge with defaults so new keys are backfilled
-    return { ...DEFAULT_SETTINGS, ...persisted }
-  })
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS)
+
+  // Hydrate persisted settings from the sidecar after mount, merged over
+  // defaults so newly-added keys are backfilled. Writes made while the sidecar is
+  // unreachable are buffered by `storage` rather than sent, so they cannot clobber
+  // the stored settings; we re-adopt the merged value once it reconnects.
+  useEffect(() => {
+    let cancelled = false
+
+    const hydrate = () => {
+      void loadState<Partial<UserSettings>>(STORAGE_KEY, {}).then(persisted => {
+        if (!cancelled) setSettings({ ...DEFAULT_SETTINGS, ...persisted })
+      })
+    }
+
+    hydrate()
+    const unsubscribe = subscribe(status => { if (status === 'online') hydrate() })
+
+    return () => { cancelled = true; unsubscribe() }
+  }, [])
 
   const updateSettings = useCallback((patch: Partial<UserSettings>) => {
     setSettings(prev => {
       const next = { ...prev, ...patch }
-      saveState(STORAGE_KEY, next)
+      void saveState(STORAGE_KEY, next)
       return next
     })
   }, [])
 
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS)
-    saveState(STORAGE_KEY, DEFAULT_SETTINGS)
+    void saveState(STORAGE_KEY, DEFAULT_SETTINGS)
   }, [])
 
   return (

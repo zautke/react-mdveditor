@@ -815,8 +815,30 @@ async function openFilesAt(origin) {
   return response.json ?? {}
 }
 
+function spawnLocalDbSidecar() {
+  const port = Number.parseInt(
+    process.env.MDE_DB_SIDECAR_INTERNAL_PORT ?? process.env.MDE_DB_SIDECAR_PORT ?? '15280',
+    10,
+  )
+  if (getListeningPids(port).length > 0) return // already running
+
+  const child = spawn('node', ['db-sidecar/server.ts'], {
+    cwd: PROJECT_ROOT,
+    detached: true,
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      MDE_DB_SIDECAR_INTERNAL_PORT: String(port),
+      MDE_DB_PATH:
+        process.env.MDE_DB_PATH ?? resolve(PROJECT_ROOT, 'db-sidecar', 'data', 'mdeditor.db'),
+    },
+  })
+  child.unref()
+}
+
 async function launchLocalDevServer() {
   cleanupForbiddenLocalPorts()
+  spawnLocalDbSidecar()
 
   console.log('Starting dev server...')
   if (process.env.MDE_DEV_PORT && process.env.MDE_DEV_PORT !== String(LOCAL_DEV_PORT)) {
