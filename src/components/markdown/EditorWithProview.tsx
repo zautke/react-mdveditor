@@ -27,6 +27,7 @@ interface EditorDocument {
   title: string
   content: string
   kind: string
+  persistedToFileSystem: boolean
   filePath?: string
 }
 
@@ -266,7 +267,13 @@ function convertLatexDelimiters(text: string): string {
 function App() {
   // Multi-document state — hydrated from the SQLite sidecar after mount.
   const [documents, setDocuments] = useState<EditorDocument[]>(() => [
-    { id: 'doc-1', title: 'Untitled-1', content: initialContent, kind: 'markdown' },
+    {
+      id: 'doc-1',
+      title: 'Untitled-1',
+      content: initialContent,
+      kind: 'markdown',
+      persistedToFileSystem: false,
+    },
   ])
   const [activeDocId, setActiveDocId] = useState('doc-1')
   const [isExpanded, setIsExpanded] = useState(false)
@@ -321,6 +328,7 @@ function App() {
         title: plugin.defaultTitle(docs.length + 1),
         content: plugin.defaultContent,
         kind: plugin.kind,
+        persistedToFileSystem: false,
       }
       return [...docs, newDoc]
     })
@@ -345,7 +353,17 @@ function App() {
           ?? documentTypeRegistry.detect(file.content)
         const newId = generateDocId()
         lastId = newId
-        next = [...next, { id: newId, title: file.title, content: file.content, kind, filePath: file.filePath }]
+        next = [
+          ...next,
+          {
+            id: newId,
+            title: file.title,
+            content: file.content,
+            kind,
+            persistedToFileSystem: true,
+            filePath: file.filePath,
+          },
+        ]
         seenFilePaths.add(file.filePath)
       }
       return next
@@ -370,6 +388,7 @@ function App() {
         setDocuments(savedDocs.map(doc => ({
           ...doc,
           kind: doc.kind ?? documentTypeRegistry.detect(doc.content),
+          persistedToFileSystem: doc.persistedToFileSystem ?? Boolean(doc.filePath),
         })))
         if (savedActive) setActiveDocId(savedActive)
       }
@@ -487,7 +506,7 @@ function App() {
     const title = result.meta.title ?? result.meta.siteName ?? 'Web Article'
     setDocuments(docs => [
       ...docs,
-      { id: newId, title, content: result.content, kind: 'url' },
+      { id: newId, title, content: result.content, kind: 'url', persistedToFileSystem: false },
     ])
     setActiveDocId(newId)
   }, [])
@@ -522,12 +541,13 @@ function App() {
       const detectedKind = documentTypeRegistry.detect(converted)
       const newId = generateDocId()
       setDocuments(docs => {
-        const newDoc: EditorDocument = {
-          id: newId,
-          title: documentTypeRegistry.get(detectedKind).defaultTitle(docs.length + 1),
-          content: converted,
-          kind: detectedKind,
-        }
+          const newDoc: EditorDocument = {
+            id: newId,
+            title: documentTypeRegistry.get(detectedKind).defaultTitle(docs.length + 1),
+            content: converted,
+            kind: detectedKind,
+            persistedToFileSystem: false,
+          }
         return [...docs, newDoc]
       })
       setActiveDocId(newId)
@@ -557,6 +577,7 @@ function App() {
             title: documentTypeRegistry.stripExtension(file.name),
             content: converted,
             kind,
+            persistedToFileSystem: true,
             // Browsers only expose the filename for dropped files (no OS path).
             filePath: file.name,
           }
@@ -634,6 +655,7 @@ function App() {
           title: documentTypeRegistry.stripExtension(file.name),
           content: converted,
           kind,
+          persistedToFileSystem: true,
           // Browsers only expose the filename for uploaded files (no OS path).
           filePath: file.name,
         }
@@ -669,7 +691,16 @@ function App() {
         const writable = await handle.createWritable()
         await writable.write(blob)
         await writable.close()
-        handleRenameTab(activeDocId, handle.name)
+        setDocuments(docs => docs.map(d =>
+          d.id === activeDocId
+            ? {
+                ...d,
+                title: handle.name,
+                persistedToFileSystem: true,
+                filePath: d.filePath ?? handle.name,
+              }
+            : d
+        ))
         return
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return
@@ -678,8 +709,17 @@ function App() {
     }
 
     saveBlobWithAnchor(blob, filename)
-    handleRenameTab(activeDocId, filename)
-  }, [activeContent, activeKind, activeDoc?.title, activeDocId, handleRenameTab])
+    setDocuments(docs => docs.map(d =>
+      d.id === activeDocId
+        ? {
+            ...d,
+            title: filename,
+            persistedToFileSystem: true,
+            filePath: d.filePath ?? filename,
+          }
+        : d
+    ))
+  }, [activeContent, activeKind, activeDoc?.title, activeDocId])
 
   // ── URL preview inline-fetch event listener ──────────────────────
   // UrlPreview's EmptyState dispatches 'url-preview-fetched' when a
@@ -689,7 +729,9 @@ function App() {
       const { documentId, result } = (e as CustomEvent<{ documentId: string; result: FetchUrlResult }>).detail
       const nextTitle = result.meta.title ?? result.meta.siteName ?? 'Web Article'
       setDocuments(docs => docs.map(d =>
-        d.id === documentId ? { ...d, title: nextTitle, content: result.content, kind: 'url' } : d
+        d.id === documentId
+          ? { ...d, title: nextTitle, content: result.content, kind: 'url', persistedToFileSystem: false }
+          : d
       ))
     }
     window.addEventListener('url-preview-fetched', handler)

@@ -9,15 +9,37 @@ Postgres. The app stores editor state through a same-origin HTTP API at
 `/api/db`, which is proxied to the `db-sidecar` service in both Vite dev and
 Nginx production.
 
-The sidecar stores a key-value table in SQLite:
+The HTTP API remains compatible with the former localStorage-shaped keys, but
+the SQLite database now uses real app tables:
 
 ```sql
-CREATE TABLE IF NOT EXISTS state (
-  key TEXT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS documents (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  persisted_to_file_system INTEGER NOT NULL CHECK (persisted_to_file_system IN (0, 1)),
+  filepath TEXT,
+  kind TEXT NOT NULL,
+  content TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ui_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  active_doc_id TEXT NOT NULL DEFAULT '',
+  is_expanded INTEGER NOT NULL DEFAULT 0 CHECK (is_expanded IN (0, 1)),
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
   value TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
 ```
+
+The legacy `state(key, value, updated_at)` table is still created and read for
+one-time migration from older installs. New writes go to the normalized tables.
 
 Runtime pragmas:
 
@@ -50,7 +72,8 @@ repo's mdeditor persistence contract.
 ## Persistence DSL
 
 The persistence DSL is the small HTTP contract between `src/lib/storage.ts` and
-`db-sidecar/server.ts`.
+`db-sidecar/server.ts`. It intentionally preserves the old app-facing keys while
+the sidecar fans data out to normalized tables.
 
 | Operation | HTTP route after proxy stripping | Client helper | Behavior |
 | --- | --- | --- | --- |
@@ -63,10 +86,10 @@ Persisted logical keys:
 
 | Key | Producer | Meaning |
 | --- | --- | --- |
-| `documents` | `EditorWithProview.tsx` | Array of open editor documents. |
-| `activeDocId` | `EditorWithProview.tsx` | Active document id. |
-| `isExpanded` | `EditorWithProview.tsx` | Editor layout expansion state. |
-| `userSettings` | `user-settings.tsx` | User settings merged over defaults at hydration. |
+| `documents` | `EditorWithProview.tsx` | Array of open editor documents. Stored in `documents` with `id`, `persistedToFileSystem`, `filePath`, `kind`, `content`, plus tab `title` and ordering metadata. |
+| `activeDocId` | `EditorWithProview.tsx` | Active document id. Stored in `ui_state.active_doc_id`. |
+| `isExpanded` | `EditorWithProview.tsx` | Editor layout expansion state. Stored in `ui_state.is_expanded`. |
+| `userSettings` | `user-settings.tsx` | User settings merged over defaults at hydration. Stored as JSON in `user_settings.value`. |
 
 Legacy browser `localStorage` keys with the prefix `mdeditor:` are migrated once
 if the DB does not already contain the corresponding key. The legacy data is
