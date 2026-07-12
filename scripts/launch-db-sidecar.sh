@@ -50,7 +50,9 @@ cd "$ROOT"
 # `date -Is` is a GNU extension; BSD/macOS date rejects it.
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] starting db-sidecar"
 
-exec env \
-  MDE_DB_SIDECAR_INTERNAL_PORT="${MDE_DB_SIDECAR_INTERNAL_PORT:-15280}" \
-  MDE_DB_PATH="${MDE_DB_PATH:-$ROOT/db-sidecar/data/mdeditor.db}" \
-  node "$ROOT/db-sidecar/server.ts"
+# Export + exec rather than `env VAR=... node`: a shadowed/shimmed `env` earlier in
+# PATH silently swallows the command, which is impossible to diagnose from the logs.
+export MDE_DB_SIDECAR_INTERNAL_PORT="${MDE_DB_SIDECAR_INTERNAL_PORT:-15280}"
+export MDE_DB_PATH="${MDE_DB_PATH:-$ROOT/db-sidecar/data/mdeditor.db}"
+
+exec node "$ROOT/db-sidecar/server.ts"

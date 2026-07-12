@@ -51,6 +51,8 @@ let status: StorageStatus = 'connecting'
 let hydratePromise: Promise<Record<string, unknown>> | null = null
 let healTimer: ReturnType<typeof setTimeout> | null = null
 let healDelay = HEAL_MIN_MS
+/** Guards reconcile() against re-entry: it writes, and a rejected write re-reads. */
+let reconciling = false
 
 const listeners = new Set<(s: StorageStatus) => void>()
 
@@ -190,8 +192,12 @@ function hasBufferedWrites(): boolean {
 // ── Reads / writes ──────────────────────────────────────────────────
 
 export async function loadState<T>(key: string, fallback: T): Promise<T> {
-  const all = await hydrateAll()
-  return key in all && all[key] != null ? (all[key] as T) : fallback
+  // Await the initial hydration, but read from the live `cache` afterwards rather
+  // than from the value that promise resolved with: `hydrateAll` is memoized, while
+  // reconcile() replaces `cache` with a freshly merged object. Reading the resolved
+  // value would hand callers the pre-heal snapshot.
+  await hydrateAll()
+  return key in cache && cache[key] != null ? (cache[key] as T) : fallback
 }
 
 /**
@@ -241,8 +247,10 @@ async function putState(key: string, value: unknown): Promise<boolean> {
       body: JSON.stringify({ value }),
     })
     if (resp.status === 409) {
-      // The server refused an unsafe write (e.g. empty documents over a non-empty
-      // table). Our view is the degraded one — re-read rather than retry.
+      // The server refused an unsafe write (e.g. an empty `documents` payload against
+      // a non-empty table). Our view is the degraded one, so re-read instead of
+      // retrying. reconcile() itself writes, so it is re-entry guarded — without that
+      // a persistently-rejected write would recurse forever.
       console.warn('[storage] write rejected as unsafe; re-reading server state')
       await reconcile()
       return true
@@ -297,6 +305,16 @@ function startHealing(): void {
  * documents the user deleted offline stay deleted (via tombstones).
  */
 export async function reconcile(): Promise<void> {
+  if (reconciling) return
+  reconciling = true
+  try {
+    await doReconcile()
+  } finally {
+    reconciling = false
+  }
+}
+
+async function doReconcile(): Promise<void> {
   const server = await fetchState()
   if (server === null) {
     hydrateOk = false

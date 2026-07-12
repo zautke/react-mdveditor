@@ -265,17 +265,22 @@ function convertLatexDelimiters(text: string): string {
 
 // ── Main component ──────────────────────────────────────────────────
 
+/** The document a first-run user starts with, when storage has nothing to restore. */
+const FIRST_RUN_DOCUMENT: EditorDocument = {
+  id: 'doc-1',
+  title: 'Untitled-1',
+  content: initialContent,
+  kind: 'markdown',
+  persistedToFileSystem: false,
+}
+
 function App() {
-  // Multi-document state — hydrated from the SQLite sidecar after mount.
-  const [documents, setDocuments] = useState<EditorDocument[]>(() => [
-    {
-      id: 'doc-1',
-      title: 'Untitled-1',
-      content: initialContent,
-      kind: 'markdown',
-      persistedToFileSystem: false,
-    },
-  ])
+  // Multi-document state — hydrated from the SQLite sidecar after mount. It starts
+  // EMPTY rather than with a default document: hydration is async, so seeding a
+  // default here would render a tab for a document that is about to be replaced,
+  // leaving a phantom tab behind. The first-run document is created only once
+  // hydration confirms there is nothing to restore.
+  const [documents, setDocuments] = useState<EditorDocument[]>([])
   const [activeDocId, setActiveDocId] = useState('doc-1')
   const [isExpanded, setIsExpanded] = useState(false)
   const [arrowOpacity, setArrowOpacity] = useState(1)
@@ -392,6 +397,11 @@ function App() {
           persistedToFileSystem: doc.persistedToFileSystem ?? Boolean(doc.filePath),
         })))
         if (savedActive) setActiveDocId(savedActive)
+      } else {
+        // Nothing to restore (first run, or storage is offline with an empty buffer):
+        // only now do we create the starter document.
+        setDocuments([FIRST_RUN_DOCUMENT])
+        setActiveDocId(FIRST_RUN_DOCUMENT.id)
       }
       setIsExpanded(savedExpanded)
 
