@@ -94,6 +94,9 @@ export interface TabSystemProps {
   /** Callback when a tab is deleted */
   onDeleteTab?: (tabId: string) => void
 
+  /** Callback when a tab label is renamed */
+  onRenameTab?: (tabId: string, label: string) => void
+
   /** Show the new tab button */
   showNewButton?: boolean
 

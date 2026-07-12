@@ -8,7 +8,7 @@ import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import type { AnimateLayoutChanges } from "@dnd-kit/sortable"
 
-import { cn } from "@/lib/utils"
+import { cn } from "../../utils"
 import { TabName } from "./tab-name"
 import { TabCloseButton } from "./tab-close-button"
 import type {
@@ -27,7 +27,7 @@ const ANIMATION_DISTANCE = 30
 const REDUCED_ANIMATION_DISTANCE = 12
 
 const getTabAnimations = (orientation: TabOrientation, motion: TabMotion) => {
-  const axis = orientation === "horizontal" ? "x" : "y"
+  const isHorizontal = orientation === "horizontal"
   const duration = motion === "none" ? 0 : motion === "reduced" ? 0.12 : 0.2
   const distance = motion === "reduced" ? REDUCED_ANIMATION_DISTANCE : ANIMATION_DISTANCE
 
@@ -37,12 +37,12 @@ const getTabAnimations = (orientation: TabOrientation, motion: TabMotion) => {
       animate: {
         opacity: 1,
         scale: 1,
-        [axis]: 0,
+        ...(isHorizontal ? { x: 0 } : { y: 0 }),
         transition: { duration: 0 },
       },
       exit: {
         opacity: 0,
-        [axis]: 0,
+        ...(isHorizontal ? { x: 0 } : { y: 0 }),
         transition: { duration: 0 },
       },
     }
@@ -52,24 +52,24 @@ const getTabAnimations = (orientation: TabOrientation, motion: TabMotion) => {
     initial: {
       opacity: 0,
       scale: 0.8,
-      [axis]: distance,
+      ...(isHorizontal ? { x: distance } : { y: distance }),
     },
     animate: {
       opacity: 1,
       scale: 1,
-      [axis]: 0,
+      ...(isHorizontal ? { x: 0 } : { y: 0 }),
       transition: {
         duration,
-        ease: [0.4, 0, 0.2, 1],
+        ease: [0.4, 0, 0.2, 1] as const,
       },
     },
     exit: {
       opacity: 0,
       scale: 0.8,
-      [axis]: -distance,
+      ...(isHorizontal ? { x: -distance } : { y: -distance }),
       transition: {
         duration,
-        ease: [0.4, 0, 1, 1],
+        ease: [0.4, 0, 1, 1] as const,
       },
     },
   }
@@ -133,7 +133,6 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
     const animations = getTabAnimations(orientation, motion)
 
     const {
-      attributes,
       listeners,
       setNodeRef,
       transform,
@@ -166,12 +165,6 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
       position: "relative" as const,
     }
 
-    // Separate dnd-kit role attributes to avoid invalid button>tab nesting.
-    // dnd-kit injects role="button" on the wrapper which conflicts with
-    // Radix's role="tab" on the inner trigger. We override to role="presentation".
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { role: _dndRole, ...safeAttributes } = attributes
-
     return (
       <Motion.div
         ref={setNodeRef}
@@ -185,16 +178,15 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
         className="relative min-w-0"
         style={sortableStyle}
         role="presentation"
-        {...safeAttributes}
         {...listeners}
       >
         <TabsPrimitive.Trigger
           asChild
-          ref={ref}
           value={tab.id}
           disabled={tab.disabled}
         >
           <div
+            ref={ref}
             className={cn(
               triggerClassName,
               "group relative w-full",

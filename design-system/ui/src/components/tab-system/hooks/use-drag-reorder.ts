@@ -6,7 +6,7 @@
  * <DndContext> and <SortableContext>.
  */
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import {
   PointerSensor,
   KeyboardSensor,
@@ -14,6 +14,7 @@ import {
   useSensors,
   useSensor,
   type DragStartEvent,
+  type DragOverEvent,
   type DragEndEvent,
   type SensorDescriptor,
   type SensorOptions,
@@ -36,6 +37,7 @@ export interface UseDragReorderReturn {
   sensors: SensorDescriptor<SensorOptions>[]
   activeId: string | null
   handleDragStart: (event: DragStartEvent) => void
+  handleDragOver: (event: DragOverEvent) => void
   handleDragEnd: (event: DragEndEvent) => void
   handleDragCancel: () => void
 }
@@ -46,6 +48,7 @@ export function useDragReorder({
   enabled = true,
 }: UseDragReorderOptions): UseDragReorderReturn {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const startingOrderRef = useRef<string[] | null>(null)
 
   // Pointer sensor: distance: 8 prevents accidental drag when clicking
   // tabs or close buttons
@@ -64,15 +67,16 @@ export function useDragReorder({
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       if (!enabled) return
+      startingOrderRef.current = [...items]
       setActiveId(String(event.active.id))
     },
-    [enabled]
+    [enabled, items]
   )
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      setActiveId(null)
-
+  // Optimistic reorder on drag-over: moves tabs out of the way in
+  // real-time as the dragged item crosses their midpoint.
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
       if (!enabled) return
 
       const { active, over } = event
@@ -89,9 +93,27 @@ export function useDragReorder({
     [enabled, items, onReorder]
   )
 
-  const handleDragCancel = useCallback(() => {
-    setActiveId(null)
-  }, [])
+  const handleDragEnd = useCallback(
+    (_event: DragEndEvent) => {
+      // Reorder already happened in onDragOver — just clear active state.
+      startingOrderRef.current = null
+      setActiveId(null)
+    },
+    []
+  )
 
-  return { sensors, activeId, handleDragStart, handleDragEnd, handleDragCancel }
+  const handleDragCancel = useCallback(() => {
+    const startingOrder = startingOrderRef.current
+    const sameItems = startingOrder?.length === items.length &&
+      startingOrder.every((id) => items.includes(id))
+    const orderChanged = startingOrder?.some((id, index) => items[index] !== id)
+
+    if (startingOrder && sameItems && orderChanged) {
+      onReorder(startingOrder)
+    }
+    startingOrderRef.current = null
+    setActiveId(null)
+  }, [items, onReorder])
+
+  return { sensors, activeId, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel }
 }

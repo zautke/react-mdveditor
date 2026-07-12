@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion as Motion } from "motion/react"
-import { ChevronDown, Plus } from "react-feather"
+import { ChevronDown, Plus } from "lucide-react"
 
-import { cn } from "@/lib/utils"
-import { IconLabel } from "@/components/ui/icon-label"
+import { cn } from "../../utils"
+import { IconLabel } from "../icon-label"
 import type { TabOrientation, NewTabMenuItem, TabMotion } from "./types"
 
 // ── NewTabDropdown ──────────────────────────────────────────────────
@@ -37,11 +37,13 @@ function NewTabDropdown({
   menuClassName,
   menuItemClassName,
 }: NewTabDropdownProps) {
+  const menuId = useId()
   const [isOpen, setIsOpen] = useState(false)
   const [activeMenuIndex, setActiveMenuIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const enabledMenuItems = useMemo(() => menuItems.filter((item) => !item.disabled), [menuItems])
 
   // Close menu and return focus to trigger
   const closeMenu = useCallback(() => {
@@ -77,7 +79,7 @@ function NewTabDropdown({
   // Focus first menu item when menu opens
   useEffect(() => {
     if (isOpen && menuRef.current) {
-      const firstItem = menuRef.current.querySelector<HTMLElement>('[role="menuitem"]')
+      const firstItem = menuRef.current.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')
       // Delay focus slightly for AnimatePresence
       requestAnimationFrame(() => firstItem?.focus())
     }
@@ -138,7 +140,6 @@ function NewTabDropdown({
       ? "right-0 top-full mt-2"
       : "left-full top-0 ml-2"
 
-  const menuId = "new-tab-menu"
   const menuMotion = motion === "none"
     ? {
         initial: false as const,
@@ -167,7 +168,7 @@ function NewTabDropdown({
           onClick={handleNewTab}
           className={cn(
             newButtonClassName,
-            "app-icon-button-segment-left rounded-none rounded-l-md",
+            "rounded-none rounded-l-md",
             orientation === "vertical" ? "flex-1" : ""
           )}
           aria-label="Add new tab"
@@ -180,7 +181,7 @@ function NewTabDropdown({
           onClick={() => setIsOpen((prev) => !prev)}
           className={cn(
             newButtonClassName,
-            "app-icon-button-segment-right rounded-none rounded-r-md border-l border-[color:var(--tabs-bar-border)]",
+            "rounded-none rounded-r-md border-l border-[color:var(--tabs-bar-border)]",
             orientation === "vertical" ? "flex-1" : ""
           )}
           aria-haspopup="menu"
@@ -217,7 +218,7 @@ function NewTabDropdown({
                 key={item.id}
                 type="button"
                 role="menuitem"
-                tabIndex={index === activeMenuIndex ? 0 : -1}
+                tabIndex={item.id === enabledMenuItems[activeMenuIndex]?.id ? 0 : -1}
                 onClick={() => handleMenuItemSelect(item)}
                 disabled={item.disabled}
                 initial={motion === "none" ? false : { opacity: 0, x: motion === "reduced" ? 0 : -8, y: motion === "reduced" ? 2 : 8 }}

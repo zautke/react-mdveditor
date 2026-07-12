@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { AnimatePresence, LayoutGroup } from "motion/react"
 import {
@@ -16,17 +16,25 @@ import {
 } from "@dnd-kit/sortable"
 
 import { cn } from "../../utils"
-import { SortableTab } from "./sortable-tab"
-import { TabDragOverlayContent } from "./tab-overlay"
-import { NewTabButton, NewTabControl } from "./new-tab-control"
+import { DraggableTab } from "./draggable-tab"
+import { TabDragOverlay } from "./tab-drag-overlay"
+import { NewTabButton } from "./new-tab-button"
+import { NewTabDropdown } from "./new-tab-dropdown"
+import { TabPanel } from "./tab-panel"
 import { ScrollArrow } from "./scroll-arrow"
 import { tabSystem } from "./tab-system.variants"
 import { useTabOverflow } from "./hooks/use-tab-overflow"
 import { useWheelScroll } from "./hooks/use-wheel-scroll"
 import { useDragReorder } from "./hooks/use-drag-reorder"
-import type { TabSystemProps } from "./types"
+import type {
+  TabSystemProps,
+  TabItem,
+} from "./types"
 
 // ── TabSystem ───────────────────────────────────────────────────────
+// Orchestrator component that composes all tab sub-components:
+// DraggableTab, TabDragOverlay, NewTabButton/NewTabDropdown,
+// ScrollArrow, and TabPanel into a complete tabbed interface.
 
 const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
   (
@@ -41,6 +49,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       onTabChange,
       onNewTab,
       onDeleteTab,
+      onRenameTab,
       onReorderTabs,
       showNewButton = false,
       newTabMenuItems,
@@ -53,11 +62,12 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       className,
       classNames,
       children,
-      // v2 stub - grouping not implemented yet
       grouping: _grouping,
     },
     ref
   ) => {
+    const dndContextId = useId()
+
     // ── Variant styles ─────────────────────────────────────────
     const styles = useMemo(
       () =>
@@ -80,6 +90,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
     // ── Track newly added tabs for enter animation ─────────────
     const [newTabIds, setNewTabIds] = useState<Set<string>>(new Set())
     const prevTabIdsRef = useRef<string[]>([])
+    const newTabTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
     useEffect(() => {
       const currentIds = tabs.map((t) => t.id)
@@ -89,17 +100,32 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
 
       if (addedIds.length > 0) {
         setNewTabIds((prev) => new Set([...prev, ...addedIds]))
-        setTimeout(() => {
-          setNewTabIds((prev) => {
-            const next = new Set(prev)
-            addedIds.forEach((id) => next.delete(id))
-            return next
-          })
-        }, 500)
+        addedIds.forEach((id) => {
+          const existingTimer = newTabTimersRef.current.get(id)
+          if (existingTimer) clearTimeout(existingTimer)
+
+          const timer = setTimeout(() => {
+            setNewTabIds((prev) => {
+              const next = new Set(prev)
+              next.delete(id)
+              return next
+            })
+            newTabTimersRef.current.delete(id)
+          }, 500)
+          newTabTimersRef.current.set(id, timer)
+        })
       }
 
       prevTabIdsRef.current = currentIds
     }, [tabs])
+
+    useEffect(
+      () => () => {
+        newTabTimersRef.current.forEach((timer) => clearTimeout(timer))
+        newTabTimersRef.current.clear()
+      },
+      []
+    )
 
     // ── DnD hook ───────────────────────────────────────────────
     const tabIds = useMemo(() => tabs.map((t) => t.id), [tabs])
@@ -112,7 +138,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       [onReorderTabs]
     )
 
-    const { sensors, activeId, handleDragStart, handleDragEnd, handleDragCancel } =
+    const { sensors, activeId, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } =
       useDragReorder({
         items: tabIds,
         onReorder: handleReorder,
@@ -156,7 +182,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
     const newTabControlEl = showNewButton &&
       onNewTab &&
       (menuItems.length > 0 ? (
-        <NewTabControl
+        <NewTabDropdown
           onNewTab={onNewTab}
           menuItems={menuItems}
           newButtonClassName={slot("newButton", styles.newButton())}
@@ -183,6 +209,43 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
       ? tabs.find((t) => t.id === activeId)
       : null
 
+    // ── Custom DnD screen-reader announcements ─────────────────
+    // Replaces the generic default ("Draggable item X was dropped
+    // over droppable area X") with position-based sortable messages.
+    const getTabLabel = useCallback(
+      (id: string | number) => tabs.find((t) => t.id === String(id))?.label ?? String(id),
+      [tabs]
+    )
+    const getPosition = useCallback(
+      (id: string | number) => tabIds.indexOf(String(id)) + 1,
+      [tabIds]
+    )
+    const tabCount = tabs.length
+
+    const dndAnnouncements = useMemo(
+      () => ({
+        onDragStart({ active }: { active: { id: string | number } }) {
+          return `Picked up tab ${getTabLabel(active.id)}. Tab is in position ${getPosition(active.id)} of ${tabCount}.`
+        },
+        onDragOver({ active, over }: { active: { id: string | number }; over: { id: string | number } | null }) {
+          if (over) {
+            return `Tab ${getTabLabel(active.id)} was moved to position ${getPosition(over.id)} of ${tabCount}.`
+          }
+          return `Tab ${getTabLabel(active.id)} is no longer over a drop target.`
+        },
+        onDragEnd({ active, over }: { active: { id: string | number }; over: { id: string | number } | null }) {
+          if (over) {
+            return `Tab ${getTabLabel(active.id)} was dropped at position ${getPosition(over.id)} of ${tabCount}.`
+          }
+          return `Tab ${getTabLabel(active.id)} was dropped.`
+        },
+        onDragCancel({ active }: { active: { id: string | number } }) {
+          return `Reorder cancelled. Tab ${getTabLabel(active.id)} was returned to its original position.`
+        },
+      }),
+      [getTabLabel, getPosition, tabCount]
+    )
+
     // ── CSS custom properties for responsive sizing ────────────
     const rootStyle = {
       "--tab-min-width": tabMinWidth ?? "5rem",
@@ -201,28 +264,19 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
         data-density={density}
         data-motion={motion}
       >
-        {/* Tab bar: scroll arrows + scrollable list + pinned action */}
+        {/* Tab bar: scrollable list + arrows + pinned action */}
         <div className={slot("bar", styles.bar())}>
-          {/* Left scroll arrow */}
-          {canScrollLeft && (
-            <ScrollArrow
-              direction="left"
-              onClick={doScrollLeft}
-              className={slot("scrollArrow", styles.scrollArrow())}
-            />
-          )}
-
           {/* Scrollable container */}
-          <div
-            ref={scrollContainerRef as React.Ref<HTMLDivElement>}
-            className={slot("scrollContainer", styles.scrollContainer())}
-          >
+          <div ref={scrollContainerRef} className={slot("scrollContainer", styles.scrollContainer())}>
             <DndContext
+              id={dndContextId}
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}
+              accessibility={{ announcements: dndAnnouncements }}
             >
               <SortableContext
                 items={tabIds}
@@ -230,12 +284,13 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
               >
                 <LayoutGroup>
                   <TabsPrimitive.List
-                    className={slot("list", cn(styles.list(), "flex-1 min-w-0"))}
+                    className={slot("list", cn(styles.list(), "w-max min-w-full"))}
                     style={{ position: "relative" }}
+                    aria-label="Document tabs"
                   >
                     <AnimatePresence mode="popLayout" initial={false}>
                       {tabs.map((tab) => (
-                        <SortableTab
+                        <DraggableTab
                           key={tab.id}
                           tab={tab}
                           orientation={orientation}
@@ -245,12 +300,14 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
                           closeButtonShape={closeButtonShape}
                           closeButtonVisibility={closeButtonVisibility}
                           onDelete={handleDelete}
+                          onRename={onRenameTab}
                           isNew={newTabIds.has(tab.id)}
                           triggerClassName={slot("trigger", styles.trigger())}
                           tabNameClassName={classNames?.tabName}
                           closeButtonClassName={classNames?.closeButton}
                           motion={motion}
                           isDndEnabled={isDndEnabled}
+                          isSortingActive={!!activeId}
                         />
                       ))}
                     </AnimatePresence>
@@ -260,7 +317,7 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
 
               <DragOverlay dropAnimation={null}>
                 {activeTab_item ? (
-                  <TabDragOverlayContent
+                  <TabDragOverlay
                     tab={activeTab_item}
                     triggerClassName={slot("trigger", styles.trigger())}
                     tabNameClassName={classNames?.tabName}
@@ -271,13 +328,28 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
             </DndContext>
           </div>
 
-          {/* Right scroll arrow */}
-          {canScrollRight && (
-            <ScrollArrow
-              direction="right"
-              onClick={doScrollRight}
-              className={slot("scrollArrow", styles.scrollArrow())}
-            />
+          {/* Scroll arrows — grouped together to the right of the tab bar */}
+          {(canScrollLeft || canScrollRight) && (
+            <div className="flex-shrink-0 flex items-center">
+              <ScrollArrow
+                direction="left"
+                onClick={doScrollLeft}
+                className={cn(
+                  styles.scrollArrow(),
+                  classNames?.scrollArrow,
+                  !canScrollLeft && "opacity-30 pointer-events-none"
+                )}
+              />
+              <ScrollArrow
+                direction="right"
+                onClick={doScrollRight}
+                className={cn(
+                  styles.scrollArrow(),
+                  classNames?.scrollArrow,
+                  !canScrollRight && "opacity-30 pointer-events-none"
+                )}
+              />
+            </div>
           )}
 
           {/* Pinned new tab control — outside scroll container */}
@@ -306,22 +378,10 @@ const TabSystem = forwardRef<HTMLDivElement, TabSystemProps>(
 )
 TabSystem.displayName = "TabSystem"
 
-// ── TabContent ──────────────────────────────────────────────────────
+// ── Backward-compatible alias ───────────────────────────────────────
+// The old name `TabContent` is kept as an alias for `TabPanel` to avoid
+// breaking existing imports. New code should use `TabPanel`.
+const TabContent = TabPanel
 
-const TabContent = forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      "ring-offset-background h-full overflow-auto",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className
-    )}
-    {...props}
-  />
-))
-TabContent.displayName = "TabContent"
-
-export { TabSystem, TabContent }
+export { TabSystem, TabPanel, TabContent }
+export type { TabSystemProps, TabItem }

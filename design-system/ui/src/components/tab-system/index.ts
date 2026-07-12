@@ -1,54 +1,35 @@
 /**
- * @braisenly/ui/tab-system
- *
- * Multi-variant animated tab component with drag-and-drop reordering,
- * responsive width clamping, scroll overflow, and doctype color support.
- *
- * @example
- * ```tsx
- * import { TabSystem, TabContent } from "@braisenly/ui/tab-system"
- *
- * function MyTabs() {
- *   const [tabs, setTabs] = useState([
- *     { id: "1", label: "Tab 1" },
- *     { id: "2", label: "Tab 2" },
- *   ])
- *   const [activeTab, setActiveTab] = useState("1")
- *
- *   return (
- *     <TabSystem
- *       tabs={tabs}
- *       activeTab={activeTab}
- *       onTabChange={setActiveTab}
- *       variant="chrome"
- *       showNewButton
- *       showCloseButtons
- *       onNewTab={() => setTabs([...tabs, { id: Date.now().toString(), label: "New" }])}
- *       onDeleteTab={(id) => setTabs(tabs.filter(t => t.id !== id))}
- *       onReorderTabs={(newOrder) => setTabs(newOrder.map(id => tabs.find(t => t.id === id)!))}
- *     >
- *       <TabContent value="1">Content 1</TabContent>
- *       <TabContent value="2">Content 2</TabContent>
- *     </TabSystem>
- *   )
- * }
- * ```
+ * Complete controlled tab system for application and editor surfaces.
+ * Consumers own tab state; this package owns interaction, accessibility,
+ * animation, overflow, and presentation behavior.
  */
 
-// Main components
-export { TabSystem, TabContent } from "./tab-system"
-export { SortableTab } from "./sortable-tab"
+export { TabSystem, TabPanel, TabContent } from "./tab-system"
+
+export { DraggableTab } from "./draggable-tab"
+export type { DraggableTabProps } from "./draggable-tab"
+export { DraggableTab as SortableTab } from "./draggable-tab"
+export type { DraggableTabProps as SortableTabProps } from "./draggable-tab"
+
 export { TabName } from "./tab-name"
 export { TabCloseButton } from "./tab-close-button"
-export { TabDragOverlayContent } from "./tab-overlay"
-export { NewTabButton, NewTabControl } from "./new-tab-control"
+export type { TabCloseButtonProps } from "./tab-close-button"
+export { TabDragOverlay } from "./tab-drag-overlay"
+export type { TabDragOverlayProps } from "./tab-drag-overlay"
+export { TabDragOverlay as TabDragOverlayContent } from "./tab-drag-overlay"
+export type { TabDragOverlayProps as TabOverlayProps } from "./tab-drag-overlay"
+export { NewTabButton } from "./new-tab-button"
+export type { NewTabButtonProps } from "./new-tab-button"
+export { NewTabDropdown } from "./new-tab-dropdown"
+export type { NewTabDropdownProps } from "./new-tab-dropdown"
+export { NewTabDropdown as NewTabControl } from "./new-tab-dropdown"
+export type { NewTabDropdownProps as NewTabControlProps } from "./new-tab-dropdown"
 export { ScrollArrow } from "./scroll-arrow"
+export type { ScrollArrowProps } from "./scroll-arrow"
 
-// Variant system
 export { tabSystem } from "./tab-system.variants"
 export type { TabSystemVariantProps } from "./tab-system.variants"
 
-// Types
 export type {
   TabSystemProps,
   TabItem,
@@ -67,13 +48,6 @@ export type {
   TabAnimationState,
 } from "./types"
 
-// Sub-component types
-export type { SortableTabProps } from "./sortable-tab"
-export type { TabCloseButtonProps } from "./tab-close-button"
-export type { ScrollArrowProps } from "./scroll-arrow"
-export type { TabOverlayProps } from "./tab-overlay"
-
-// Hooks
 export { useTabOverflow } from "./hooks/use-tab-overflow"
 export type { UseTabOverflowReturn } from "./hooks/use-tab-overflow"
 export { useWheelScroll } from "./hooks/use-wheel-scroll"
@@ -81,6 +55,5 @@ export type { UseWheelScrollOptions } from "./hooks/use-wheel-scroll"
 export { useDragReorder } from "./hooks/use-drag-reorder"
 export type { UseDragReorderOptions, UseDragReorderReturn } from "./hooks/use-drag-reorder"
 
-// Shared utilities
 export { IconLabel } from "../icon-label"
 export type { IconLabelPosition } from "../icon-label"

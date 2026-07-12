@@ -4,7 +4,7 @@ import * as React from "react"
 import { forwardRef } from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
-import { cn } from "@/lib/utils"
+import { cn } from "../../utils"
 
 // ── TabPanel ────────────────────────────────────────────────────────
 // Wrapper around Radix TabsPrimitive.Content with consistent focus
@@ -18,8 +18,8 @@ const TabPanel = forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "ring-offset-background h-full overflow-auto",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "h-full overflow-auto",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--tab-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--tab-focus-offset-color)]",
       className
     )}
     {...props}
