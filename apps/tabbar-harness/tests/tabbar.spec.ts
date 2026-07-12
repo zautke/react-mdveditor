@@ -2,15 +2,19 @@ import { expect, test } from "@playwright/test"
 
 test("renders the complete tabbar above a bordered content panel", async ({ page }) => {
   const consoleErrors: string[] = []
+  const pageErrors: string[] = []
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text())
   })
+  page.on("pageerror", (error) => pageErrors.push(error.message))
   await page.goto("/")
+  await page.reload()
 
   await expect(page.getByRole("tablist", { name: "Document tabs" })).toBeVisible()
   await expect(page.getByTestId("tab-content-shell")).toHaveCSS("border-top-style", "solid")
   await expect(page.getByRole("tab", { name: /README/ })).toHaveAttribute("aria-selected", "true")
-  expect(consoleErrors.filter((message) => message.includes("hydrated"))).toEqual([])
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
 })
 
 test("supports add, typed menu, rename, close, and keyboard selection", async ({ page }) => {
@@ -37,8 +41,11 @@ test("supports add, typed menu, rename, close, and keyboard selection", async ({
   await page.keyboard.press("ArrowRight")
   await expect(page.locator('[role="tab"][data-state="active"]')).toBeFocused()
 
+  await page.getByRole("tab", { name: /Research.md/ }).click()
+  await expect(page.getByRole("tab", { name: /Research.md/ })).toHaveAttribute("aria-selected", "true")
   await page.getByRole("button", { name: /Close Research.md tab/ }).click()
   await expect(page.getByRole("tab", { name: /Research.md/ })).toHaveCount(0)
+  await expect(page.locator('[role="tab"][data-state="active"]')).toHaveCount(1)
 })
 
 test("supports pointer and keyboard reorder", async ({ page }, testInfo) => {
@@ -57,11 +64,15 @@ test("supports pointer and keyboard reorder", async ({ page }, testInfo) => {
   await page.mouse.move(diagramBox!.x + diagramBox!.width / 2, diagramBox!.y + diagramBox!.height / 2, { steps: 12 })
   await page.mouse.up()
   await expect(page.getByRole("tab").nth(2)).toContainText("Notes.md")
+  const liveRegion = page.locator('[role="status"]')
+  await expect(liveRegion).toContainText(/Tab Notes\.md was dropped/)
 
   await diagram.focus()
   await page.keyboard.press("Space")
+  await expect(liveRegion).toContainText(/Architecture\.mmd.*position/)
   await page.keyboard.press("ArrowRight")
   await page.keyboard.press("Space")
+  await expect(liveRegion).toContainText(/Tab Architecture\.mmd was dropped/)
   await expect(page.getByRole("tab").nth(2)).toContainText("Architecture.mmd")
 })
 

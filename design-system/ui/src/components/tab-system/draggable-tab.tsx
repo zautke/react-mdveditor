@@ -133,8 +133,10 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
     const animations = getTabAnimations(orientation, motion)
 
     const {
+      attributes,
       listeners,
       setNodeRef,
+      setActivatorNodeRef,
       transform,
       transition,
       isDragging,
@@ -165,6 +167,15 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
       position: "relative" as const,
     }
 
+    const setTriggerRef = React.useCallback((node: HTMLDivElement | null) => {
+      setActivatorNodeRef(node)
+      if (typeof ref === "function") {
+        ref(node)
+      } else if (ref) {
+        ref.current = node
+      }
+    }, [ref, setActivatorNodeRef])
+
     return (
       <Motion.div
         ref={setNodeRef}
@@ -178,7 +189,6 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
         className="relative min-w-0"
         style={sortableStyle}
         role="presentation"
-        {...listeners}
       >
         <TabsPrimitive.Trigger
           asChild
@@ -186,7 +196,7 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
           disabled={tab.disabled}
         >
           <div
-            ref={ref}
+            ref={setTriggerRef}
             className={cn(
               triggerClassName,
               "group relative w-full",
@@ -198,7 +208,9 @@ const DraggableTab = forwardRef<HTMLDivElement, DraggableTabProps>(
                 : undefined
             }
             data-tab-color={tab.color ? "" : undefined}
+            aria-describedby={isDndEnabled ? attributes["aria-describedby"] : undefined}
             aria-roledescription={isDndEnabled ? "draggable tab" : undefined}
+            {...listeners}
           >
             <TabName
               icon={tab.icon}

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
 import * as tabSystemModule from "./index"
-import { TabContent, TabSystem, useDragReorder, useWheelScroll } from "./index"
+import { TabContent, TabSystem, useDragReorder, useTabOverflow, useWheelScroll } from "./index"
 import type { NewTabMenuItem, TabItem } from "./types"
 
 const tabs: TabItem[] = [
@@ -81,6 +81,7 @@ describe("packaged TabSystem parity", () => {
       expect(wrapper).toHaveAttribute("role", "presentation")
       expect(wrapper).not.toHaveAttribute("tabindex")
       expect(wrapper).not.toHaveAttribute("aria-describedby")
+      expect(tab).toHaveAttribute("aria-describedby")
     }
   })
 
@@ -226,6 +227,62 @@ describe("packaged TabSystem parity", () => {
 
     expect(onReorder).toHaveBeenLastCalledWith(["readme", "notes"])
     expect(result.current.activeId).toBeNull()
+  })
+
+  it("does not restore a stale order when the tab set changes during drag", () => {
+    const onReorder = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ items }) => useDragReorder({ items, onReorder }),
+      { initialProps: { items: ["readme", "notes"] } },
+    )
+
+    act(() => result.current.handleDragStart({ active: { id: "readme" } } as never))
+    rerender({ items: ["readme", "notes", "added"] })
+    act(() => result.current.handleDragCancel())
+
+    expect(onReorder).not.toHaveBeenCalled()
+    expect(result.current.activeId).toBeNull()
+  })
+
+  it("updates overflow on resize and disconnects its observer on unmount", () => {
+    let resize: ResizeObserverCallback = () => undefined
+    const disconnect = vi.fn()
+    class ResizeObserverProbe {
+      constructor(callback: ResizeObserverCallback) {
+        resize = callback
+      }
+      observe() {}
+      unobserve() {}
+      disconnect = disconnect
+    }
+    vi.stubGlobal("ResizeObserver", ResizeObserverProbe)
+
+    function OverflowProbe() {
+      const { containerRef, canScrollLeft, canScrollRight } = useTabOverflow()
+      return (
+        <>
+          <div data-testid="overflow-container" ref={containerRef}><span /></div>
+          <output>{`${canScrollLeft}:${canScrollRight}`}</output>
+        </>
+      )
+    }
+
+    const { unmount } = render(<OverflowProbe />)
+    const container = screen.getByTestId("overflow-container")
+    Object.defineProperties(container, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 500 },
+      scrollLeft: { configurable: true, value: 0, writable: true },
+    })
+    const removeEventListener = vi.spyOn(container, "removeEventListener")
+
+    act(() => resize([], {} as ResizeObserver))
+    expect(screen.getByText("false:true")).toBeVisible()
+
+    unmount()
+    expect(disconnect).toHaveBeenCalledOnce()
+    expect(removeEventListener).toHaveBeenCalledWith("scroll", expect.any(Function))
+    vi.unstubAllGlobals()
   })
 
   it("converts line-mode wheel movement into horizontal scrolling", () => {
