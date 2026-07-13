@@ -8,7 +8,7 @@
     "mde": "bin/mde.mjs"
   },
   "scripts": {
-    "dev": "node scripts/adagio-dev.mjs",
+    "dev": "node --env-file=.env scripts/adagio-dev.mjs",
     "build": "vite build --mode production",
     "preview": "vite preview",
     "test:sidecar": "node --test --experimental-strip-types db-sidecar/server.test.mjs scripts/sidecar-health.test.mjs scripts/adagio-dev.test.mjs scripts/migrate-adagio-db.test.mjs",
