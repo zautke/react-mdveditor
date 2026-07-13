@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
-import { ensureAdagioSidecar, isEntrypoint } from './adagio-dev.mjs'
+import { ensureAdagioSidecar, isEntrypoint, startVite } from './adagio-dev.mjs'
 
 test('recognizes a Windows script path as the active entrypoint', () => {
   assert.equal(
@@ -39,4 +39,12 @@ test('starts and health-verifies only the db-sidecar service', async () => {
     '--wait',
     'db-sidecar',
   ]])
+})
+
+test('starts Vite through pnpm so Windows resolves the executable shim', async () => {
+  const calls = []
+  await startVite(['--host', '0.0.0.0'], {
+    run: async (...args) => { calls.push(args) },
+  })
+  assert.deepEqual(calls, [['pnpm', 'exec', 'vite', '--host', '0.0.0.0']])
 })
