@@ -9,9 +9,13 @@ function Usage() {
   console.error('Usage: node scripts/adagio-dev.mjs [-- <vite options>]')
 }
 
+export function commandOptions(platform = process.platform) {
+  return { stdio: 'inherit', shell: platform === 'win32' }
+}
+
 function run(command, ...args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: 'inherit' })
+    const child = spawn(command, args, commandOptions())
     child.once('error', reject)
     child.once('exit', code => {
       if (code === 0) resolve()

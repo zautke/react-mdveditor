@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
-import { ensureAdagioSidecar, isEntrypoint, startVite } from './adagio-dev.mjs'
+import { commandOptions, ensureAdagioSidecar, isEntrypoint, startVite } from './adagio-dev.mjs'
 
 test('recognizes a Windows script path as the active entrypoint', () => {
   assert.equal(
@@ -48,4 +48,9 @@ test('starts Vite through the platform-specific pnpm executable', async () => {
     run: async (...args) => { calls.push(args) },
   })
   assert.deepEqual(calls, [['pnpm.cmd', 'exec', 'vite', '--host', '0.0.0.0']])
+})
+
+test('uses a command shell for Windows command shims only', () => {
+  assert.deepEqual(commandOptions('win32'), { stdio: 'inherit', shell: true })
+  assert.deepEqual(commandOptions('linux'), { stdio: 'inherit', shell: false })
 })
