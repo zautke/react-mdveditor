@@ -6,16 +6,12 @@ import { pathToFileURL } from 'node:url'
 import { assertSidecarHealthy } from './sidecar-health.mjs'
 
 function Usage() {
-  console.error('Usage: node scripts/adagio-dev.mjs [-- <vite options>]')
-}
-
-export function commandOptions(platform = process.platform) {
-  return { stdio: 'inherit', shell: platform === 'win32' }
+  console.error('Usage: node --env-file=.env scripts/adagio-dev.mjs')
 }
 
 function run(command, ...args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, commandOptions())
+    const child = spawn(command, args, { stdio: 'inherit' })
     child.once('error', reject)
     child.once('exit', code => {
       if (code === 0) resolve()
@@ -48,16 +44,9 @@ export function isEntrypoint(moduleUrl, scriptPath) {
   return moduleUrl === expectedUrl
 }
 
-export function startVite(args, { run: runCommand = run, platform = process.platform } = {}) {
-  return runCommand(platform === 'win32' ? 'pnpm.cmd' : 'pnpm', 'exec', 'vite', ...args)
-}
-
 async function main() {
   try {
     await ensureAdagioSidecar()
-    const viteArgs = process.argv.slice(2)
-    if (viteArgs[0] === '--') viteArgs.shift()
-    await startVite(viteArgs)
   } catch (error) {
     console.error(error instanceof Error ? error.message : error)
     Usage()

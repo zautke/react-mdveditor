@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
-import { commandOptions, ensureAdagioSidecar, isEntrypoint, startVite } from './adagio-dev.mjs'
+import { ensureAdagioSidecar, isEntrypoint } from './adagio-dev.mjs'
 
 test('recognizes a Windows script path as the active entrypoint', () => {
   assert.equal(
@@ -13,7 +13,7 @@ test('recognizes a Windows script path as the active entrypoint', () => {
 
 test('loads the environment source of truth before starting the supervisor', () => {
   const packageJson = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8'))
-  assert.match(packageJson.scripts.dev, /^node --env-file=\.env scripts\/adagio-dev\.mjs$/)
+  assert.match(packageJson.scripts.dev, /^node --env-file=\.env scripts\/adagio-dev\.mjs && vite$/)
 })
 
 test('refuses to run the development server away from adagio', async () => {
@@ -39,18 +39,4 @@ test('starts and health-verifies only the db-sidecar service', async () => {
     '--wait',
     'db-sidecar',
   ]])
-})
-
-test('starts Vite through the platform-specific pnpm executable', async () => {
-  const calls = []
-  await startVite(['--host', '0.0.0.0'], {
-    platform: 'win32',
-    run: async (...args) => { calls.push(args) },
-  })
-  assert.deepEqual(calls, [['pnpm.cmd', 'exec', 'vite', '--host', '0.0.0.0']])
-})
-
-test('uses a command shell for Windows command shims only', () => {
-  assert.deepEqual(commandOptions('win32'), { stdio: 'inherit', shell: true })
-  assert.deepEqual(commandOptions('linux'), { stdio: 'inherit', shell: false })
 })
