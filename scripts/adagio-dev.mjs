@@ -2,6 +2,7 @@
 
 import { hostname as systemHostname } from 'node:os'
 import { spawn } from 'node:child_process'
+import { pathToFileURL } from 'node:url'
 import { assertSidecarHealthy } from './sidecar-health.mjs'
 
 function Usage() {
@@ -35,6 +36,14 @@ export async function ensureAdagioSidecar({
   await health(origin)
 }
 
+export function isEntrypoint(moduleUrl, scriptPath) {
+  if (!scriptPath) return false
+  const expectedUrl = /^[a-z]:[\\/]/i.test(scriptPath)
+    ? `file:///${scriptPath.replaceAll('\\', '/')}`
+    : pathToFileURL(scriptPath).href
+  return moduleUrl === expectedUrl
+}
+
 async function main() {
   try {
     await ensureAdagioSidecar()
@@ -48,6 +57,6 @@ async function main() {
   }
 }
 
-if (import.meta.url === new URL(process.argv[1], 'file:').href) {
+if (isEntrypoint(import.meta.url, process.argv[1])) {
   await main()
 }

@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { ensureAdagioSidecar } from './adagio-dev.mjs'
+import { ensureAdagioSidecar, isEntrypoint } from './adagio-dev.mjs'
+
+test('recognizes a Windows script path as the active entrypoint', () => {
+  assert.equal(
+    isEntrypoint('file:///C:/Users/me/dev/mdeditor/scripts/adagio-dev.mjs', 'C:\\Users\\me\\dev\\mdeditor\\scripts\\adagio-dev.mjs'),
+    true,
+  )
+})
 
 test('refuses to run the development server away from adagio', async () => {
   await assert.rejects(
