@@ -5,6 +5,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { mdeServerPlugin } from './src/lib/vite-plugin-mde-server'
+import { assertSidecarHealthy } from './scripts/sidecar-health.mjs'
 
 function parsePort(value: string | undefined, fallback: number): number {
   const port = Number.parseInt(value ?? '', 10)
@@ -52,7 +53,7 @@ function loadDevHttpsConfig(env: Record<string, string | undefined>) {
   return undefined
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode, command }) => {
   const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') }
   const appPort = parsePort(env.MDE_APP_PORT, 5200)
   const devPort = parsePort(env.MDE_DEV_PORT, 5250)
@@ -63,12 +64,11 @@ export default defineConfig(({ mode }) => {
   const host = env.MDE_HOST ?? 'localhost'
   const sidecarOrigin =
     env.MDE_EXTRACT_PROXY_ORIGIN ?? `http://localhost:${sidecarPort}`
-  const dbSidecarPort = parsePort(
-    env.MDE_DB_SIDECAR_INTERNAL_PORT ?? env.MDE_DB_SIDECAR_PORT,
-    15280,
-  )
-  const dbSidecarOrigin =
-    env.MDE_DB_PROXY_ORIGIN ?? `http://localhost:${dbSidecarPort}`
+  const dbSidecarOrigin = env.MDE_DB_PROXY_ORIGIN
+  if (command === 'serve') {
+    if (!dbSidecarOrigin) throw new Error('MDE_DB_PROXY_ORIGIN must be configured')
+    await assertSidecarHealthy(dbSidecarOrigin)
+  }
 
   return {
     plugins: [
@@ -96,7 +96,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (p: string) => p.replace(/^\/api/, ''),
         },
         '/api/db': {
-          target: dbSidecarOrigin,
+          target: dbSidecarOrigin ?? 'http://127.0.0.1:1',
           changeOrigin: true,
           rewrite: (p: string) => p.replace(/^\/api\/db/, ''),
         },
