@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import test from 'node:test'
 import { ensureAdagioSidecar, isEntrypoint } from './adagio-dev.mjs'
 
@@ -7,6 +9,11 @@ test('recognizes a Windows script path as the active entrypoint', () => {
     isEntrypoint('file:///C:/Users/me/dev/mdeditor/scripts/adagio-dev.mjs', 'C:\\Users\\me\\dev\\mdeditor\\scripts\\adagio-dev.mjs'),
     true,
   )
+})
+
+test('loads the environment source of truth before starting the supervisor', () => {
+  const packageJson = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8'))
+  assert.match(packageJson.scripts.dev, /^node --env-file=\.env scripts\/adagio-dev\.mjs$/)
 })
 
 test('refuses to run the development server away from adagio', async () => {
