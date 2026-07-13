@@ -37,7 +37,11 @@ export async function ensureAdagioSidecar({
 }
 
 export function isEntrypoint(moduleUrl, scriptPath) {
-  return Boolean(scriptPath) && moduleUrl === pathToFileURL(scriptPath).href
+  if (!scriptPath) return false
+  const expectedUrl = /^[a-z]:[\\/]/i.test(scriptPath)
+    ? `file:///${scriptPath.replaceAll('\\', '/')}`
+    : pathToFileURL(scriptPath).href
+  return moduleUrl === expectedUrl
 }
 
 async function main() {
