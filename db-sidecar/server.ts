@@ -14,6 +14,7 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { DestructiveWriteError, openKvStore } from './db.ts'
 import { startBackups } from './backup.ts'
@@ -27,6 +28,8 @@ const DB_PATH =
   process.env.MDE_DB_PATH ?? fileURLToPath(new URL('./data/mdeditor.db', import.meta.url))
 
 const store = openKvStore(DB_PATH)
+const instanceId = randomUUID()
+const startedAt = Date.now()
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body)
@@ -52,6 +55,43 @@ function readBody(req: IncomingMessage): Promise<string> {
   })
 }
 
+function sendEvent(res: ServerResponse, event: string, body: unknown): void {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(body)}\n\n`)
+}
+
+function healthPayload() {
+  store.health()
+  return {
+    ok: true,
+    status: 'ready',
+    database: 'ready',
+    instanceId,
+    startedAt,
+  }
+}
+
+function streamEvents(req: IncomingMessage, res: ServerResponse): void {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  })
+  res.write('retry: 250\n\n')
+  sendEvent(res, 'ready', healthPayload())
+
+  const heartbeat = setInterval(() => {
+    try {
+      sendEvent(res, 'heartbeat', healthPayload())
+    } catch {
+      clearInterval(heartbeat)
+      res.end()
+    }
+  }, 1_000)
+
+  req.on('close', () => clearInterval(heartbeat))
+}
+
 /** Extract a single state key from `/state/<key>`, URL-decoded. Null if not that shape. */
 function stateKey(pathname: string): string | null {
   const match = pathname.match(/^\/state\/(.+)$/)
@@ -65,7 +105,21 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     const pathname = url.pathname
 
     if (method === 'GET' && pathname === '/health') {
-      sendJson(res, 200, { ok: true })
+      try {
+        sendJson(res, 200, healthPayload())
+      } catch (err) {
+        sendJson(res, 503, {
+          ok: false,
+          status: 'unavailable',
+          database: 'unavailable',
+          error: err instanceof Error ? err.message : 'Database unavailable',
+        })
+      }
+      return
+    }
+
+    if (method === 'GET' && pathname === '/events') {
+      streamEvents(req, res)
       return
     }
 

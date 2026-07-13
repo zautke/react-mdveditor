@@ -68,6 +68,19 @@ export function subscribe(listener: (s: StorageStatus) => void): () => void {
   return () => listeners.delete(listener)
 }
 
+/** Called by the health stream when the sidecar vanishes between writes. */
+export function markSidecarOffline(): void {
+  if (!hydrateOk && status === 'offline') return
+  hydrateOk = false
+  setStatus('offline')
+  startHealing()
+}
+
+/** Called by the health stream when the sidecar is reachable again. */
+export function markSidecarOnline(): void {
+  if (!hydrateOk) startHealing()
+}
+
 function setStatus(next: StorageStatus): void {
   if (status === next) return
   status = next
