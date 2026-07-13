@@ -44,12 +44,16 @@ export function isEntrypoint(moduleUrl, scriptPath) {
   return moduleUrl === expectedUrl
 }
 
+export function startVite(args, { run: runCommand = run } = {}) {
+  return runCommand('pnpm', 'exec', 'vite', ...args)
+}
+
 async function main() {
   try {
     await ensureAdagioSidecar()
     const viteArgs = process.argv.slice(2)
     if (viteArgs[0] === '--') viteArgs.shift()
-    await run('vite', ...viteArgs)
+    await startVite(viteArgs)
   } catch (error) {
     console.error(error instanceof Error ? error.message : error)
     Usage()
