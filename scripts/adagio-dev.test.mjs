@@ -41,10 +41,11 @@ test('starts and health-verifies only the db-sidecar service', async () => {
   ]])
 })
 
-test('starts Vite through pnpm so Windows resolves the executable shim', async () => {
+test('starts Vite through the platform-specific pnpm executable', async () => {
   const calls = []
   await startVite(['--host', '0.0.0.0'], {
+    platform: 'win32',
     run: async (...args) => { calls.push(args) },
   })
-  assert.deepEqual(calls, [['pnpm', 'exec', 'vite', '--host', '0.0.0.0']])
+  assert.deepEqual(calls, [['pnpm.cmd', 'exec', 'vite', '--host', '0.0.0.0']])
 })

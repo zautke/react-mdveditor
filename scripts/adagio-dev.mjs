@@ -44,8 +44,8 @@ export function isEntrypoint(moduleUrl, scriptPath) {
   return moduleUrl === expectedUrl
 }
 
-export function startVite(args, { run: runCommand = run } = {}) {
-  return runCommand('pnpm', 'exec', 'vite', ...args)
+export function startVite(args, { run: runCommand = run, platform = process.platform } = {}) {
+  return runCommand(platform === 'win32' ? 'pnpm.cmd' : 'pnpm', 'exec', 'vite', ...args)
 }
 
 async function main() {
