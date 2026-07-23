@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import { Expand, Shrink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MediaZoomViewport } from './MediaZoomViewport'
 
 interface MediaAssetFrameProps {
   assetId?: string
@@ -12,6 +13,8 @@ interface MediaAssetFrameProps {
   contentClassName?: string
   copyLabel?: string
   onCopy?: () => Promise<void> | void
+  /** Pan/zoom viewport in the expanded modal (wheel zoom, drag pan). Defaults to on. */
+  interactiveModal?: boolean
   renderContent: (options: { zoomed: boolean }) => ReactNode
 }
 
@@ -79,6 +82,7 @@ export function MediaAssetFrame({
   className,
   modalClassName,
   contentClassName,
+  interactiveModal = true,
   renderContent,
 }: MediaAssetFrameProps) {
   const generatedId = useId()
@@ -173,7 +177,11 @@ export function MediaAssetFrame({
                         contentClassName,
                       )}
                     >
-                      {renderContent({ zoomed: true })}
+                      {interactiveModal ? (
+                        <MediaZoomViewport>{renderContent({ zoomed: true })}</MediaZoomViewport>
+                      ) : (
+                        renderContent({ zoomed: true })
+                      )}
                     </div>
                   </motion.div>
                 </div>

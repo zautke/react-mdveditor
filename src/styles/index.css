@@ -1051,22 +1051,14 @@ body {
   cursor: grab;
 }
 
-.mdeditor-media-modal__viewport-inner[data-dragging='true'] {
+.mdeditor-media-modal__viewport-inner:active {
   cursor: grabbing;
 }
 
 .mdeditor-media-modal__svg-host {
   display: flex;
-  width: 100%;
-  height: 100%;
   align-items: center;
   justify-content: center;
-}
-
-.mdeditor-media-modal__svg-host svg {
-  display: block;
-  max-width: none;
-  max-height: none;
 }
 
 .mdeditor-diagram-controls {
