@@ -62,6 +62,7 @@ const GraphvizPreview = memo(({ content }: RendererProps) => {
     <MediaAssetFrame
       label="Expanded Graphviz diagram"
       contentClassName="min-h-[12rem]"
+      sourceText={content}
       renderContent={({ zoomed }) => (
         <>
           {error !== null && (
