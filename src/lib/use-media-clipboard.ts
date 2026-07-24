@@ -21,7 +21,11 @@ export interface CopyAction {
  * Wrap one async copy operation as a status machine that drives an
  * idle → working → done/error → idle morph. Framework-light and app-agnostic.
  */
-export function useCopyAction(action: () => Promise<void>, resetMs = 1500): CopyAction {
+export function useCopyAction(
+  action: () => Promise<void>,
+  resetMs = 1500,
+  onResult?: (ok: boolean) => void,
+): CopyAction {
   const [status, setStatus] = useState<CopyStatus>('idle')
   const timer = useRef<number | undefined>(undefined)
 
@@ -34,12 +38,18 @@ export function useCopyAction(action: () => Promise<void>, resetMs = 1500): Copy
     // the user-gesture window.
     Promise.resolve()
       .then(action)
-      .then(() => setStatus('done'))
-      .catch(() => setStatus('error'))
+      .then(() => {
+        setStatus('done')
+        onResult?.(true)
+      })
+      .catch(() => {
+        setStatus('error')
+        onResult?.(false)
+      })
       .finally(() => {
         timer.current = window.setTimeout(() => setStatus('idle'), resetMs)
       })
-  }, [action, resetMs])
+  }, [action, resetMs, onResult])
 
   return { status, run }
 }
@@ -53,6 +63,9 @@ export interface MediaClipboard {
   canBase64: boolean
   canSource: boolean
 }
+
+/** Which copy action completed — for host-side notifications (toasts, analytics). */
+export type CopyKind = 'image' | 'base64' | 'source'
 
 /**
  * Headless clipboard controller for a media element. `getTarget` returns the
@@ -68,9 +81,11 @@ export function useMediaClipboard(
     adapter?: CaptureAdapter
     captureOptions?: CaptureOptions
     resetMs?: number
+    /** Notified when any action settles — host wires this to a toast/analytics. */
+    onResult?: (kind: CopyKind, ok: boolean) => void
   } = {},
 ): MediaClipboard {
-  const { sourceText, adapter = smartCapture, captureOptions, resetMs } = options
+  const { sourceText, adapter = smartCapture, captureOptions, resetMs, onResult } = options
 
   const image = useCopyAction(
     useCallback(async () => {
@@ -79,6 +94,7 @@ export function useMediaClipboard(
       await copyImageToClipboard(() => adapter(el, captureOptions).then((r) => r.blob))
     }, [getTarget, adapter, captureOptions]),
     resetMs,
+    useCallback((ok: boolean) => onResult?.('image', ok), [onResult]),
   )
 
   const base64 = useCopyAction(
@@ -89,6 +105,7 @@ export function useMediaClipboard(
       await copyText(dataUrl)
     }, [getTarget, adapter, captureOptions]),
     resetMs,
+    useCallback((ok: boolean) => onResult?.('base64', ok), [onResult]),
   )
 
   const source = useCopyAction(
@@ -97,6 +114,7 @@ export function useMediaClipboard(
       await copyText(sourceText)
     }, [sourceText]),
     resetMs,
+    useCallback((ok: boolean) => onResult?.('source', ok), [onResult]),
   )
 
   return {

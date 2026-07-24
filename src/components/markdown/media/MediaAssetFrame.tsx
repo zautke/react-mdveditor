@@ -1,11 +1,23 @@
 import { useCallback, useId, useRef, useState, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
-import { Braces, Code, Expand, Image as ImageIcon, Shrink } from 'lucide-react'
+import { Binary, Code, Expand, Image as ImageIcon, Shrink } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useMediaClipboard } from '@/lib/use-media-clipboard'
+import { useMediaClipboard, type CopyKind } from '@/lib/use-media-clipboard'
 import { CopyIconButton } from '@/components/ui/copy-icon-button'
 import { MediaZoomViewport } from './MediaZoomViewport'
+
+const COPY_TOAST: Record<CopyKind, string> = {
+  image: 'Image copied to clipboard',
+  base64: 'Copied as base64 data URL',
+  source: 'Source copied to clipboard',
+}
+
+function reportCopy(kind: CopyKind, ok: boolean) {
+  if (ok) toast.success(COPY_TOAST[kind])
+  else toast.error('Copy failed — clipboard unavailable')
+}
 
 interface MediaAssetFrameProps {
   assetId?: string
@@ -13,8 +25,10 @@ interface MediaAssetFrameProps {
   className?: string
   modalClassName?: string
   contentClassName?: string
-  /** Raw source of the media (e.g. Mermaid/DOT text) — enables the "copy source" button. */
+  /** Raw source of the media (e.g. Mermaid/DOT text, or an image URL) — enables the "copy source" button. */
   sourceText?: string
+  /** Tooltip/aria label for the copy-source button. Default "Copy source text". */
+  sourceLabel?: string
   /** Pan/zoom viewport in the expanded modal (wheel zoom, drag pan). Defaults to on. */
   interactiveModal?: boolean
   renderContent: (options: { zoomed: boolean }) => ReactNode
@@ -63,14 +77,16 @@ function MediaActionPanel({
   inline,
   getCaptureTarget,
   sourceText,
+  sourceLabel = 'Copy source text',
 }: {
   expanded: boolean
   onToggle: () => void
   inline?: boolean
   getCaptureTarget: () => Element | null
   sourceText?: string
+  sourceLabel?: string
 }) {
-  const clipboard = useMediaClipboard(getCaptureTarget, { sourceText })
+  const clipboard = useMediaClipboard(getCaptureTarget, { sourceText, onResult: reportCopy })
 
   return (
     <div
@@ -91,7 +107,7 @@ function MediaActionPanel({
         <CopyIconButton
           status={clipboard.base64.status}
           onClick={clipboard.base64.run}
-          icon={Braces}
+          icon={Binary}
           label="Copy image as base64"
         />
       )}
@@ -100,7 +116,7 @@ function MediaActionPanel({
           status={clipboard.source.status}
           onClick={clipboard.source.run}
           icon={Code}
-          label="Copy source text"
+          label={sourceLabel}
         />
       )}
       <ZoomButton expanded={expanded} onClick={onToggle} />
@@ -115,6 +131,7 @@ export function MediaAssetFrame({
   modalClassName,
   contentClassName,
   sourceText,
+  sourceLabel,
   interactiveModal = true,
   renderContent,
 }: MediaAssetFrameProps) {
@@ -169,6 +186,7 @@ export function MediaAssetFrame({
             onToggle={openModal}
             getCaptureTarget={getCaptureTarget}
             sourceText={sourceText}
+            sourceLabel={sourceLabel}
           />
         </div>
 
@@ -219,6 +237,7 @@ export function MediaAssetFrame({
                       onToggle={close}
                       getCaptureTarget={getCaptureTarget}
                       sourceText={sourceText}
+                      sourceLabel={sourceLabel}
                     />
                     <div
                       className={cn(

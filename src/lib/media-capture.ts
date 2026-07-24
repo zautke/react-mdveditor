@@ -45,9 +45,15 @@ async function canvasToResult(canvas: HTMLCanvasElement): Promise<CaptureResult>
 // Resolve the real thing to rasterize: an inline <svg> serializes cleanly; an
 // <img>/<video>/<canvas> draws directly; anything else is handed to snapDOM.
 function resolveTarget(el: Element): Element {
-  if (el instanceof SVGSVGElement) return el
-  const svg = el.querySelector('svg')
-  return svg ?? el
+  if (
+    el instanceof SVGSVGElement ||
+    el instanceof HTMLImageElement ||
+    el instanceof HTMLVideoElement ||
+    el instanceof HTMLCanvasElement
+  ) {
+    return el
+  }
+  return el.querySelector('svg, img, video, canvas') ?? el
 }
 
 async function svgToResult(svg: SVGSVGElement, scale: number, bg: string | null): Promise<CaptureResult> {

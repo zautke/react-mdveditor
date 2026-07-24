@@ -25,10 +25,8 @@ function MarkdownImage({ src, alt, ...props }: ComponentPropsWithoutRef<'img'>) 
             label={alt?.trim() ? `Expanded image: ${alt}` : 'Expanded image'}
             contentClassName="p-0"
             modalClassName="bg-background/95"
-            copyLabel="Copy media source"
-            onCopy={async () => {
-                await navigator.clipboard.writeText(src)
-            }}
+            sourceText={src}
+            sourceLabel="Copy image URL"
             renderContent={({ zoomed }) => (
                 <img
                     src={src}
@@ -49,6 +47,7 @@ function MarkdownImage({ src, alt, ...props }: ComponentPropsWithoutRef<'img'>) 
 function MarkdownVideo(props: ComponentPropsWithoutRef<'video'>) {
     const assetId = useId()
     const { children, className, title, controls, ...rest } = props
+    const videoSrc = typeof rest.src === 'string' ? rest.src : undefined
 
     return (
         <MediaAssetFrame
@@ -56,13 +55,8 @@ function MarkdownVideo(props: ComponentPropsWithoutRef<'video'>) {
             label={title?.trim() ? `Expanded video: ${title}` : 'Expanded video'}
             contentClassName="p-0"
             modalClassName="bg-background/95"
-            copyLabel="Copy media source"
-            onCopy={async () => {
-                const copyTarget = typeof rest.src === 'string' ? rest.src : title ?? ''
-                if (copyTarget) {
-                    await navigator.clipboard.writeText(copyTarget)
-                }
-            }}
+            sourceText={videoSrc}
+            sourceLabel="Copy video URL"
             renderContent={({ zoomed }) => (
                 <video
                     controls={controls ?? true}
