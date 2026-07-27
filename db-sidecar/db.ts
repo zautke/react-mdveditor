@@ -28,6 +28,14 @@ export class DestructiveWriteError extends Error {
   }
 }
 
+/** Thrown when a write body is structurally wrong. Mapped to HTTP 400. */
+export class InvalidPayloadError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidPayloadError'
+  }
+}
+
 /**
  * Thrown when a client tries to replace the document set based on a revision that
  * is no longer current — i.e. somebody else wrote in between.
@@ -260,7 +268,11 @@ export function openKvStore(dbPath: string): KvStore {
   }
 
   function writeDocuments(value: unknown, expectedRevision?: number): void {
-    if (!Array.isArray(value)) return
+    // A non-array payload used to return silently, so a client sending a malformed
+    // body got a 200 and believed its documents were saved. Fail loudly instead.
+    if (!Array.isArray(value)) {
+      throw new InvalidPayloadError('documents must be an array')
+    }
 
     // Optimistic concurrency. Reject a write built on a view somebody else has
     // already superseded; the client turns the 409 into a re-read + merge.

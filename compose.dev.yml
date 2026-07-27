@@ -27,7 +27,7 @@ services:
       MDE_DEV_HTTPS: ${MDE_DEV_HTTPS}
       # Container-side cert paths. MDE_DEV_TLS_CERT_PATH/_KEY_PATH in .env are
       # host-shaped Windows paths for `pnpm dev` on the host; in here the same
-      # cert directory is bind-mounted at MDE_DEV_TLS_CONTAINER_DIR.
+      # cert directory is bind-mounted read-only at /certs.
       MDE_DEV_TLS_CERT_PATH: /certs/${MDE_DEV_TLS_CERT_FILE}
       MDE_DEV_TLS_KEY_PATH: /certs/${MDE_DEV_TLS_KEY_FILE}
       VITE_MDE_APP_ORIGIN: ${VITE_MDE_APP_ORIGIN}

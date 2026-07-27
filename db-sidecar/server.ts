@@ -17,7 +17,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { randomUUID } from 'node:crypto'
 import { statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { DestructiveWriteError, StaleRevisionError, openKvStore } from './db.ts'
+import {
+  DestructiveWriteError,
+  InvalidPayloadError,
+  StaleRevisionError,
+  openKvStore,
+} from './db.ts'
 import { snapshotDir, startBackups } from './backup.ts'
 
 const PORT = Number.parseInt(
@@ -166,6 +171,10 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 
     sendJson(res, 404, { error: 'Not found' })
   } catch (err) {
+    if (err instanceof InvalidPayloadError) {
+      sendJson(res, 400, { error: err.message, code: 'invalid_payload' })
+      return
+    }
     // A write rejected as unsafe is a client-correctable conflict, not a server fault.
     if (err instanceof DestructiveWriteError) {
       sendJson(res, 409, { error: err.message, code: 'destructive_write_rejected' })

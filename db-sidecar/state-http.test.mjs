@@ -182,6 +182,19 @@ test('scalar keys round-trip and DELETE clears them', async () => {
   }
 })
 
+test('a non-array documents payload is a 400, not a silent success', async () => {
+  const sidecar = await startSidecar()
+  try {
+    // This used to return 200 and write nothing, so a client with a malformed body
+    // believed its documents were saved.
+    const bad = await sidecar.putState('documents', { not: 'an array' })
+    assert.equal(bad.status, 400)
+    assert.equal(bad.body.code, 'invalid_payload')
+  } finally {
+    await sidecar.close()
+  }
+})
+
 test('a malformed JSON body is a 400, not a 500', async () => {
   const sidecar = await startSidecar()
   try {

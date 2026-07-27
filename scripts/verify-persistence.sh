@@ -67,9 +67,12 @@ trap 'rm -rf "$WORK"' EXIT
 # Everything reaches node over stdin. This box runs MSYS bash against a Windows
 # node, so a shell path like /tmp/xxx is meaningless to the interpreter — piping
 # sidesteps the translation entirely. Same reason curl uploads use @- not @file.
-node_in() { node --input-type=module -e "
+node_in() {
+  local code="$1"; shift
+  node --input-type=module -e "
 let raw='';process.stdin.setEncoding('utf8')
-process.stdin.on('data',c=>raw+=c).on('end',()=>{ $1 })"; }
+process.stdin.on('data',c=>raw+=c).on('end',()=>{ $code })" "$@"
+}
 
 # 'yes' if the marker document is present in a /state payload on stdin.
 has_marker() { node_in "const s=JSON.parse(raw);console.log((s.documents??[]).some(d=>d.id===process.argv[1])?'yes':'no')" "$1"; }
