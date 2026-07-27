@@ -1,47 +1,72 @@
 # CURRENT TASK STATE
 
 _Compact resume point. Rewritten in place each refresh._
-_Updated: 2026-07-24 (2nd refresh)._
+_Updated: 2026-07-26._
 
 ## Where things stand
 
-Two media-frame features are **complete, verified live, committed, and pushed**:
+Persistence is fixed, tested, and running. Both stacks are up **simultaneously**
+against one shared database:
 
-1. `feat/modal-diagram-zoom-pan` (@ `d34de69`) — modal diagram zoom/pan.
-2. `feat/media-copy-snapshot` (branched off #1) — copy image/base64/source
-   buttons with morph + toasts. Pushed at `2795e44`.
+| Service | Origin | Status |
+|---|---|---|
+| `frontend-prod` (nginx) | `http://adagio.local:5200` | healthy |
+| `frontend-dev` (vite) | `https://adagio.local:5250` | healthy |
+| `url-sidecar` | `:5280` | healthy |
+| `db-sidecar` | `127.0.0.1:15280` | healthy — **the single persistence source** |
 
-Current HEAD: `f847536 docs: continuity` (the 1st continuity refresh, committed;
-**unpushed** — origin/feat/media-copy-snapshot is at `2795e44`, local ahead 1).
+Proof they share one database: both origins return the same `instanceId` *and*
+the same `dbFileId` (host inode) from `/api/db/health`.
 
-## ⚠ Needs decision (top priority)
+HEAD: `f63ad35` on `feat/media-copy-snapshot`, pushed. Working tree clean apart
+from these continuity docs. Live database holds 13 documents, integrity `ok`.
 
-`f847536` accidentally committed **`.env.backup-20260712212304`** (a `.env`
-backup, not in `.gitignore`) via a broad `git add`. It is **unpushed → the
-backup never left the machine** (no exposure, no rotation needed). Fix before
-pushing: drop it from the commit + gitignore `.env.backup*`. Awaiting user's go
-(their commit + a secrets file → not touching git history unprompted).
+## What was actually losing documents
+
+Not durability. `synchronous=FULL`, `integrity_check=ok`, survives SIGKILL with
+no orphaned journal. The loss was a **stale whole-array overwrite**: persisting
+`documents` is DELETE-then-INSERT, and the only guard rejected an *empty*
+payload — so a client holding an outdated view silently deleted every document
+it could not see. Observed live during this session.
+
+Fixed with optimistic concurrency: `meta.revision` → `__revision` on read →
+echoed on write → `409 stale_revision` → re-read and merge.
+
+## Verification (all green)
+
+- `pnpm test` — 41 persistence tests + 8 pre-existing. 49/49.
+- `bash scripts/verify-persistence.sh` — 16/16 end-to-end across both stacks,
+  including a container bounce and SIGKILL. Non-destructive; restores state.
+- `pnpm typecheck`, `pnpm lint`, `pnpm build` — clean.
 
 ## Resume point
 
-No active in-flight edit. After the `.env.backup` fix, next-highest is the
-**non-blocking capture path** for oversized diagrams (snapDOM ~30 s renderer
-freeze on the giant turn-flow Mermaid map). Full list in TASKS.md.
+No in-flight edit. Highest-value next items, in order:
 
-## Key files (current feature)
+1. Surface `useSidecarStatus()` in the UI — it has **zero consumers**, so the app
+   degrades to `offline` / `buffer-full` with no visible signal. `buffer-full`
+   means "your typing is no longer being captured anywhere" and currently
+   renders nothing.
+2. CI — deliberately deferred this session ("tag for downstream"). Every test is
+   hermetic and CI-ready; nothing runs on push today.
 
-- `src/lib/media-capture.ts` — `CaptureAdapter`, `nativeCapture`,
-  `snapdomCapture` (lazy), `smartCapture`, clipboard helpers.
-- `src/lib/use-media-clipboard.ts` — `useMediaClipboard` / `useCopyAction`,
-  `onResult(kind, ok)` callback.
-- `src/components/ui/copy-icon-button.tsx` — presentational morph button.
-- `src/components/markdown/media/MediaAssetFrame.tsx` — wires buttons + toasts;
-  `src/components/markdown/media/MediaZoomViewport.tsx` — pan/zoom.
-- Consumers pass `sourceText`: `MermaidDiagram.tsx`, `GraphvizPreview.tsx`,
-  `MarkdownRenderer_orig.tsx` (images/videos).
-- `src/main.tsx` — `<Toaster>` mount.
+Full list in TASKS.md.
+
+## Key files (persistence)
+
+- `db-sidecar/db.ts` — schema, `meta.revision`, `DestructiveWriteError`,
+  `StaleRevisionError`, `InvalidPayloadError`.
+- `db-sidecar/server.ts` — `/state` routes, `/health` (now exposes `dbPath`,
+  `dbFileId`, `backupDir`), `/events` SSE.
+- `db-sidecar/backup.ts` — `VACUUM INTO` snapshots into `MDE_DB_BACKUP_DIR`.
+- `src/lib/storage.ts` — offline buffer, heal loop, `reconcile()`, revision
+  publish/subscribe (`subscribeToState` / `peekState` / `getStateRevision`).
+- `src/components/markdown/EditorWithProview.tsx` — hydration, debounced saves,
+  placeholder suppression, revision-driven re-adopt.
+- `compose.yml` (db-sidecar + directory bind), `compose.dev.yml`, `nginx.conf`,
+  `vite.config.ts`, `Makefile`, `.env`.
 
 ## Environment
 
-Dev: `https://adagio.local:5250`. Verify in the browser instance the user is
-actually looking at (Browser 2, Windows). `pnpm` package manager.
+Host is `adagio`. `pnpm`. Zero-tolerance lint. `make both-up` starts prod + dev
+together; `make stack-down` is the only target that stops the shared sidecars.

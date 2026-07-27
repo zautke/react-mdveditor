@@ -2,6 +2,55 @@
 
 _Newest-first running handoff log._
 
+## 2026-07-26 — Persistence hardening: found and fixed live document loss
+
+- **Both stacks up together for the first time.** prod (`5200`, nginx) and dev
+  (`5250`, vite) now run side by side in one Compose project against a single
+  `db-sidecar`. Proven, not assumed: both origins return an identical
+  `instanceId` **and** `dbFileId` (host inode) from `/api/db/health`.
+- **Root-caused the document loss. It is not a durability failure** —
+  `synchronous=FULL`, `integrity_check=ok`, and the database survives SIGKILL
+  with no orphaned journal. The loss is a **stale whole-array overwrite**:
+  persisting `documents` is DELETE-then-INSERT and the existing guard only
+  rejects an *empty* payload, so a client holding an outdated 11-document view
+  silently deletes a 12th. Caught live — every row carried the same
+  `updated_at`, written by a browser tab 13 s before a restart, destroying a
+  document written seconds earlier.
+- **Fix: optimistic concurrency.** `meta.revision` bumps on every documents
+  write; `GET /state` returns `__revision`; the client echoes it on PUT; a
+  mismatch is `409 stale_revision`, which routes into the re-read-and-merge
+  reconcile path that already existed.
+- **Four live defects that only running the containers could reveal:**
+  1. `nginx.conf` used `location /api/db` (no trailing slash) with
+     `proxy_pass .../`, so `/api/db/state` arrived at the sidecar as `//state`
+     → 404. **Prod persistence was permanently offline, silently.**
+  2. `frontend-dev` crash-looped: `pnpm dev` front-runs `scripts/adagio-dev.mjs`,
+     a host-only supervisor that refuses any hostname but `adagio`. The
+     container now runs `pnpm exec vite` directly.
+  3. `vite.config.ts` merged `.env` *over* `process.env`, so the baked-in
+     host-shaped `.env` overrode compose's container values. Precedence flipped.
+  4. Dev TLS pointed at host Windows paths; the cert dir is now bind-mounted
+     read-only at `/certs`.
+- **The backup safety net did not exist.** `backup.ts` wrote snapshots to
+  `/data/backups` while only the `.db` **file** was bind-mounted, so all ten
+  snapshots lived in the container's writable layer and any recreate destroyed
+  them. Rescued to the host first, then switched the mount to the directory.
+- **Frontend loss vectors fixed:** the first-run placeholder no longer hard-codes
+  `doc-1` and is not buffered until touched; merged state is re-adopted off a
+  storage revision instead of a status edge that never fired; tombstones are
+  offline-only and purged on hydrate; the unload flush no longer depends on
+  `visibilityState`.
+- **Tests: 0 → 41 persistence tests**, all `node --test`, no new dependencies.
+  `db-schema.test.mjs` was orphaned (bare top-level asserts, wired to nothing)
+  and is now `node:test` cases inside `pnpm test`. New suites: `state-http`,
+  `durability` (SIGKILL round trip), `src/lib/storage.test.mjs`. Plus
+  `scripts/verify-persistence.sh` — 16/16 green end-to-end across both stacks.
+- **Branch audit:** all seven persistence branches were fully absorbed or
+  deliberately superseded — nothing to merge. Archived as `archive/*` tags
+  (pushed to origin) and deleted local + remote. `main` and `development`
+  deliberately excluded.
+- Commits `79a0465`, `f63ad35`; pushed.
+
 ## 2026-07-24 — 2nd continuity refresh; caught committed `.env.backup`
 
 - Ran `/continuity` again. Location check clean (set under `docs/continuity/`,
