@@ -5,7 +5,7 @@ import { TabSystem, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { loadState, saveState, subscribe, markDeleted, flushOnUnload } from '@/lib/storage'
+import { loadState, saveState, subscribeToState, peekState, markDeleted, flushOnUnload } from '@/lib/storage'
 import { documentTypeRegistry } from '@/lib/document-types'
 import { validateFile } from '@/lib/file-validation'
 import { isHttpUrl } from '@/lib/url-validation'
@@ -265,13 +265,23 @@ function convertLatexDelimiters(text: string): string {
 
 // ── Main component ──────────────────────────────────────────────────
 
-/** The document a first-run user starts with, when storage has nothing to restore. */
-const FIRST_RUN_DOCUMENT: EditorDocument = {
-  id: 'doc-1',
-  title: 'Untitled-1',
-  content: initialContent,
-  kind: 'markdown',
-  persistedToFileSystem: false,
+/**
+ * The document a first-run user starts with, when storage has nothing to restore.
+ *
+ * Built per call with a generated id. It used to be a module constant with the
+ * hard-coded id `doc-1` — the same id the very first document of every older
+ * install already has. An offline boot would create the placeholder, buffer it,
+ * and the reconnect merge (which is keyed by document id, local wins) would
+ * overwrite the user's real `doc-1` with the boilerplate.
+ */
+function createFirstRunDocument(): EditorDocument {
+  return {
+    id: generateDocId(),
+    title: 'Untitled-1',
+    content: initialContent,
+    kind: 'markdown',
+    persistedToFileSystem: false,
+  }
 }
 
 function App() {
@@ -281,7 +291,7 @@ function App() {
   // leaving a phantom tab behind. The first-run document is created only once
   // hydration confirms there is nothing to restore.
   const [documents, setDocuments] = useState<EditorDocument[]>([])
-  const [activeDocId, setActiveDocId] = useState('doc-1')
+  const [activeDocId, setActiveDocId] = useState('')
   const [isExpanded, setIsExpanded] = useState(false)
   const [arrowOpacity, setArrowOpacity] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
@@ -294,14 +304,29 @@ function App() {
   // before the sidecar has hydrated real state (which would clobber the DB).
   const hydratedRef = useRef(false)
 
+  // Id of an untouched first-run placeholder, if we had to invent one because
+  // hydration found nothing. While the list is exactly that one pristine document
+  // we skip persisting entirely — `saveState` buffers to localStorage even when it
+  // declines to PUT, and a buffered placeholder is indistinguishable from a real
+  // offline edit once the reconnect merge runs. Cleared the moment it is touched.
+  const placeholderIdRef = useRef<string | null>(null)
+
   // ── User settings ───────────────────────────────────────────────
   const { settings } = useUserSettings()
 
   // ── Persistence ─────────────────────────────────────────────────
   // Each effect is gated on `hydratedRef` — see the hydration effect below.
 
+  const isUntouchedPlaceholder = (docs: EditorDocument[]): boolean =>
+    placeholderIdRef.current !== null &&
+    docs.length === 1 &&
+    docs[0].id === placeholderIdRef.current &&
+    docs[0].content === initialContent
+
   useEffect(() => {
     if (!hydratedRef.current) return
+    if (isUntouchedPlaceholder(documents)) return
+    placeholderIdRef.current = null
     const timer = setTimeout(() => { void saveState('documents', documents) }, 500)
     return () => clearTimeout(timer)
   }, [documents])
@@ -399,9 +424,12 @@ function App() {
         if (savedActive) setActiveDocId(savedActive)
       } else {
         // Nothing to restore (first run, or storage is offline with an empty buffer):
-        // only now do we create the starter document.
-        setDocuments([FIRST_RUN_DOCUMENT])
-        setActiveDocId(FIRST_RUN_DOCUMENT.id)
+        // only now do we create the starter document. It is NOT persisted until the
+        // user actually edits it — see placeholderIdRef.
+        const placeholder = createFirstRunDocument()
+        placeholderIdRef.current = placeholder.id
+        setDocuments([placeholder])
+        setActiveDocId(placeholder.id)
       }
       setIsExpanded(savedExpanded)
 
@@ -429,13 +457,17 @@ function App() {
     return () => { cancelled = true }
   }, [openExternalFiles])
 
-  // Self-heal: when storage reconnects, it merges anything we buffered offline over
-  // the authoritative server state. Adopt that merged result so the UI shows the
-  // documents we could not see while the sidecar was down.
+  // Adopt any wholesale replacement of the persisted state: a reconnect merge, or a
+  // reconcile forced by a 409 when another tab wrote first.
+  //
+  // This is keyed on the storage revision, NOT on the status edge into `online`.
+  // A 409-driven reconcile happens while the status is already `online`, and
+  // `setStatus` is a no-op when unchanged — so the old status subscription never
+  // fired for exactly the case that matters, React kept its superseded list, and
+  // the next debounced save pushed that list back over the merged server state.
   useEffect(() => {
-    return subscribe(async (next) => {
-      if (next !== 'online') return
-      const merged = await loadState<EditorDocument[]>('documents', [])
+    return subscribeToState(() => {
+      const merged = peekState<EditorDocument[]>('documents', [])
       if (merged.length === 0) return
       setDocuments(merged.map(doc => ({
         ...doc,
@@ -448,16 +480,25 @@ function App() {
   // The documents save is debounced 500ms; without this, closing the tab right after
   // typing loses those edits. sendBeacon survives unload where fetch does not.
   useEffect(() => {
-    const flush = () => {
-      if (document.visibilityState !== 'hidden') return
+    const flushNow = () => {
+      if (isUntouchedPlaceholder(documents)) return
       flushOnUnload('documents', documents)
       flushOnUnload('activeDocId', activeDocId)
     }
-    document.addEventListener('visibilitychange', flush)
-    window.addEventListener('pagehide', flush)
+    // `pagehide`/`beforeunload` fire unconditionally: the visibility guard belongs
+    // only on visibilitychange. A pagehide that arrives while the document is still
+    // `visible` used to skip the flush and drop up to 500ms of typing.
+    const onVisibility = () => {
+      if (document.visibilityState !== 'hidden') return
+      flushNow()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flushNow)
+    window.addEventListener('beforeunload', flushNow)
     return () => {
-      document.removeEventListener('visibilitychange', flush)
-      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flushNow)
+      window.removeEventListener('beforeunload', flushNow)
     }
   }, [documents, activeDocId])
 

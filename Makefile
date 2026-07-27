@@ -10,10 +10,17 @@ ifneq (,$(wildcard ./$(ENV_FILE)))
     export
 endif
 
-# Prod = frontend-prod (nginx) + url-sidecar. Dev = frontend-dev (vite) + url-sidecar.
-# The dev merge also defines frontend-prod, so dev targets name $(DEV_SVCS)
-# explicitly; depends_on then pulls in url-sidecar but NOT frontend-prod.
-# Prod and dev both bind the sidecar host port -> they are mutually exclusive.
+# Three services back both stacks: frontend-prod (nginx, $(MDE_APP_PORT)),
+# frontend-dev (vite, $(MDE_DEV_PORT)), and the shared url-sidecar + db-sidecar.
+#
+# Prod and dev are NOT mutually exclusive. Both merges include compose.yml, both
+# resolve to the same Compose project, and the published ports do not collide --
+# so `make both-up` runs them side by side against ONE db-sidecar, which is the
+# whole point: a document written on 5200 is the same row read on 5250.
+#
+# Because they share a project, a bare `docker compose down` tears down the OTHER
+# stack and the shared database sidecar with it. prod-down/dev-down therefore
+# remove only their own frontend; `make stack-down` is the explicit everything-off.
 COMPOSE_PROD := docker compose -f compose.yml
 COMPOSE_DEV  := docker compose -f compose.yml -f compose.dev.yml
 DEV_SVCS     := frontend-dev
@@ -28,14 +35,14 @@ prod-build:
 prod-up:
 	$(COMPOSE_PROD) up -d
 
-# Stop and remove production stack (networks torn down)
+# Stop and remove ONLY frontend-prod. Leaves the shared sidecars and any running
+# dev stack alone -- a project-wide `down` here would take the database with it.
 prod-down:
-	$(COMPOSE_PROD) down
+	$(COMPOSE_PROD) rm -sf frontend-prod
 
-# Recreate production stack from a clean build (down then up --build)
+# Recreate production stack from a clean build (in place; keeps dev running)
 prod-bounce:
-	$(COMPOSE_PROD) down
-	$(COMPOSE_PROD) up -d --build
+	$(COMPOSE_PROD) up -d --build --force-recreate frontend-prod
 
 # Restart production containers in place
 prod-restart:
@@ -63,14 +70,13 @@ dev-up:
 dev-watch:
 	$(COMPOSE_DEV) watch
 
-# Stop and remove dev stack
+# Stop and remove ONLY frontend-dev (see prod-down).
 dev-down:
-	$(COMPOSE_DEV) down
+	$(COMPOSE_DEV) rm -sf $(DEV_SVCS)
 
-# Recreate dev stack from a clean build (down then up --build)
+# Recreate dev stack from a clean build (in place; keeps prod running)
 dev-bounce:
-	$(COMPOSE_DEV) down
-	$(COMPOSE_DEV) up -d --build $(DEV_SVCS)
+	$(COMPOSE_DEV) up -d --build --force-recreate $(DEV_SVCS)
 
 # Restart dev containers in place
 dev-restart:
@@ -86,6 +92,14 @@ dev-status:
 
 # -------------------------------------------------------------------- Shared
 
+# Start prod AND dev together against the one shared db-sidecar
+both-up:
+	$(COMPOSE_DEV) up -d --build frontend-prod $(DEV_SVCS)
+
+# Stop EVERYTHING including the shared sidecars (explicit, unlike prod-down/dev-down)
+stack-down:
+	$(COMPOSE_PROD) down
+
 # List all available tasks with descriptions
 list:
 	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/list-tasks.ps1
@@ -94,8 +108,21 @@ list:
 ping:
 	@bash scripts/test-ping-routes.sh
 
-# DESTRUCTIVE: stop stack and remove named + anonymous volumes and orphans
+# Run the persistence + sidecar test suites
+test:
+	@pnpm test
+
+# End-to-end proof that prod and dev share one database and survive a bounce
+verify-persistence:
+	@bash scripts/verify-persistence.sh
+
+# Take an on-demand SQLite snapshot into $(MDE_DB_DIR)/$(MDE_DB_BACKUP_SUBDIR)
+db-backup:
+	docker compose -f compose.yml exec db-sidecar node -e "import('./backup.ts').then(m => console.log(m.takeSnapshot(process.env.MDE_DB_PATH)))"
+
+# DESTRUCTIVE: stop stack and remove named + anonymous volumes and orphans.
+# The database is a bind mount, so it is NOT removed by -v.
 clean:
 	$(COMPOSE_PROD) down -v --remove-orphans
 
-.PHONY: prod-build prod-up prod-down prod-bounce prod-restart prod-logs prod-status dev-build dev-up dev-watch dev-down dev-bounce dev-restart dev-logs dev-status list ping clean
+.PHONY: prod-build prod-up prod-down prod-bounce prod-restart prod-logs prod-status dev-build dev-up dev-watch dev-down dev-bounce dev-restart dev-logs dev-status both-up stack-down list ping test verify-persistence db-backup clean

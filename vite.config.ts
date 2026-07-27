@@ -54,7 +54,11 @@ function loadDevHttpsConfig(env: Record<string, string | undefined>) {
 }
 
 export default defineConfig(async ({ mode, command }) => {
-  const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') }
+  // Real process env wins over the .env file. The .env file is baked into the dev
+  // image, and its values are host-shaped (Windows paths, 127.0.0.1 origins); the
+  // container gets the correct values injected by compose. Loading .env last would
+  // override them and point the /api/db proxy at the container's own loopback.
+  const env = { ...loadEnv(mode, process.cwd(), ''), ...process.env }
   const appPort = parsePort(env.MDE_APP_PORT, 5200)
   const devPort = parsePort(env.MDE_DEV_PORT, 5250)
   const sidecarPort = parsePort(

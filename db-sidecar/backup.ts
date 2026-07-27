@@ -1,24 +1,40 @@
 /**
  * Rotating SQLite snapshots — the safety net under the persistence layer.
  *
- * Uses `VACUUM INTO`, not a file copy: the database runs in WAL mode, so a bare
- * `cp` of the .db captures a stale page image and silently loses everything still
- * living in the -wal file. `VACUUM INTO` writes a consistent, fully-checkpointed
- * snapshot in one statement.
+ * Uses `VACUUM INTO`, not a file copy. The database runs in `DELETE` journal mode
+ * (see db.ts), so a bare `cp` can capture the file mid-transaction, with the
+ * rollback journal's uncommitted pages still pending. `VACUUM INTO` writes a
+ * transactionally consistent snapshot in one statement, without depending on
+ * journal state or holding a long read lock.
  *
- * Snapshots land next to the database in `<dbdir>/backups/` (inside the named
- * docker volume, so they survive container recreate). The newest MAX_SNAPSHOTS
- * are kept; older ones are pruned.
+ * Snapshots land in `MDE_DB_BACKUP_DIR` (default `<dbdir>/backups/`), which is
+ * inside the bind-mounted host directory `MDE_DB_DIR`. They are therefore visible
+ * on the host, survive `docker compose down`/rebuild, and are untouched by
+ * `down -v` — bind mounts are immune to volume pruning.
+ *
+ * They previously defaulted into the container's writable layer, so every
+ * snapshot was destroyed by the next container recreate. Keep the directory
+ * configurable and keep it under the bind.
  */
 
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-const MAX_SNAPSHOTS = 10
-const INTERVAL_MS = 6 * 60 * 60 * 1000 // every 6 hours
+function intFromEnv(name: string, fallback: number): number {
+  const parsed = Number.parseInt(process.env[name] ?? '', 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+const MAX_SNAPSHOTS = intFromEnv('MDE_DB_BACKUP_MAX', 10)
+const INTERVAL_MS = intFromEnv('MDE_DB_BACKUP_INTERVAL_MS', 6 * 60 * 60 * 1000)
 const PREFIX = 'mdeditor-'
 const SUFFIX = '.db'
+
+/** Where snapshots for `dbPath` are written. Exported so tests can assert placement. */
+export function snapshotDir(dbPath: string): string {
+  return process.env.MDE_DB_BACKUP_DIR ?? join(dirname(dbPath), 'backups')
+}
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, '-')
@@ -26,7 +42,7 @@ function timestamp(): string {
 
 /** Write one consistent snapshot. Returns its path, or null if it could not be taken. */
 export function takeSnapshot(dbPath: string): string | null {
-  const dir = join(dirname(dbPath), 'backups')
+  const dir = snapshotDir(dbPath)
   const target = join(dir, `${PREFIX}${timestamp()}${SUFFIX}`)
 
   try {

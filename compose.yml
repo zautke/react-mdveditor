@@ -52,11 +52,26 @@ services:
       context: ./db-sidecar
     environment:
       MDE_DB_SIDECAR_INTERNAL_PORT: ${MDE_DB_SIDECAR_INTERNAL_PORT}
-      MDE_DB_PATH: /data/mdeditor.db
+      MDE_DB_PATH: /data/${MDE_DB_FILENAME}
+      MDE_DB_BACKUP_DIR: /data/${MDE_DB_BACKUP_SUBDIR}
+      MDE_DB_BACKUP_MAX: ${MDE_DB_BACKUP_MAX}
+      MDE_DB_BACKUP_INTERVAL_MS: ${MDE_DB_BACKUP_INTERVAL_MS}
+    # The DIRECTORY is bound, not the .db file. This keeps the SQLite rollback
+    # journal and the backup snapshots on the host next to the database, where a
+    # container recreate cannot destroy them and `down -v` cannot reach them.
+    # db-sidecar is defined ONLY here, and both compose merges include this file,
+    # so prod and dev structurally cannot diverge onto different databases.
+    #
+    # `target` is a literal, deliberately. Only the HOST side is configuration;
+    # the container path is an internal invariant. Sourcing an env var of "/data"
+    # through MSYS bash (Git Bash on Windows) rewrites it to "C:/Program Files/Git/data"
+    # on the way to the Windows docker binary, and the mount fails.
     volumes:
       - type: bind
-        source: ${MDE_DB_HOST_PATH}
-        target: /data/mdeditor.db
+        source: ${MDE_DB_DIR}
+        target: /data
+        bind:
+          create_host_path: true
     healthcheck:
       test:
         - CMD

@@ -11,7 +11,9 @@
     "dev": "node --env-file=.env scripts/adagio-dev.mjs && vite",
     "build": "vite build --mode production",
     "preview": "vite preview",
-    "test:sidecar": "node --test --experimental-strip-types db-sidecar/server.test.mjs scripts/sidecar-health.test.mjs scripts/adagio-dev.test.mjs scripts/migrate-adagio-db.test.mjs",
+    "test": "pnpm test:persistence && pnpm test:sidecar",
+    "test:persistence": "node --test db-sidecar/db-schema.test.mjs db-sidecar/state-http.test.mjs db-sidecar/durability.test.mjs src/lib/storage.test.mjs",
+    "test:sidecar": "node --test db-sidecar/server.test.mjs scripts/sidecar-health.test.mjs scripts/adagio-dev.test.mjs scripts/migrate-adagio-db.test.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
