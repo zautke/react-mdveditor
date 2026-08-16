@@ -1,7 +1,71 @@
 # TASKS
 
 _Checkbox state + follow-ups. Supersede stale items in place._
-_Last refreshed: 2026-07-26._
+_Last refreshed: 2026-08-16._
+
+## Done — repo consolidation (2026-08-16)
+
+Full audit and evidence: [`BRANCH_WORKTREE_ARCHAEOLOGY_2026-08-16.md`](../../BRANCH_WORKTREE_ARCHAEOLOGY_2026-08-16.md).
+Salvaged-but-unmerged work: [`on-deck/INDEX.md`](../../on-deck/INDEX.md).
+
+Started from 17 local branches, 15 remote refs, 9 worktrees (5 dangling),
+11 unreachable commits, 1 stash. Ended at `main` + `development` only,
+both at `bf1f799`, one worktree, 0 unreachable commits.
+
+- [x] Push `main` — its tip `c803233` was unpushed and existed only on this
+      disk plus two dangling worktree entries
+- [x] Tag every ref slated for deletion as `archive/2026-08-16/*`; push and
+      verify all 32 on origin before deleting anything
+- [x] Build `on-deck/` — patch bundles for the lanes that cannot merge;
+      export `stash@{0}` first, since merging `main` breaks it
+- [x] Merge `main` — tab-system extraction into `design-system/ui`,
+      `apps/tabbar-harness`, and deletion of the duplicated
+      `src/components/ui/tabs/*`. `development` had been shipping the tab
+      system twice
+- [x] Merge `codex/adagio-sidecar-integrity` — sidecar supervision, Windows
+      launcher, migrate/health scripts, 4 test files
+- [x] Merge `feat/open-in-mde` — CLI, Finder Quick Action, FinderSync appex,
+      `/api/ping` heartbeat, quick-capture panel
+- [x] Merge `feat/excalidraw-doctype`
+- [x] Merge `feat/media-copy-snapshot` — found late, held the newest work in
+      the repo including the `documents` non-array payload data-loss fix and
+      33 storage tests
+- [x] Reconcile with `origin/development`, which advanced mid-session; no
+      force-push
+- [x] Converge `main` to `development` by fast-forward; push both
+- [x] Prune 5 dangling worktrees, remove 3 live ones (~826 MB reclaimed)
+- [x] Delete 15 local and 13 remote branches behind a gate requiring each ref
+      to be an ancestor of `development` or carry a tag confirmed on origin
+
+### Fixed along the way
+
+- [x] `pnpm typecheck` was `tsc --noEmit` against a solution config with
+      `"files": []` — it checked nothing and always exited 0. No TypeScript
+      error in this repo had ever been caught by it. Now `tsc -b`, verified
+      non-vacuous by injecting a deliberate error
+- [x] `createDocFromText` omitted the required `persistedToFileSystem` field
+      — the open-in-mde lane branched before the sidecar lane added it
+- [x] `vite.config.ts` — typed the `sidecar-health.mjs` import, annotated the
+      async config's return as `Promise<UserConfig>` so overload resolution
+      picks `UserConfigFnPromise`
+- [x] Dropped unused React default imports in `JsonPreview.tsx` and
+      `MdxCodeblock.tsx` (pre-existing, blocked a clean typecheck)
+
+### Follow-ups
+
+- [ ] Pick up `on-deck/fix-react-doc-imports-adagio/` — `src/lib/react-preview/`
+      `cdn.ts` and `import-parser.ts` do not exist on `development`, so React
+      preview documents cannot resolve external CDN imports. Highest-value
+      outstanding salvage
+- [ ] Exercise the tab system in a running app. Unit tests (22) and the
+      production build pass, but nothing visual was checked after
+      `src/components/ui/tabs/` was deleted
+- [ ] `/Volumes/FLOUNDER` is at 100% capacity (914 MiB free). This blocked
+      `pnpm install` mid-consolidation
+- [ ] Re-index jCodemunch — its index is dated 2026-07-05
+- [ ] Consider a root `predev`/`prebuild` hook that builds `@braisenly/ui`.
+      A stale `design-system/ui/dist` made `tsc` report `onRenameTab` missing
+      from source that declares it. `apps/tabbar-harness` already does this
 
 ## Done — persistence (2026-07-26)
 
