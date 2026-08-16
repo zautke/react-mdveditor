@@ -33,7 +33,7 @@ export const tabSystem = tv({
       "hover:bg-[color:var(--tab-close-hover-bg)] hover:text-[color:var(--tab-close-hover-fg)]",
     ],
     newButton: [
-      "inline-flex items-center justify-center h-8 w-8 rounded-md",
+      "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
       "text-[color:var(--tab-action-fg)] transition-colors",
       "duration-[var(--tab-motion-duration)] ease-[var(--tab-motion-ease)]",
       "hover:bg-[color:var(--tab-hover-bg)] hover:text-[color:var(--tab-active-text)]",
@@ -70,7 +70,7 @@ export const tabSystem = tv({
         content: "border-t border-[color:var(--tabs-bar-border)]",
       },
       capsule: {
-        list: "bg-[color:var(--tabs-list-bg)] px-1 py-0 h-full rounded-full relative border border-[color:var(--tabs-bar-border)] backdrop-blur-md shadow-[var(--tabs-list-shadow)] gap-1.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        list: "bg-[color:var(--tabs-list-bg)] px-1 py-0 h-full rounded-full relative border border-[color:var(--tabs-bar-border)] backdrop-blur-md shadow-[var(--tabs-list-shadow)] gap-1.5 overflow-visible",
         trigger: [
           "py-0 h-full border-[color:var(--tab-border)]",
           "bg-transparent text-[color:var(--tab-text)]",
@@ -82,8 +82,7 @@ export const tabSystem = tv({
           "data-[state=active]:shadow-[var(--tab-shadow)]",
           "data-[state=active]:z-10",
         ],
-        newButton:
-          "rounded-full bg-[color:var(--tab-bg)] hover:bg-[color:var(--tab-hover-bg)] my-auto h-[calc(100%-8px)] w-auto aspect-square",
+        newButton: "rounded-full",
       },
       underline: {
         list: "border-b border-[color:var(--tabs-bar-border)] gap-4",
@@ -166,13 +165,13 @@ export const tabSystem = tv({
     },
   },
   compoundVariants: [
-    // Chrome x horizontal: items align to bottom, no bottom padding
+    // Chrome × horizontal: items align to bottom, no bottom padding
     {
       variant: "chrome",
       orientation: "horizontal",
       class: { list: "items-end pb-0" },
     },
-    // Chrome x vertical: adjust clip-path and rounding
+    // Chrome × vertical: adjust clip-path and rounding
     {
       variant: "chrome",
       orientation: "vertical",
@@ -185,13 +184,13 @@ export const tabSystem = tv({
         ],
       },
     },
-    // Capsule x horizontal: stretch items
+    // Capsule × horizontal: stretch items
     {
       variant: "capsule",
       orientation: "horizontal",
       class: { list: "items-stretch" },
     },
-    // Capsule x vertical: full rounding with right-side flat for active
+    // Capsule × vertical: full rounding with right-side flat for active
     {
       variant: "capsule",
       orientation: "vertical",
@@ -204,7 +203,7 @@ export const tabSystem = tv({
         ],
       },
     },
-    // Underline x vertical: border on right instead of bottom
+    // Underline × vertical: border on right instead of bottom
     {
       variant: "underline",
       orientation: "vertical",

@@ -8,6 +8,7 @@
       "import": "./dist/tab-system.js",
       "require": "./dist/tab-system.cjs"
     },
+    "./tab-system.css": "./dist/tab-system.css",
     "./code-block": {
       "types": "./dist/code-block.d.ts",
       "import": "./dist/code-block.js",
@@ -22,9 +23,16 @@
   "files": [
     "dist"
   ],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
-    "build": "tsup",
+    "build": "pnpm build:js && pnpm build:css",
+    "build:css": "tailwindcss -i src/components/tab-system/tab-system.css -o dist/tab-system.css --minify",
+    "build:js": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -42,24 +50,17 @@
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },
-  "peerDependenciesMeta": {
-    "@dnd-kit/core": {
-      "optional": true
-    },
-    "@dnd-kit/sortable": {
-      "optional": true
-    },
-    "@dnd-kit/utilities": {
-      "optional": true
-    },
-    "lucide-react": {
-      "optional": true
-    }
-  },
   "devDependencies": {
+    "@tailwindcss/cli": "4.3.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "jsdom": "^26.1.0",
+    "tailwindcss": "4.3.2",
     "tsup": "^8.0.0",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
   }
 }

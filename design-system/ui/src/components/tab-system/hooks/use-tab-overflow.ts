@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 export interface UseTabOverflowReturn {
-  containerRef: React.RefObject<HTMLDivElement | null>
+  containerRef: React.RefObject<HTMLDivElement>
   canScrollLeft: boolean
   canScrollRight: boolean
   scrollLeft: () => void

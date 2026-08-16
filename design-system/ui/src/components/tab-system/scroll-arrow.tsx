@@ -27,7 +27,7 @@ const ScrollArrow = forwardRef<HTMLButtonElement, ScrollArrowProps>(
           "inline-flex items-center justify-center h-full w-6",
           "text-[color:var(--tab-text)] transition-opacity duration-150",
           "hover:bg-[color:var(--tab-hover-bg)]",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--tab-focus-ring)]",
           "flex-shrink-0",
           className
         )}

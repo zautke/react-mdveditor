@@ -1,0 +1,148 @@
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./";
+
+@layer components {
+  :where([data-tab-skin]) {
+    --tabs-bar-bg: var(--background, oklch(0.19 0.01 60));
+    --tabs-list-bg: color-mix(in oklab, var(--background, oklch(0.19 0.01 60)) 76%, var(--border, oklch(0.35 0.01 60)));
+    --tabs-bar-border: var(--border, oklch(0.35 0.01 60));
+    --tabs-bar-border-strong: color-mix(in oklab, var(--foreground, white) 18%, var(--tabs-bar-border));
+    --tabs-list-shadow: 0 1px 2px color-mix(in oklab, black 35%, transparent);
+    --tab-bg: var(--card, oklch(0.24 0.01 60));
+    --tab-border: color-mix(in oklab, var(--tabs-bar-border) 72%, transparent);
+    --tab-hover-bg: color-mix(in oklab, var(--tab-bg) 88%, var(--foreground, white) 4%);
+    --tab-hover-border: color-mix(in oklab, var(--foreground, white) 18%, var(--tabs-bar-border));
+    --tab-active-bg: var(--card, oklch(0.24 0.01 60));
+    --tab-active-border: color-mix(in oklab, var(--foreground, white) 20%, var(--tabs-bar-border));
+    --tab-text: var(--muted-foreground, oklch(0.72 0.01 60));
+    --tab-active-text: var(--foreground, oklch(0.97 0.01 85));
+    --tab-disabled-bg: color-mix(in oklab, var(--background, oklch(0.19 0.01 60)) 78%, black);
+    --tab-disabled-text: color-mix(in oklab, var(--tab-text) 55%, transparent);
+    --tab-action-fg: color-mix(in oklab, var(--tab-text) 88%, var(--tab-active-text));
+    --tab-indicator-active: var(--tab-accent);
+    --tab-indicator-muted: color-mix(in oklch, var(--tab-accent) 40%, transparent);
+    --tab-indicator-size: 2px;
+    --tab-accent: var(--primary, oklch(0.63 0.18 35));
+    --tab-focus-ring: var(--ring, oklch(0.7 0.15 35));
+    --tab-focus-offset: 2px;
+    --tab-focus-offset-color: var(--background, oklch(0.19 0.01 60));
+    --tab-close-hover-bg: color-mix(in oklab, var(--destructive, oklch(0.62 0.2 25)) 18%, transparent);
+    --tab-close-hover-fg: var(--destructive, oklch(0.7 0.18 25));
+    --tab-shadow: 0 1px 2px color-mix(in oklab, black 35%, transparent);
+    --tab-drag-shadow: 0 14px 34px color-mix(in oklab, black 55%, transparent);
+    --tab-control-height: 2rem;
+    --tab-motion-duration-standard: 180ms;
+    --tab-motion-duration-reduced: 90ms;
+    --tab-motion-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --tab-motion-ease-reduced: linear;
+    --menu-bg: var(--popover, var(--tab-active-bg));
+    --menu-border: var(--border, var(--tabs-bar-border));
+    --menu-shadow: 0 16px 40px color-mix(in oklab, black 35%, transparent);
+  }
+
+  :where([data-density="compact"]) { --tab-control-height: 1.75rem; }
+  :where([data-density="comfortable"]) { --tab-control-height: 2rem; }
+  :where([data-motion="reduced"]) {
+    --tab-motion-duration: var(--tab-motion-duration-reduced);
+    --tab-motion-ease: var(--tab-motion-ease-reduced);
+  }
+  :where([data-motion="none"]) {
+    --tab-motion-duration: 0ms;
+    --tab-motion-ease: linear;
+  }
+
+  :where([data-tab-skin="chrome"]) {
+    --tabs-bar-bg: var(--muted, oklch(0.9 0.01 75));
+    --tabs-list-bg: var(--tabs-bar-bg);
+    --tab-bg: var(--card, oklch(0.98 0.01 85));
+    --tab-hover-bg: var(--accent, oklch(0.94 0.02 75));
+    --tab-active-bg: var(--tab-bg);
+  }
+
+  :where([data-tab-skin="quiet"]) {
+    --tabs-bar-bg: transparent;
+    --tabs-list-bg: transparent;
+    --tabs-list-shadow: none;
+    --tab-bg: transparent;
+    --tab-border: transparent;
+    --tab-active-bg: transparent;
+    --tab-active-border: transparent;
+    --tab-shadow: none;
+  }
+
+  :where([data-tab-skin="contrast"]) {
+    --tabs-bar-bg: Canvas;
+    --tabs-list-bg: Canvas;
+    --tabs-bar-border: CanvasText;
+    --tabs-bar-border-strong: CanvasText;
+    --tabs-list-shadow: none;
+    --tab-bg: Canvas;
+    --tab-border: CanvasText;
+    --tab-hover-bg: Highlight;
+    --tab-hover-border: Highlight;
+    --tab-active-bg: Highlight;
+    --tab-active-border: Highlight;
+    --tab-text: CanvasText;
+    --tab-active-text: HighlightText;
+    --tab-disabled-bg: Canvas;
+    --tab-disabled-text: GrayText;
+    --tab-action-fg: CanvasText;
+    --tab-indicator-active: Highlight;
+    --tab-indicator-muted: CanvasText;
+    --tab-focus-ring: Highlight;
+    --tab-close-hover-bg: Highlight;
+    --tab-close-hover-fg: HighlightText;
+    --tab-shadow: none;
+    --tab-drag-shadow: none;
+  }
+
+  :where([data-tab-skin]) [data-state="active"][data-tab-color] {
+    background: color-mix(in oklch, var(--tab-accent) 18%, var(--tab-active-bg));
+    border-bottom-color: var(--tab-indicator-active);
+    box-shadow: inset 0 var(--tab-indicator-size) 0 var(--tab-indicator-active), var(--tab-shadow);
+  }
+
+  :where([data-tab-skin]) [data-tab-color]:not([data-state="active"]) {
+    border-bottom: var(--tab-indicator-size) solid var(--tab-indicator-muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where([data-motion="standard"], [data-motion="reduced"]) {
+    --tab-motion-duration: 0ms;
+    --tab-motion-ease: linear;
+  }
+}
+
+@media (forced-colors: active) {
+  :where([data-tab-skin]) {
+    --tabs-bar-bg: Canvas;
+    --tabs-list-bg: Canvas;
+    --tabs-bar-border: CanvasText;
+    --tabs-bar-border-strong: CanvasText;
+    --tabs-list-shadow: none;
+    --tab-bg: Canvas;
+    --tab-border: CanvasText;
+    --tab-hover-bg: Highlight;
+    --tab-hover-border: Highlight;
+    --tab-active-bg: Highlight;
+    --tab-active-border: Highlight;
+    --tab-text: CanvasText;
+    --tab-active-text: HighlightText;
+    --tab-disabled-bg: Canvas;
+    --tab-disabled-text: GrayText;
+    --tab-action-fg: ButtonText;
+    --tab-indicator-active: Highlight;
+    --tab-indicator-muted: CanvasText;
+    --tab-focus-ring: Highlight;
+    --tab-close-hover-bg: Highlight;
+    --tab-close-hover-fg: HighlightText;
+    --tab-shadow: none;
+    --tab-drag-shadow: none;
+    --menu-bg: Canvas;
+    --menu-border: CanvasText;
+    --menu-shadow: none;
+  }
+}

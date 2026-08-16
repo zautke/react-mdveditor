@@ -2,7 +2,7 @@
 
 import { forwardRef } from "react"
 import { motion as Motion } from "motion/react"
-import { Plus } from "react-feather"
+import { Plus } from "lucide-react"
 import type { TabMotion } from "./types"
 
 // ── NewTabButton ────────────────────────────────────────────────────

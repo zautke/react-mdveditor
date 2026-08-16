@@ -17,6 +17,7 @@ import type {
  */
 interface TabCloseButtonProps {
   tabId: string
+  tabLabel?: string
   onDelete: (tabId: string) => void
   position: CloseButtonPosition
   shape: CloseButtonShape
@@ -26,7 +27,7 @@ interface TabCloseButtonProps {
 }
 
 const TabCloseButton = forwardRef<HTMLSpanElement, TabCloseButtonProps>(
-  ({ tabId, onDelete, position, shape, visibility, disabled, className }, ref) => {
+  ({ tabId, tabLabel, onDelete, position, shape, visibility, disabled, className }, ref) => {
     const handleClick = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -35,6 +36,14 @@ const TabCloseButton = forwardRef<HTMLSpanElement, TabCloseButtonProps>(
       },
       [tabId, onDelete]
     )
+
+    const handlePointerDown = useCallback((e: React.PointerEvent) => {
+      // Radix selects tabs on pointer down, before this control's click fires.
+      // Keep closing an inactive tab from briefly selecting it and keep the
+      // sortable wrapper from treating the close gesture as a drag start.
+      e.stopPropagation()
+      e.preventDefault()
+    }, [])
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
@@ -56,6 +65,7 @@ const TabCloseButton = forwardRef<HTMLSpanElement, TabCloseButtonProps>(
         ref={ref}
         role="button"
         tabIndex={disabled ? -1 : 0}
+        onPointerDown={handlePointerDown}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         aria-disabled={disabled}
@@ -67,7 +77,7 @@ const TabCloseButton = forwardRef<HTMLSpanElement, TabCloseButtonProps>(
           }).closeButton(),
           className
         )}
-        aria-label="Close tab"
+        aria-label={tabLabel ? `Close ${tabLabel} tab` : "Close tab"}
       >
         <X className="h-3 w-3" />
       </span>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useId, DragEvent, memo, useRef, useCallback, createElement, useMemo, Suspense } from 'react'
 import { FilePlus2, Download, Settings2 } from 'lucide-react'
 import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
-import { TabSystem, TabContent } from '@/components/ui/tabs'
+import { TabSystem, TabContent } from '@braisenly/ui/tab-system'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -15,7 +15,7 @@ import { PersistenceStatus } from '@/components/ui/persistence-status'
 import { useUserSettings } from '@/lib/user-settings'
 import { fetchUrlContent } from '@/lib/url-fetch'
 import type { FetchUrlResult } from '@/lib/url-fetch'
-import type { TabItem, NewTabMenuItem } from '@/components/ui/tabs/types'
+import type { TabItem, NewTabMenuItem } from '@braisenly/ui/tab-system'
 
 // ── ARIA: status announcement for preview updates ───────────────────
 const PREVIEW_DEBOUNCE_MS = 1500
