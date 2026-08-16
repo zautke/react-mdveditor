@@ -11,3 +11,21 @@ logs
 node_modules
 sidecar/.venv
 test-results
+
+# The daemon is remote (ssh://adagio), so the whole build context is uploaded
+# over SSH on every build. None of the following is needed to build the app.
+.cache
+.claude
+.codegraph
+.cursor
+.verify
+.worktrees
+db-sidecar/data
+docs
+macos
+on-deck
+personal
+
+# Built in the image by `pnpm --filter @braisenly/ui build`. Excluding the host
+# copy keeps the image hermetic — a stale local dist can no longer be baked in.
+design-system/ui/dist
