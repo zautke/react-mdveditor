@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pnpm typecheck` now runs `tsc -b`. It previously ran `tsc --noEmit` against a
   solution config with `"files": []`, which checks nothing and always exits 0.
 
-### Added
+### Added (consolidation)
 - `apps/tabbar-harness` — Next.js + Playwright isolation harness for the tab system.
 - Adagio sqlite sidecar supervision, Windows dev launcher, schema migration and
   health-probe scripts.
@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `on-deck/` — patch bundles for branch work that could not be merged, indexed
   in `on-deck/INDEX.md`.
 - `archive/2026-08-16/*` tags on origin covering every deleted ref.
+
+### Added
+- React preview documents can import published npm packages. Bare specifiers are
+  resolved from esm.sh in both shared and isolated mode; previously any import
+  outside `react` was refused with a blocking diagnostic.
 
 ### Fixed
 - A `documents` PUT whose value was not an array returned 200 and wrote nothing,
