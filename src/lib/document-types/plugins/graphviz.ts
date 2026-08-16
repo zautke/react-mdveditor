@@ -89,6 +89,7 @@ export const graphvizPlugin: DocumentTypePlugin = {
   detect: isGraphvizText,
   priority: 11,
   renderer: GraphvizRendererWrapper,
+  layout: 'split',
   fileExtensions: ['.dot', '.gv'],
   exportMimeType: 'text/plain',
   exportExtension: '.dot',

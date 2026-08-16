@@ -45,6 +45,7 @@ export const markdownPlugin: DocumentTypePlugin = {
   detect: () => true, // universal fallback
   priority: 0,
   renderer: MarkdownRendererWrapper,
+  layout: 'split',
   fileExtensions: ['.md', '.mdx', '.markdown'],
   exportMimeType: 'text/markdown',
   exportExtension: '.md',

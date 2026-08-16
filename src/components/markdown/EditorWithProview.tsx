@@ -17,6 +17,7 @@ import { useUserSettings } from '@/lib/user-settings'
 import { fetchUrlContent } from '@/lib/url-fetch'
 import type { FetchUrlResult } from '@/lib/url-fetch'
 import type { TabItem, NewTabMenuItem } from '@braisenly/ui/tab-system'
+import { isExcalidrawContentValid } from '@/lib/excalidraw-file'
 
 // ── ARIA: status announcement for preview updates ───────────────────
 const PREVIEW_DEBOUNCE_MS = 1500
@@ -128,7 +129,7 @@ const InputPane = memo(({
 
   return (
     <section
-      aria-label="Markdown source editor"
+      aria-label="Document source editor"
       className={cn(
         "p-4 border-r border-border transition-all duration-400 ease-out",
         "will-change-[flex,opacity] transform-gpu backface-hidden",
@@ -176,10 +177,12 @@ const RenderPane = memo(({
   content,
   kind,
   documentId,
+  onContentChange,
 }: {
   content: string
   kind: string
   documentId: string
+  onContentChange?: (next: string) => void
 }) => {
   const plugin = documentTypeRegistry.get(kind)
   return (
@@ -189,15 +192,28 @@ const RenderPane = memo(({
         Loading renderer…
       </div>
     }>
-      <div className="p-4 transform-gpu" role="document" aria-label="Rendered preview content">
-        {createElement(plugin.renderer, { content, documentId })}
+      <div
+        className={cn(
+          "transform-gpu",
+          plugin.layout === 'canvas' ? "h-full overflow-hidden p-0" : "p-4",
+        )}
+        role="document"
+        aria-label="Rendered preview content"
+      >
+        {createElement(plugin.renderer, {
+          content,
+          documentId,
+          onContentChange,
+          mode: plugin.layout === 'canvas' ? 'editor' : 'preview',
+        })}
       </div>
     </Suspense>
   )
 }, (prevProps, nextProps) => {
   return prevProps.content === nextProps.content &&
          prevProps.kind === nextProps.kind &&
-         prevProps.documentId === nextProps.documentId
+         prevProps.documentId === nextProps.documentId &&
+         prevProps.onContentChange === nextProps.onContentChange
 })
 RenderPane.displayName = 'RenderPane'
 
@@ -322,6 +338,12 @@ function App() {
   const activeDoc = documents.find(d => d.id === activeDocId) || documents[0]
   const activeContent = activeDoc?.content || ''
   const activeKind = activeDoc?.kind || 'markdown'
+  const activePlugin = documentTypeRegistry.get(activeKind)
+  const activeUsesCanvasLayout = useMemo(() => {
+    if (activePlugin.layout !== 'canvas') return false
+    if (activePlugin.kind === 'excalidraw') return isExcalidrawContentValid(activeContent)
+    return true
+  }, [activeContent, activePlugin])
 
   // handleNewTab — placed before tabs/menu so useMemo closures can capture it safely.
   // Uses functional updater to read docs.length inside setState, removing the
@@ -666,11 +688,15 @@ function App() {
     }
   }, [settings.urlDragAutoFetch, handleUrlModalSuccess])
 
-  const handleContentChange = useCallback((value: string) => {
+  const handleDocumentContentChange = useCallback((documentId: string, value: string) => {
     setDocuments(docs => docs.map(d =>
-      d.id === activeDocId ? { ...d, content: value } : d
+      d.id === documentId ? { ...d, content: value } : d
     ))
-  }, [activeDocId])
+  }, [])
+
+  const handleContentChange = useCallback((value: string) => {
+    handleDocumentContentChange(activeDocId, value)
+  }, [activeDocId, handleDocumentContentChange])
 
   const handleRenameTab = useCallback((tabId: string, title: string) => {
     const nextTitle = title.trim()
@@ -854,7 +880,7 @@ function App() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="text/*,.md,.mdx,.markdown,.mmd,.mermaid,.jsx,.tsx,.html,.htm,.json,.yaml,.yml,.toml,.xml,.csv,.tsv,.log,.cfg,.ini,.conf,.sh,.bash,.zsh,.fish,.py,.rb,.rs,.go,.java,.kt,.swift,.c,.cpp,.h,.hpp,.css,.scss,.sass,.less,.sql,.graphql,.gql,.env,.gitignore,.editorconfig,.prettierrc,.eslintrc"
+        accept="text/*,.md,.mdx,.markdown,.mmd,.mermaid,.jsx,.tsx,.html,.htm,.json,.excalidraw,.yaml,.yml,.toml,.xml,.csv,.tsv,.log,.cfg,.ini,.conf,.sh,.bash,.zsh,.fish,.py,.rb,.rs,.go,.java,.kt,.swift,.c,.cpp,.h,.hpp,.css,.scss,.sass,.less,.sql,.graphql,.gql,.env,.gitignore,.editorconfig,.prettierrc,.eslintrc"
         onChange={handleFileInputChange}
         className="hidden"
         aria-hidden="true"
@@ -866,26 +892,32 @@ function App() {
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden" role="group" aria-label="Editor and preview panes">
-        <InputPane
-          content={activeContent}
-          onContentChange={handleContentChange}
-          onPaste={handlePaste}
-          isExpanded={isExpanded}
-          editorId={`${editorId}-textarea`}
-        />
+        {!activeUsesCanvasLayout && (
+          <InputPane
+            content={activeContent}
+            onContentChange={handleContentChange}
+            onPaste={handlePaste}
+            isExpanded={isExpanded}
+            editorId={`${editorId}-textarea`}
+          />
+        )}
 
         <div className="flex-1 flex flex-col relative overflow-hidden">
-          {/* Gutter with toggle button */}
-          <div className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center bg-gradient-to-r from-black/[0.02] to-transparent z-10">
-            <ExpandToggleButton
-              isExpanded={isExpanded}
-              onClick={toggleExpanded}
-              opacity={arrowOpacity}
-            />
-          </div>
+          {!activeUsesCanvasLayout && (
+            <div className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center bg-gradient-to-r from-black/[0.02] to-transparent z-10">
+              <ExpandToggleButton
+                isExpanded={isExpanded}
+                onClick={toggleExpanded}
+                opacity={arrowOpacity}
+              />
+            </div>
+          )}
 
           {/* File toolbar + Tab System */}
-          <div className="flex-1 pl-8 flex flex-col overflow-hidden">
+          <div className={cn(
+            "flex-1 flex flex-col overflow-hidden",
+            activeUsesCanvasLayout ? "pl-0" : "pl-8",
+          )}>
             {/* File toolbar row — right-justified icon control panel */}
             <div
               role="toolbar"
@@ -969,7 +1001,12 @@ function App() {
             >
               {documents.map(doc => (
                 <TabContent key={doc.id} value={doc.id}>
-                  <RenderPane content={doc.content} kind={doc.kind} documentId={doc.id} />
+                  <RenderPane
+                    content={doc.content}
+                    kind={doc.kind}
+                    documentId={doc.id}
+                    onContentChange={(next) => handleDocumentContentChange(doc.id, next)}
+                  />
                 </TabContent>
               ))}
             </TabSystem>

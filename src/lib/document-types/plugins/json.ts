@@ -28,6 +28,7 @@ export const jsonPlugin: DocumentTypePlugin = {
   },
   priority: 8,
   renderer: JsonPreview,
+  layout: 'split',
   fileExtensions: ['.json'],
   exportMimeType: 'application/json',
   exportExtension: '.json',

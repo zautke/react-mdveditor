@@ -20,6 +20,7 @@ import { mermaidPlugin } from './plugins/mermaid'
 import { htmlPlugin } from './plugins/html'
 import { reactComponentPlugin } from './plugins/react-component'
 import { jsonPlugin } from './plugins/json'
+import { excalidrawPlugin } from './plugins/excalidraw'
 import { graphvizPlugin } from './plugins/graphviz'
 import { urlPlugin } from './plugins/url'
 
@@ -28,5 +29,6 @@ register(mermaidPlugin)
 register(htmlPlugin)
 register(reactComponentPlugin)
 register(jsonPlugin)
+register(excalidrawPlugin)
 register(graphvizPlugin)
 register(urlPlugin)

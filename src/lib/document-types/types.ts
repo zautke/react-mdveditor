@@ -12,6 +12,8 @@ import type { ComponentType } from 'react'
 export interface RendererProps {
   content: string
   documentId?: string
+  mode?: 'preview' | 'editor'
+  onContentChange?: (next: string) => void
 }
 
 /**
@@ -51,6 +53,13 @@ export interface DocumentTypePlugin {
 
   /** React component that renders this document type's content. */
   readonly renderer: ComponentType<RendererProps>
+
+  /**
+   * Preferred shell layout for this document type.
+   * - `split`: textarea editor + preview pane
+   * - `canvas`: plugin owns the editing surface
+   */
+  readonly layout: 'split' | 'canvas'
 
   /** File extensions this type handles (e.g. ['.md', '.mdx']). */
   readonly fileExtensions: readonly string[]

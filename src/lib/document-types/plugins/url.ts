@@ -68,6 +68,7 @@ export const urlPlugin: DocumentTypePlugin = {
   detect: isUrlContent,
   priority: 6,
   renderer: UrlRendererWrapper,
+  layout: 'split',
   fileExtensions: ['.url.html'],
   exportMimeType: 'text/html',
   exportExtension: '.url.html',
