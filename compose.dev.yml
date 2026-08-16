@@ -3,7 +3,13 @@ services:
     build:
       context: .
       target: dev
-    command: pnpm dev --host 0.0.0.0 --port ${MDE_DEV_PORT}
+    # Vite directly, NOT `pnpm dev`. The `dev` script front-runs
+    # scripts/adagio-dev.mjs, a host-only supervisor that refuses to start unless
+    # hostname === adagio and that brings the db-sidecar up itself. Inside the
+    # container the hostname is the container id, so it exits 1 and the service
+    # crash-loops; the sidecar it would have started is already guaranteed by
+    # depends_on below.
+    command: pnpm exec vite --host 0.0.0.0 --port ${MDE_DEV_PORT}
     depends_on:
       url-sidecar:
         condition: service_healthy
@@ -19,8 +25,11 @@ services:
       MDE_HOST: ${MDE_HOST}
       MDE_URL_SIDECAR_PORT: ${MDE_URL_SIDECAR_PORT}
       MDE_DEV_HTTPS: ${MDE_DEV_HTTPS}
-      MDE_DEV_TLS_CERT_PATH: ${MDE_DEV_TLS_CERT_PATH}
-      MDE_DEV_TLS_KEY_PATH: ${MDE_DEV_TLS_KEY_PATH}
+      # Container-side cert paths. MDE_DEV_TLS_CERT_PATH/_KEY_PATH in .env are
+      # host-shaped Windows paths for `pnpm dev` on the host; in here the same
+      # cert directory is bind-mounted read-only at /certs.
+      MDE_DEV_TLS_CERT_PATH: /certs/${MDE_DEV_TLS_CERT_FILE}
+      MDE_DEV_TLS_KEY_PATH: /certs/${MDE_DEV_TLS_KEY_FILE}
       VITE_MDE_APP_ORIGIN: ${VITE_MDE_APP_ORIGIN}
       VITE_MDE_EXTRACT_PATH: ${VITE_MDE_EXTRACT_PATH}
     healthcheck:
@@ -52,6 +61,12 @@ services:
     ports:
       - "${MDE_DEV_PORT}:${MDE_DEV_PORT}"
     restart: unless-stopped
+    # Literal target — see the note on db-sidecar's bind in compose.yml.
+    volumes:
+      - type: bind
+        source: ${MDE_DEV_TLS_DIR}
+        target: /certs
+        read_only: true
     develop:
       watch:
         - action: sync

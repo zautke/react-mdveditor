@@ -38,22 +38,36 @@ make dev-bounce     # clean rebuild + start dev      (https://adagio.local:5250)
 | `ping` | smoke-test `/ping` on both origins (`scripts/test-ping-routes.sh`) |
 | `clean` | **DESTRUCTIVE** — `down -v --remove-orphans` (drops volumes) |
 
-## Two stacks, one sidecar — they are mutually exclusive
+## Two stacks, shared sidecars — they run side by side
 
-- **prod** = `frontend-prod` (nginx, port `MDE_APP_PORT`=5200, HTTP) + `url-sidecar`.
-- **dev** = `frontend-dev` (vite, port `MDE_DEV_PORT`=5250, HTTPS) + `url-sidecar`.
+- **prod** = `frontend-prod` (nginx, `MDE_APP_PORT`=5200, HTTP).
+- **dev** = `frontend-dev` (vite, `MDE_DEV_PORT`=5250, HTTPS).
+- **shared** = `url-sidecar` (5280) + `db-sidecar` (127.0.0.1:15280).
 
-Both bind the sidecar host port `MDE_URL_SIDECAR_PORT` (5280), so **prod and
-dev cannot run at the same time**. Switch envs by tearing one down first:
+Both merges include `compose.yml`, both resolve to the same Compose project, and
+the published ports do not collide — so prod and dev run **at the same time**
+against **one** `db-sidecar`:
 
 ```bash
-make prod-down && make dev-bounce
+make both-up      # prod + dev together
 ```
 
-The dev compose merge (`compose.yml` + `compose.dev.yml`) also *defines*
-`frontend-prod`. The dev targets name `frontend-dev` explicitly, so `up`/`build`
-touch only `frontend-dev` and its `depends_on` (`url-sidecar`) — never
-`frontend-prod`.
+That is the point: a document written on `:5200` is the same database row read on
+`:5250`. `db-sidecar` is defined only in `compose.yml`, so the two stacks cannot
+structurally diverge onto different databases.
+
+> Earlier revisions of this file claimed the stacks were mutually exclusive
+> because both "bind `MDE_URL_SIDECAR_PORT`". They share one `url-sidecar`
+> service definition, so there is nothing to collide.
+
+**Because they share a project, a bare `docker compose down` stops the *other*
+stack and the shared database sidecar with it.** `prod-down` and `dev-down`
+therefore remove only their own frontend; `make stack-down` is the explicit
+everything-off.
+
+The dev compose merge also *defines* `frontend-prod`. The dev targets name
+`frontend-dev` explicitly, so `up`/`build` touch only `frontend-dev` and its
+`depends_on` — never `frontend-prod`.
 
 ## Configuration
 

@@ -53,13 +53,39 @@ let healTimer: ReturnType<typeof setTimeout> | null = null
 let healDelay = HEAL_MIN_MS
 /** Guards reconcile() against re-entry: it writes, and a rejected write re-reads. */
 let reconciling = false
+/** Server revision of the document set we last read. Echoed on every write. */
+let serverRevision = 0
+/** Bumped whenever `cache` is wholesale replaced, so React can re-adopt it. */
+let revision = 0
 
 const listeners = new Set<(s: StorageStatus) => void>()
+const stateListeners = new Set<() => void>()
 
 // ── Status ──────────────────────────────────────────────────────────
 
 export function getStatus(): StorageStatus {
   return status
+}
+
+/**
+ * Reset all module state. Test-only.
+ *
+ * This module is a singleton by design (one cache, one heal timer per tab), so
+ * `node --test` cases need a way back to a clean slate between scenarios.
+ */
+export function __resetForTests(): void {
+  if (healTimer !== null) clearTimeout(healTimer)
+  cache = {}
+  hydrateOk = false
+  status = 'connecting'
+  hydratePromise = null
+  healTimer = null
+  healDelay = HEAL_MIN_MS
+  reconciling = false
+  serverRevision = 0
+  revision = 0
+  listeners.clear()
+  stateListeners.clear()
 }
 
 /** Subscribe to status changes. Returns an unsubscribe function. */
@@ -85,6 +111,40 @@ function setStatus(next: StorageStatus): void {
   if (status === next) return
   status = next
   for (const listener of listeners) listener(next)
+}
+
+// ── State revision ──────────────────────────────────────────────────
+//
+// Re-adopting merged state used to be driven off the status edge into `online`.
+// That is wrong: `setStatus` is a no-op when the status is unchanged, so a
+// reconcile triggered by a 409 while already `online` updated `cache` silently.
+// React kept its pre-merge list and the next edit pushed that stale list straight
+// back over the server — deleting whatever the merge had just recovered.
+//
+// The revision is independent of status: any wholesale replacement of `cache`
+// bumps it and notifies, whether or not connectivity changed.
+
+/** Monotonic counter, for `useSyncExternalStore`. */
+export function getStateRevision(): number {
+  return revision
+}
+
+/** Subscribe to wholesale cache replacements. Returns an unsubscribe function. */
+export function subscribeToState(listener: () => void): () => void {
+  stateListeners.add(listener)
+  return () => stateListeners.delete(listener)
+}
+
+/** Synchronous read of the live cache. Valid only after hydration. */
+export function peekState<T>(key: string, fallback: T): T {
+  return key in cache && cache[key] != null ? (cache[key] as T) : fallback
+}
+
+function publishState(next: Record<string, unknown>): void {
+  cache = next
+  serverRevision = typeof next.__revision === 'number' ? next.__revision : serverRevision
+  revision += 1
+  for (const listener of stateListeners) listener()
 }
 
 // ── Offline buffer (localStorage) ───────────────────────────────────
@@ -117,12 +177,29 @@ function bufferClear(): void {
   }
 }
 
-/** Record a document id deleted while offline so a merge cannot resurrect it. */
+/**
+ * Record a document id deleted while offline so a merge cannot resurrect it.
+ *
+ * Offline only, deliberately. A delete made while online is already persisted by
+ * the `saveState('documents', …)` that follows it, so the tombstone would be pure
+ * downside: tombstones were previously cleared only inside `doReconcile`, so a
+ * healthy session accumulated every id the user had ever closed and the first
+ * reconcile after any blip deleted all of them from the server.
+ */
 export function markDeleted(id: string): void {
+  if (hydrateOk) return
   try {
     const ids = new Set((bufferRead('deletedIds') as string[] | undefined) ?? [])
     ids.add(id)
     localStorage.setItem(TOMBSTONE_KEY, JSON.stringify([...ids]))
+  } catch {
+    // Best-effort.
+  }
+}
+
+function clearTombstones(): void {
+  try {
+    localStorage.removeItem(TOMBSTONE_KEY)
   } catch {
     // Best-effort.
   }
@@ -156,15 +233,20 @@ async function doHydrate(): Promise<Record<string, unknown>> {
     // Unreachable. Fall back to whatever we buffered locally so the editor still
     // shows the user's work, but stay offline: no writes until we can read.
     hydrateOk = false
-    cache = restoreFromBuffer()
+    publishState(restoreFromBuffer())
     setStatus('offline')
     startHealing()
     return cache
   }
 
   hydrateOk = true
-  cache = server
+  publishState(server)
   setStatus('online')
+
+  // Tombstones are an offline-only construct (see markDeleted). Any set surviving
+  // into a successful hydrate is stale — from a previous session, possibly weeks
+  // old — and applying it would delete live documents at the next reconcile.
+  clearTombstones()
 
   // A buffer left over from a previous offline session must be merged in, not dropped.
   if (hasBufferedWrites()) await reconcile()
@@ -254,21 +336,31 @@ export async function removeState(key: string): Promise<void> {
 /** PUT one key. Returns false when the sidecar is unreachable or rejected the write. */
 async function putState(key: string, value: unknown): Promise<boolean> {
   try {
+    // Echo the revision we last read. The server rejects the write if anyone else
+    // has written since — the other tab's documents are not ours to delete.
+    const body =
+      key === 'documents' ? { value, revision: serverRevision } : { value }
     const resp = await fetch(`${DB_BASE}/state/${encodeURIComponent(key)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value }),
+      body: JSON.stringify(body),
     })
+    if (resp.ok) {
+      const parsed = (await resp.json().catch(() => null)) as { revision?: number } | null
+      if (typeof parsed?.revision === 'number') serverRevision = parsed.revision
+      return true
+    }
     if (resp.status === 409) {
-      // The server refused an unsafe write (e.g. an empty `documents` payload against
-      // a non-empty table). Our view is the degraded one, so re-read instead of
-      // retrying. reconcile() itself writes, so it is re-entry guarded — without that
-      // a persistently-rejected write would recurse forever.
-      console.warn('[storage] write rejected as unsafe; re-reading server state')
+      // The server refused the write: either unsafe (empty `documents` against a
+      // non-empty table) or built on a stale revision (another tab wrote first).
+      // Either way our view is the degraded one, so re-read and merge instead of
+      // retrying. reconcile() itself writes, so it is re-entry guarded — without
+      // that a persistently-rejected write would recurse forever.
+      console.warn('[storage] write rejected (409); re-reading and merging server state')
       await reconcile()
       return true
     }
-    return resp.ok
+    return false
   } catch {
     return false
   }
@@ -298,7 +390,7 @@ function startHealing(): void {
       return
     }
 
-    cache = server
+    publishState(server)
     hydrateOk = true
     healDelay = HEAL_MIN_MS
     await reconcile()
@@ -370,7 +462,10 @@ async function doReconcile(): Promise<void> {
   }
 
   hydrateOk = true
-  cache = merged
+  // Publish BEFORE pushing: `serverRevision` must come from this read, or the
+  // write below is itself stale and bounces off the guard forever. Publishing also
+  // notifies React so it adopts the merged list instead of re-sending its own.
+  publishState(merged)
 
   // Push the merged result back, then drop the buffer.
   for (const key of LEGACY_KEYS) {
@@ -385,11 +480,7 @@ async function doReconcile(): Promise<void> {
   }
 
   bufferClear()
-  try {
-    localStorage.removeItem(TOMBSTONE_KEY)
-  } catch {
-    // Ignore.
-  }
+  clearTombstones()
   setStatus('online')
 }
 

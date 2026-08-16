@@ -83,6 +83,7 @@ function MermaidDiagram({ chart }: MermaidDiagramProps) {
         <MediaAssetFrame
             assetId={`mermaid-${figureId}`}
             label={`${capitalizedType} diagram`}
+            sourceText={chart}
             renderContent={({ zoomed }) => (
                 <figure
                     role="img"

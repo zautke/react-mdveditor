@@ -28,11 +28,47 @@ export class DestructiveWriteError extends Error {
   }
 }
 
+/** Thrown when a write body is structurally wrong. Mapped to HTTP 400. */
+export class InvalidPayloadError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidPayloadError'
+  }
+}
+
+/**
+ * Thrown when a client tries to replace the document set based on a revision that
+ * is no longer current — i.e. somebody else wrote in between.
+ *
+ * Persisting `documents` replaces the whole array, so without this check the last
+ * writer silently deletes every change made by the other. That is not theoretical:
+ * with prod (5200) and dev (5250) sharing one database, two open tabs destroy each
+ * other's documents, and the empty-payload guard above cannot see it because a
+ * stale non-empty array looks like a legitimate edit.
+ *
+ * The HTTP layer maps this to 409 so the client re-reads and merges instead.
+ */
+export class StaleRevisionError extends Error {
+  readonly current: number
+  constructor(expected: number, current: number) {
+    super(`stale revision ${expected}; current is ${current}`)
+    this.name = 'StaleRevisionError'
+    this.current = current
+  }
+}
+
 export interface KvStore {
-  /** Every persisted key mapped to its app-facing value. */
+  /** Every persisted key mapped to its app-facing value, plus `__revision`. */
   getAll(): Record<string, unknown>
-  /** Insert or replace one app-facing key. */
-  upsert(key: string, value: unknown): void
+  /**
+   * Insert or replace one app-facing key.
+   *
+   * `expectedRevision`, when supplied for the `documents` key, makes the write
+   * conditional: it is rejected with StaleRevisionError unless it matches the
+   * current revision. Omitting it is an unconditional write (used by migrations
+   * and by tests).
+   */
+  upsert(key: string, value: unknown, expectedRevision?: number): void
   /** Delete one app-facing key (no-op if absent). */
   remove(key: string): void
   /** Verify the underlying SQLite connection is usable. */
@@ -161,6 +197,16 @@ function createSchema(db: DatabaseSync): void {
       'updated_at INTEGER NOT NULL' +
       ');',
   )
+  // Monotonic counter bumped on every documents write. Clients echo the revision
+  // they last read so a write built on a stale view can be rejected rather than
+  // silently deleting the other client's documents.
+  db.exec(
+    'CREATE TABLE IF NOT EXISTS meta (' +
+      'id INTEGER PRIMARY KEY CHECK (id = 1), ' +
+      'revision INTEGER NOT NULL DEFAULT 0' +
+      ');',
+  )
+  db.exec('INSERT OR IGNORE INTO meta (id, revision) VALUES (1, 0);')
 }
 
 export function openKvStore(dbPath: string): KvStore {
@@ -168,8 +214,12 @@ export function openKvStore(dbPath: string): KvStore {
 
   // `timeout` waits on a locked database instead of failing immediately.
   const db = new DatabaseSync(dbPath, { timeout: 5000 })
-  // The sidecar binds the exact database file into Docker. DELETE mode keeps all
-  // durable state in that file rather than a container-local WAL sibling.
+  // DELETE mode, deliberately — do NOT "upgrade" this to WAL. The database lives on
+  // a Docker Desktop bind mount, and WAL's -shm shared-memory mmap is the part of
+  // SQLite that breaks over that filesystem layer. DELETE mode uses no shared
+  // memory. The containing DIRECTORY is bound (not the file), so the -journal
+  // sibling lands on the host beside the database and a hard container kill mid
+  // transaction is recoverable on restart.
   db.exec('PRAGMA journal_mode = DELETE;')
   db.exec('PRAGMA busy_timeout = 5000;')
   createSchema(db)
@@ -209,9 +259,27 @@ export function openKvStore(dbPath: string): KvStore {
       'ON CONFLICT(id) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
   )
   const deleteUserSettings = db.prepare('DELETE FROM user_settings WHERE id = 1')
+  const selectRevision = db.prepare('SELECT revision FROM meta WHERE id = 1')
+  const bumpRevision = db.prepare('UPDATE meta SET revision = revision + 1 WHERE id = 1')
 
-  function writeDocuments(value: unknown): void {
-    if (!Array.isArray(value)) return
+  function currentRevision(): number {
+    const row = selectRevision.get() as { revision: number } | undefined
+    return row?.revision ?? 0
+  }
+
+  function writeDocuments(value: unknown, expectedRevision?: number): void {
+    // A non-array payload used to return silently, so a client sending a malformed
+    // body got a 200 and believed its documents were saved. Fail loudly instead.
+    if (!Array.isArray(value)) {
+      throw new InvalidPayloadError('documents must be an array')
+    }
+
+    // Optimistic concurrency. Reject a write built on a view somebody else has
+    // already superseded; the client turns the 409 into a re-read + merge.
+    if (expectedRevision !== undefined) {
+      const current = currentRevision()
+      if (expectedRevision !== current) throw new StaleRevisionError(expectedRevision, current)
+    }
 
     // Destructive-write guard. Persisting documents is a DELETE-then-INSERT, so an
     // empty payload would wipe every document. A client that lost its state (e.g. it
@@ -246,6 +314,7 @@ export function openKvStore(dbPath: string): KvStore {
           now,
         )
       })
+      bumpRevision.run()
       db.exec('COMMIT')
     } catch (err) {
       db.exec('ROLLBACK')
@@ -288,7 +357,7 @@ export function openKvStore(dbPath: string): KvStore {
   return {
     getAll() {
       const documents = (selectDocuments.all() as unknown as DocumentRow[]).map(documentToJson)
-      const out: Record<string, unknown> = {}
+      const out: Record<string, unknown> = { __revision: currentRevision() }
       if (documents.length > 0) out.documents = documents
 
       const ui = selectUiState.get() as unknown as UiStateRow | undefined
@@ -303,11 +372,11 @@ export function openKvStore(dbPath: string): KvStore {
       return out
     },
 
-    upsert(key, value) {
+    upsert(key, value, expectedRevision) {
       const now = Date.now()
       switch (key) {
         case 'documents':
-          writeDocuments(value)
+          writeDocuments(value, expectedRevision)
           return
         case 'activeDocId': {
           const ui = selectUiState.get() as unknown as UiStateRow | undefined
@@ -329,9 +398,17 @@ export function openKvStore(dbPath: string): KvStore {
 
     remove(key) {
       switch (key) {
-        case 'documents':
+        case 'documents': {
+          // Same reasoning as the empty-payload guard: wiping every document is not
+          // a real user action, and this route was previously an unguarded way to
+          // do exactly that.
+          const { count } = documentCountStmt.get() as { count: number }
+          if (count > 0) {
+            throw new DestructiveWriteError(`refusing to delete all ${count} document(s)`)
+          }
           deleteDocuments.run()
           return
+        }
         case 'activeDocId': {
           const ui = selectUiState.get() as unknown as UiStateRow | undefined
           upsertUiState.run('', ui?.is_expanded ?? 0, Date.now())

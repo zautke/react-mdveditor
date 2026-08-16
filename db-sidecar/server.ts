@@ -15,9 +15,15 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomUUID } from 'node:crypto'
+import { statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { DestructiveWriteError, openKvStore } from './db.ts'
-import { startBackups } from './backup.ts'
+import {
+  DestructiveWriteError,
+  InvalidPayloadError,
+  StaleRevisionError,
+  openKvStore,
+} from './db.ts'
+import { snapshotDir, startBackups } from './backup.ts'
 
 const PORT = Number.parseInt(
   process.env.MDE_DB_SIDECAR_INTERNAL_PORT ?? process.env.MDE_DB_SIDECAR_PORT ?? '15280',
@@ -61,12 +67,19 @@ function sendEvent(res: ServerResponse, event: string, body: unknown): void {
 
 function healthPayload() {
   store.health()
+  // dbFileId is the host inode identity of the database. Two origins reporting the
+  // same instanceId AND the same dbFileId is the proof that prod and dev are on one
+  // shared persistence source rather than two look-alike databases.
+  const stat = statSync(DB_PATH)
   return {
     ok: true,
     status: 'ready',
     database: 'ready',
     instanceId,
     startedAt,
+    dbPath: DB_PATH,
+    dbFileId: `${stat.dev}:${stat.ino}`,
+    backupDir: snapshotDir(DB_PATH),
   }
 }
 
@@ -134,15 +147,19 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     // last edits on page hide) can only issue POST.
     if ((method === 'PUT' || method === 'POST') && key !== null) {
       const raw = await readBody(req)
-      let parsed: { value?: unknown }
+      let parsed: { value?: unknown; revision?: unknown }
       try {
-        parsed = raw ? (JSON.parse(raw) as { value?: unknown }) : {}
+        parsed = raw ? (JSON.parse(raw) as { value?: unknown; revision?: unknown }) : {}
       } catch {
         sendJson(res, 400, { error: 'Invalid JSON body' })
         return
       }
-      store.upsert(key, parsed.value ?? null)
-      sendJson(res, 200, { ok: true })
+      // `revision` is optional: when present the documents write is conditional on
+      // nobody else having written since the client last read.
+      const expectedRevision =
+        typeof parsed.revision === 'number' ? parsed.revision : undefined
+      store.upsert(key, parsed.value ?? null, expectedRevision)
+      sendJson(res, 200, { ok: true, revision: (store.getAll() as { __revision: number }).__revision })
       return
     }
 
@@ -154,9 +171,22 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 
     sendJson(res, 404, { error: 'Not found' })
   } catch (err) {
+    if (err instanceof InvalidPayloadError) {
+      sendJson(res, 400, { error: err.message, code: 'invalid_payload' })
+      return
+    }
     // A write rejected as unsafe is a client-correctable conflict, not a server fault.
     if (err instanceof DestructiveWriteError) {
       sendJson(res, 409, { error: err.message, code: 'destructive_write_rejected' })
+      return
+    }
+    // Somebody else wrote first. The client re-reads and merges rather than retrying.
+    if (err instanceof StaleRevisionError) {
+      sendJson(res, 409, {
+        error: err.message,
+        code: 'stale_revision',
+        revision: err.current,
+      })
       return
     }
     sendJson(res, 500, { error: err instanceof Error ? err.message : 'Internal error' })

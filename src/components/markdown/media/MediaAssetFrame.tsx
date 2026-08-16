@@ -1,8 +1,23 @@
 import { useCallback, useId, useRef, useState, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
-import { Expand, Shrink } from 'lucide-react'
+import { Binary, Code, Expand, Image as ImageIcon, Shrink } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useMediaClipboard, type CopyKind } from '@/lib/use-media-clipboard'
+import { CopyIconButton } from '@/components/ui/copy-icon-button'
+import { MediaZoomViewport } from './MediaZoomViewport'
+
+const COPY_TOAST: Record<CopyKind, string> = {
+  image: 'Image copied to clipboard',
+  base64: 'Copied as base64 data URL',
+  source: 'Source copied to clipboard',
+}
+
+function reportCopy(kind: CopyKind, ok: boolean) {
+  if (ok) toast.success(COPY_TOAST[kind])
+  else toast.error('Copy failed — clipboard unavailable')
+}
 
 interface MediaAssetFrameProps {
   assetId?: string
@@ -10,8 +25,12 @@ interface MediaAssetFrameProps {
   className?: string
   modalClassName?: string
   contentClassName?: string
-  copyLabel?: string
-  onCopy?: () => Promise<void> | void
+  /** Raw source of the media (e.g. Mermaid/DOT text, or an image URL) — enables the "copy source" button. */
+  sourceText?: string
+  /** Tooltip/aria label for the copy-source button. Default "Copy source text". */
+  sourceLabel?: string
+  /** Pan/zoom viewport in the expanded modal (wheel zoom, drag pan). Defaults to on. */
+  interactiveModal?: boolean
   renderContent: (options: { zoomed: boolean }) => ReactNode
 }
 
@@ -56,11 +75,19 @@ function MediaActionPanel({
   expanded,
   onToggle,
   inline,
+  getCaptureTarget,
+  sourceText,
+  sourceLabel = 'Copy source text',
 }: {
   expanded: boolean
   onToggle: () => void
   inline?: boolean
+  getCaptureTarget: () => Element | null
+  sourceText?: string
+  sourceLabel?: string
 }) {
+  const clipboard = useMediaClipboard(getCaptureTarget, { sourceText, onResult: reportCopy })
+
   return (
     <div
       className={cn(
@@ -68,6 +95,30 @@ function MediaActionPanel({
         inline && 'mdeditor-media-action-panel--inline',
       )}
     >
+      {clipboard.canImage && (
+        <CopyIconButton
+          status={clipboard.image.status}
+          onClick={clipboard.image.run}
+          icon={ImageIcon}
+          label="Copy image to clipboard"
+        />
+      )}
+      {clipboard.canBase64 && (
+        <CopyIconButton
+          status={clipboard.base64.status}
+          onClick={clipboard.base64.run}
+          icon={Binary}
+          label="Copy image as base64"
+        />
+      )}
+      {clipboard.canSource && (
+        <CopyIconButton
+          status={clipboard.source.status}
+          onClick={clipboard.source.run}
+          icon={Code}
+          label={sourceLabel}
+        />
+      )}
       <ZoomButton expanded={expanded} onClick={onToggle} />
     </div>
   )
@@ -79,6 +130,9 @@ export function MediaAssetFrame({
   className,
   modalClassName,
   contentClassName,
+  sourceText,
+  sourceLabel,
+  interactiveModal = true,
   renderContent,
 }: MediaAssetFrameProps) {
   const generatedId = useId()
@@ -86,7 +140,11 @@ export function MediaAssetFrame({
   const layoutId = `${resolvedId}-surface`
   const inlineSurfaceRef = useRef<HTMLDivElement>(null)
   const modalSurfaceRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState(false)
+
+  // Always snapshot the inline content (clean, untransformed, always mounted).
+  const getCaptureTarget = useCallback(() => contentRef.current, [])
 
   const close = useCallback(() => {
     setIsOpen(false)
@@ -115,13 +173,21 @@ export function MediaAssetFrame({
           onDoubleClick={openModal}
         >
           <motion.div
+            ref={contentRef}
             layoutId={layoutId}
             transition={MEDIA_TRANSITION}
             className={cn('mdeditor-media-asset__content transform-gpu', contentClassName)}
           >
             {renderContent({ zoomed: false })}
           </motion.div>
-          <MediaActionPanel inline expanded={false} onToggle={openModal} />
+          <MediaActionPanel
+            inline
+            expanded={false}
+            onToggle={openModal}
+            getCaptureTarget={getCaptureTarget}
+            sourceText={sourceText}
+            sourceLabel={sourceLabel}
+          />
         </div>
 
         <AnimatePresence>
@@ -166,14 +232,24 @@ export function MediaAssetFrame({
                     <Dialog.Description className="sr-only">
                       Expanded media preview. Double click, press Escape, or use the collapse button to close.
                     </Dialog.Description>
-                    <MediaActionPanel expanded onToggle={close} />
+                    <MediaActionPanel
+                      expanded
+                      onToggle={close}
+                      getCaptureTarget={getCaptureTarget}
+                      sourceText={sourceText}
+                      sourceLabel={sourceLabel}
+                    />
                     <div
                       className={cn(
                         'mdeditor-media-modal__content flex max-h-[90vh] w-full items-center justify-center p-4',
                         contentClassName,
                       )}
                     >
-                      {renderContent({ zoomed: true })}
+                      {interactiveModal ? (
+                        <MediaZoomViewport>{renderContent({ zoomed: true })}</MediaZoomViewport>
+                      ) : (
+                        renderContent({ zoomed: true })
+                      )}
                     </div>
                   </motion.div>
                 </div>
