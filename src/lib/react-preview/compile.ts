@@ -1,4 +1,5 @@
 import { REACT_PREVIEW_ALLOWED_IMPORTS } from './scope'
+import { isBareSpecifier } from './import-parser'
 
 export type PreviewDiagnosticCode =
   | 'UNSUPPORTED_IMPORT'
@@ -72,15 +73,20 @@ function collectNamedComponentExports(code: string): string[] {
 export function analyzeAndNormalizeReactSource(code: string): CompileAnalysis {
   const diagnostics: PreviewDiagnostic[] = []
   const importSpecifiers = collectModuleSpecifiers(code)
+  // Bare npm specifiers (e.g. 'lucide-react') are resolved from the CDN at
+  // render time, so they are supported. What remains unsupported is anything
+  // that would need a module graph this single-file preview does not have:
+  // relative and absolute paths.
   const unsupportedImports = importSpecifiers.filter(
-    (specifier) => !ALLOWED_IMPORT_SET.has(specifier),
+    (specifier) =>
+      !ALLOWED_IMPORT_SET.has(specifier) && !isBareSpecifier(specifier),
   )
 
   if (unsupportedImports.length > 0) {
     diagnostics.push({
       code: 'UNSUPPORTED_IMPORT',
       message:
-        'Only React imports are supported in this preview. Remove external imports or switch to isolated patterns.',
+        'Local file imports are not supported in this preview — it renders a single file with no module graph. Inline the code, or import a published npm package instead.',
       details: `Unsupported imports: ${unsupportedImports.join(', ')}`,
     })
   }
