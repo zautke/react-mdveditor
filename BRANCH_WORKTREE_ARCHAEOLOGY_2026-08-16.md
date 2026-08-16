@@ -285,6 +285,7 @@ Run against the final tree at `bf1f799`:
 | `pnpm build` (`vite build --mode production`) | pass |
 | `pnpm test:persistence` | 41 tests, 41 pass |
 | `pnpm test:sidecar` | 8 tests, 8 pass |
+| `pnpm test` repeated ×4 | 49/49 each run — but see the flake note below |
 | `bash tests/open-in-mde.test.sh` | 14 pass, 0 fail |
 | `pnpm --filter @braisenly/ui test` | 22 tests, 22 pass |
 
@@ -309,7 +310,8 @@ archive tags on origin → 32
 
 ## Residual risks
 
-- **`/Volumes/FLOUNDER` is at 100% capacity**, 914 MiB free after reclaiming ~826 MB of worktrees. This blocked `pnpm install` mid-consolidation and remains the most likely cause of a future failure in this repository.
+- **`pnpm test` failed once, non-reproducibly.** One run exited non-zero when invoked immediately after `pnpm build` in the same shell. Four subsequent runs passed 49/49 with no code change. The cause was not isolated; the likeliest candidates are disk contention on a full volume and the 1.1 s heartbeat timing in the sidecar `events` test. Treat the suite as not-yet-proven-deterministic until it has run green in CI a few times.
+- **`/Volumes/FLOUNDER` is at 100% capacity**, 911 MiB free after reclaiming ~826 MB of worktrees. This blocked `pnpm install` mid-consolidation, is a plausible contributor to the flake above, and remains the most likely cause of a future failure in this repository.
 - **`on-deck/fix-react-doc-imports-adagio/` is unmerged and valuable.** `src/lib/react-preview/cdn.ts` and `import-parser.ts` do not exist on `development`; React preview documents cannot resolve external CDN imports without them. Highest-value outstanding pickup.
 - **`feat/excalidraw-doctype` was author-marked WIP** and is now on `main`. It typechecks, lints, and builds, but its runtime behaviour was not exercised.
 - **Two lanes merged the same content via different commit objects** (`codex/adagio-sidecar-integrity` locally, `codex/adagio-sidecar-deploy` via `origin/development`). History shows both; trees are identical. Harmless, but `git log` will show apparent duplicates such as two `fix(dev): load adagio pnpm command from env`.

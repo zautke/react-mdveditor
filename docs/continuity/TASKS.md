@@ -62,6 +62,9 @@ both at `bf1f799`, one worktree, 0 unreachable commits.
       `src/components/ui/tabs/` was deleted
 - [ ] `/Volumes/FLOUNDER` is at 100% capacity (914 MiB free). This blocked
       `pnpm install` mid-consolidation
+- [ ] `pnpm test` failed once non-reproducibly, immediately after `pnpm build`
+      in the same shell; 4 later runs passed 49/49. Not isolated. Watch it in
+      CI before trusting the suite as deterministic
 - [ ] Re-index jCodemunch — its index is dated 2026-07-05
 - [ ] Consider a root `predev`/`prebuild` hook that builds `@braisenly/ui`.
       A stale `design-system/ui/dist` made `tsc` report `onRenameTab` missing
