@@ -1,0 +1,440 @@
+commit fb3e8fd160bf6df3139ad44c972e936f8a23a89a
+Author: largo <largo@lukezautke.com>
+Date:   Fri Feb 13 15:47:02 2026 -0700
+
+    feat: document kind system with mermaid detection, tab menus, and state persistence
+    
+    - MarkdownDocumentKind union type ('markdown' | 'mermaid') for document classification
+    - isMermaidText() content detection heuristic with 14 diagram type starters
+    - RenderPane dispatches renderer by kind (MermaidDiagram vs MarkdownRenderer)
+    - Tab icons reflect document kind (GitBranch for mermaid)
+    - NewTabMenuItems dropdown: New Markdown, New Mermaid, Duplicate, Import
+    - Paste/drop/file-import auto-detection of mermaid content
+    - localStorage persistence via loadState/saveState for documents, activeDocId, isExpanded
+    - LaTeX paste conversion (inline and block)
+    - MermaidDiagram minor rendering improvements
+
+diff --git a/package.json b/package.json
+index 45f290f..db19ade 100755
+--- a/package.json
++++ b/package.json
+@@ -22,6 +22,7 @@
+     "motion": "^12.23.26",
+     "react": "^18.3.1",
+     "react-dom": "^18.3.1",
++    "react-feather": "^2.0.10",
+     "react-markdown": "^10.1.0",
+     "react-syntax-highlighter": "^16.1.0",
+     "rehype-mathjax": "^7.1.0",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 9146aa4..4138512 100755
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -38,6 +38,9 @@ importers:
+       react-dom:
+         specifier: ^18.3.1
+         version: 18.3.1(react@18.3.1)
++      react-feather:
++        specifier: ^2.0.10
++        version: 2.0.10(react@18.3.1)
+       react-markdown:
+         specifier: ^10.1.0
+         version: 10.1.0(@types/react@18.3.26)(react@18.3.1)
+@@ -2130,6 +2133,10 @@ packages:
+   node-releases@2.0.27:
+     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
+ 
++  object-assign@4.1.1:
++    resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
++    engines: {node: '>=0.10.0'}
++
+   optionator@0.9.4:
+     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
+     engines: {node: '>= 0.8.0'}
+@@ -2197,6 +2204,9 @@ packages:
+     resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}
+     engines: {node: '>=6'}
+ 
++  prop-types@15.8.1:
++    resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
++
+   property-information@6.5.0:
+     resolution: {integrity: sha512-PgTgs/BlvHxOu8QuEN7wi5A0OmXaBcHpmCSTehcs6Uuu9IkDIEo13Hy7n898RHfrQ49vKCoGeWZSaAK01nwVig==}
+ 
+@@ -2212,6 +2222,14 @@ packages:
+     peerDependencies:
+       react: ^18.3.1
+ 
++  react-feather@2.0.10:
++    resolution: {integrity: sha512-BLhukwJ+Z92Nmdcs+EMw6dy1Z/VLiJTzEQACDUEnWMClhYnFykJCGWQx+NmwP/qQHGX/5CzQ+TGi8ofg2+HzVQ==}
++    peerDependencies:
++      react: '>=16.8.6'
++
++  react-is@16.13.1:
++    resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
++
+   react-markdown@10.1.0:
+     resolution: {integrity: sha512-qKxVopLT/TyA6BX3Ue5NwabOsAzm0Q7kAPwq6L+wWDwisYs7R8vZ0nRXqq6rkueboxpkjvLGU9fWifiX/ZZFxQ==}
+     peerDependencies:
+@@ -4758,6 +4776,8 @@ snapshots:
+ 
+   node-releases@2.0.27: {}
+ 
++  object-assign@4.1.1: {}
++
+   optionator@0.9.4:
+     dependencies:
+       deep-is: 0.1.4
+@@ -4830,6 +4850,12 @@ snapshots:
+ 
+   prismjs@1.30.0: {}
+ 
++  prop-types@15.8.1:
++    dependencies:
++      loose-envify: 1.4.0
++      object-assign: 4.1.1
++      react-is: 16.13.1
++
+   property-information@6.5.0: {}
+ 
+   property-information@7.1.0: {}
+@@ -4842,6 +4868,13 @@ snapshots:
+       react: 18.3.1
+       scheduler: 0.23.2
+ 
++  react-feather@2.0.10(react@18.3.1):
++    dependencies:
++      prop-types: 15.8.1
++      react: 18.3.1
++
++  react-is@16.13.1: {}
++
+   react-markdown@10.1.0(@types/react@18.3.26)(react@18.3.1):
+     dependencies:
+       '@types/hast': 3.0.4
+diff --git a/src/components/markdown/EditorWithProview.tsx b/src/components/markdown/EditorWithProview.tsx
+index 76646ba..c58fc9d 100755
+--- a/src/components/markdown/EditorWithProview.tsx
++++ b/src/components/markdown/EditorWithProview.tsx
+@@ -1,6 +1,8 @@
+ import { useState, useEffect, DragEvent, memo, useRef, useCallback } from 'react'
+ import { FilePlus2, Download } from 'lucide-react'
++import { Copy, FileText, GitBranch, Upload } from 'react-feather'
+ import MarkdownRenderer from './MarkdownRenderer_orig'
++import MermaidDiagram from './MermaidDiagram'
+ import { ExpandToggleButton } from '@/components/ui/expand-toggle-button'
+ import { TabSystem, TabContent } from '@/components/ui/tabs'
+ import { Button } from '@/components/ui/button'
+@@ -9,11 +11,18 @@ import { cn } from '@/lib/utils'
+ import { loadState, saveState } from '@/lib/storage'
+ import type { TabItem } from '@/components/ui/tabs/types'
+ 
++type MarkdownDocumentKind = 'markdown' | 'mermaid'
++
+ // Document type for multi-tab editing
+ interface MarkdownDocument {
+   id: string
+   title: string
+   content: string
++  kind: MarkdownDocumentKind
++}
++
++type StoredMarkdownDocument = Omit<MarkdownDocument, 'kind'> & {
++  kind?: MarkdownDocumentKind
+ }
+ 
+ const initialMarkdown = `# React Markdown Demo
+@@ -86,6 +95,36 @@ const getUser = (id: number): User | undefined =>
+ 
+ > **Tip:** Drop a \`.md\` file onto this editor to load it!`
+ 
++const mermaidStarters = [
++  'flowchart',
++  'graph',
++  'sequencediagram',
++  'classdiagram',
++  'statediagram',
++  'erdiagram',
++  'gantt',
++  'journey',
++  'pie',
++  'mindmap',
++  'timeline',
++  'sankey',
++  'xychart',
++  'blockdiagram',
++  'quadrantchart',
++]
++
++const isMermaidText = (text: string) => {
++  if (text.includes('```')) return false
++  const firstLine = text
++    .split(/\r?\n/)
++    .map((line) => line.trim())
++    .find(Boolean)
++
++  if (!firstLine) return false
++  const normalized = firstLine.replace(/\s+/g, ' ').toLowerCase()
++  return mermaidStarters.some((starter) => normalized.startsWith(starter))
++}
++
+ // Memoized InputPane with Tailwind classes
+ const InputPane = memo(({
+   markdown,
+@@ -136,16 +175,22 @@ InputPane.displayName = 'InputPane'
+ // Memoized RenderPane with Tailwind classes
+ const RenderPane = memo(({
+   markdown,
++  kind,
+ }: {
+   markdown: string
++  kind: MarkdownDocumentKind
+ }) => {
+   return (
+     <div className="p-4 transform-gpu">
+-      <MarkdownRenderer>{markdown}</MarkdownRenderer>
++      {kind === 'mermaid' ? (
++        <MermaidDiagram chart={markdown} />
++      ) : (
++        <MarkdownRenderer>{markdown}</MarkdownRenderer>
++      )}
+     </div>
+   )
+ }, (prevProps, nextProps) => {
+-  return prevProps.markdown === nextProps.markdown
++  return prevProps.markdown === nextProps.markdown && prevProps.kind === nextProps.kind
+ })
+ RenderPane.displayName = 'RenderPane'
+ 
+@@ -156,8 +201,21 @@ const generateDocId = () => `doc-${Date.now()}-${docCounter++}`
+ function App() {
+   // Multi-document state — restored from localStorage
+   const [documents, setDocuments] = useState<MarkdownDocument[]>(() => {
+-    const saved = loadState<MarkdownDocument[]>('documents', [])
+-    return saved.length > 0 ? saved : [{ id: 'doc-1', title: 'Untitled-1', content: initialMarkdown }]
++    const saved = loadState<StoredMarkdownDocument[]>('documents', [])
++    if (saved.length > 0) {
++      return saved.map((doc) => ({
++        ...doc,
++        kind: doc.kind ?? (isMermaidText(doc.content) ? 'mermaid' : 'markdown'),
++      }))
++    }
++    return [
++      {
++        id: 'doc-1',
++        title: 'Untitled-1',
++        content: initialMarkdown,
++        kind: 'markdown',
++      },
++    ]
+   })
+   const [activeDocId, setActiveDocId] = useState(() => {
+     const saved = loadState<string>('activeDocId', '')
+@@ -194,6 +252,7 @@ function App() {
+   const tabs: TabItem[] = documents.map(doc => ({
+     id: doc.id,
+     label: doc.title,
++    icon: doc.kind === 'mermaid' ? <GitBranch className="h-4 w-4" /> : undefined,
+     closable: documents.length > 1
+   }))
+ 
+@@ -238,12 +297,29 @@ function App() {
+ 
+   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+     const pastedText = e.clipboardData.getData('text/plain')
++    const textarea = e.currentTarget
++    const selectionCoversAll =
++      textarea.selectionStart === 0 && textarea.selectionEnd === markdown.length
++    const isEmpty = markdown.trim().length === 0
++
++    if ((isEmpty || selectionCoversAll) && isMermaidText(pastedText)) {
++      e.preventDefault()
++      const newText = pastedText.trimEnd()
++      setDocuments(docs => docs.map(d =>
++        d.id === activeDocId ? { ...d, content: newText, kind: 'mermaid' } : d
++      ))
++      setTimeout(() => {
++        textarea.selectionStart = textarea.selectionEnd = newText.length
++        textarea.focus()
++      }, 0)
++      return
++    }
++
+     const hasLatexInline = /\\\(.+?\\\)/.test(pastedText)
+     const hasLatexBlock = /\\\[.+?\\\]/s.test(pastedText)
+     if (hasLatexInline || hasLatexBlock) {
+       e.preventDefault()
+       const convertedText = detectAndConvertLatex(pastedText)
+-      const textarea = e.currentTarget
+       const start = textarea.selectionStart
+       const end = textarea.selectionEnd
+       const newText = markdown.substring(0, start) + convertedText + markdown.substring(end)
+@@ -263,9 +339,14 @@ function App() {
+     setIsDragging(false)
+     const text = e.dataTransfer.getData('text/plain')
+     if (text) {
+-      const convertedText = detectAndConvertLatex(text)
++      const isMermaid = isMermaidText(text)
++      const convertedText = isMermaid ? text : detectAndConvertLatex(text)
+       setDocuments(docs => docs.map(d =>
+-        d.id === activeDocId ? { ...d, content: convertedText } : d
++        d.id === activeDocId ? {
++          ...d,
++          content: convertedText,
++          kind: isMermaid ? 'mermaid' : 'markdown',
++        } : d
+       ))
+       return
+     }
+@@ -277,9 +358,15 @@ function App() {
+         reader.onload = (event) => {
+           const content = event.target?.result as string
+           if (content) {
+-            const convertedContent = detectAndConvertLatex(content)
++            const isMermaid = isMermaidText(content)
++            const convertedContent = isMermaid ? content : detectAndConvertLatex(content)
+             setDocuments(docs => docs.map(d =>
+-              d.id === activeDocId ? { ...d, content: convertedContent, title: file.name.replace(/\.(md|markdown)$/, '') } : d
++              d.id === activeDocId ? {
++                ...d,
++                content: convertedContent,
++                title: file.name.replace(/\.(md|markdown)$/, ''),
++                kind: isMermaid ? 'mermaid' : 'markdown',
++              } : d
+             ))
+           }
+         }
+@@ -304,12 +391,37 @@ function App() {
+     const newDoc: MarkdownDocument = {
+       id: newId,
+       title: `Untitled-${documents.length + 1}`,
+-      content: '# New Document\n\nStart writing...'
++      content: '# New Document\n\nStart writing...',
++      kind: 'markdown',
+     }
+     setDocuments(docs => [...docs, newDoc])
+     setActiveDocId(newId)
+   }, [documents.length])
+ 
++  const handleNewMermaidTab = useCallback(() => {
++    const newId = generateDocId()
++    const newDoc: MarkdownDocument = {
++      id: newId,
++      title: `Mermaid-${documents.length + 1}`,
++      content: 'flowchart TD\n  A --> B',
++      kind: 'mermaid',
++    }
++    setDocuments(docs => [...docs, newDoc])
++    setActiveDocId(newId)
++  }, [documents.length])
++
++  const handleDuplicateTab = useCallback(() => {
++    if (!activeDoc) return
++    const newId = generateDocId()
++    const newDoc: MarkdownDocument = {
++      ...activeDoc,
++      id: newId,
++      title: `${activeDoc.title} (copy)`,
++    }
++    setDocuments(docs => [...docs, newDoc])
++    setActiveDocId(newId)
++  }, [activeDoc])
++
+   const handleDeleteTab = useCallback((tabId: string) => {
+     if (documents.length <= 1) return
+     const idx = documents.findIndex(d => d.id === tabId)
+@@ -333,12 +445,14 @@ function App() {
+     reader.onload = (event) => {
+       const content = event.target?.result as string
+       if (content) {
+-        const convertedContent = detectAndConvertLatex(content)
++        const isMermaid = isMermaidText(content)
++        const convertedContent = isMermaid ? content : detectAndConvertLatex(content)
+         const newId = generateDocId()
+         const newDoc: MarkdownDocument = {
+           id: newId,
+           title: file.name.replace(/\.(md|markdown)$/, ''),
+-          content: convertedContent
++          content: convertedContent,
++          kind: isMermaid ? 'mermaid' : 'markdown',
+         }
+         setDocuments(docs => [...docs, newDoc])
+         setActiveDocId(newId)
+@@ -360,9 +474,37 @@ function App() {
+     URL.revokeObjectURL(url)
+   }, [markdown, activeDoc?.title])
+ 
++  const newTabMenuItems = [
++    {
++      id: 'new-markdown',
++      label: 'New Markdown',
++      icon: <FileText className="h-4 w-4" />,
++      onSelect: handleNewTab,
++    },
++    {
++      id: 'new-mermaid',
++      label: 'New Mermaid Diagram',
++      icon: <GitBranch className="h-4 w-4" />,
++      onSelect: handleNewMermaidTab,
++    },
++    {
++      id: 'duplicate-tab',
++      label: 'Duplicate Tab',
++      icon: <Copy className="h-4 w-4" />,
++      onSelect: handleDuplicateTab,
++      disabled: !activeDoc,
++    },
++    {
++      id: 'import-markdown',
++      label: 'Import Markdown File',
++      icon: <Upload className="h-4 w-4" />,
++      onSelect: handleAddFile,
++    },
++  ]
++
+   return (
+     <div
+-      className="flex flex-col h-screen font-sans relative bg-background text-foreground"
++      className="app-shell flex flex-col h-screen font-sans relative text-foreground"
+       onDragEnter={handleDragEnter}
+       onDragOver={handleDragOver}
+       onDragLeave={handleDragLeave}
+@@ -443,6 +585,7 @@ function App() {
+               activeTab={activeDocId}
+               onTabChange={handleTabChange}
+               onNewTab={handleNewTab}
++              newTabMenuItems={newTabMenuItems}
+               onDeleteTab={handleDeleteTab}
+               variant="chrome"
+               showNewButton
+@@ -451,7 +594,7 @@ function App() {
+             >
+               {documents.map(doc => (
+                 <TabContent key={doc.id} value={doc.id}>
+-                  <RenderPane markdown={doc.content} />
++                  <RenderPane markdown={doc.content} kind={doc.kind} />
+                 </TabContent>
+               ))}
+             </TabSystem>
+diff --git a/src/components/markdown/MermaidDiagram.tsx b/src/components/markdown/MermaidDiagram.tsx
+index c4ee96b..5cce9cb 100755
+--- a/src/components/markdown/MermaidDiagram.tsx
++++ b/src/components/markdown/MermaidDiagram.tsx
+@@ -68,13 +68,11 @@ function MermaidDiagram({ chart }: MermaidDiagramProps) {
+     return (
+         <div
+             ref={containerRef}
++            className="my-4 rounded-lg border p-4 overflow-auto"
+             style={{
+-                margin: '1rem 0',
+-                padding: '1rem',
+-                backgroundColor: '#f8fafc',
+-                borderRadius: '8px',
+-                border: '1px solid #e2e8f0',
+-                overflow: 'auto',
++                backgroundColor: 'var(--card)',
++                borderColor: 'var(--border)',
++                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.08)',
+             }}
+             dangerouslySetInnerHTML={{ __html: svg }}
+         />
