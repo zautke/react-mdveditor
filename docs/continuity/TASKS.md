@@ -3,6 +3,42 @@
 _Checkbox state + follow-ups. Supersede stale items in place._
 _Last refreshed: 2026-08-16._
 
+## Done — React preview CDN imports (2026-08-16)
+
+Salvaged `on-deck/fix-react-doc-imports-adagio`, the top follow-up from the
+consolidation. React preview documents can now import published npm packages.
+
+- [x] Restore `cdn.ts` and `import-parser.ts` byte-identical from the archive tag
+- [x] `buildScope()` extends the import map with CDN-loaded packages; a package
+      that fails to load is reported and skipped, not fatal
+- [x] `UNSUPPORTED_IMPORT` now fires only for relative/absolute paths, which
+      genuinely cannot resolve in a single-file preview
+- [x] Shared mode resolves packages asynchronously with a race guard and a
+      placeholder, so no spurious "module not found" flashes while fetching
+- [x] Isolated mode's iframe fetches the same packages and serves them from its
+      `require` shim, including deep imports into a root-loaded package
+- [x] Fix: side-effect imports were dropped — a greedy optional clause group ran
+      past the statement and captured the next one's specifier
+- [x] Fix: default imports resolved to the namespace, not the export, because
+      `import()` namespaces carry no `__esModule` for the CJS interop
+- [x] Fix: a CDN package building against the CDN's React hit a null dispatcher
+      in shared mode (two React copies); the shared→isolated auto-fallback now
+      recognises that signature
+- [x] 15 tests via `pnpm test:preview`; full suite 64
+- [x] Verified in Chrome against the production build, both modes and the fallback
+
+### Follow-ups
+
+- [ ] `pnpm preview` cannot start without the db sidecar. `assertSidecarHealthy`
+      is gated on `command === 'serve'`, but Vite reports `serve` for *preview*
+      as well as dev, so serving a production build locally fails with
+      `TypeError: fetch failed` from the config. Decide whether preview should
+      require persistence at all; if not, gate on the dev server only
+- [ ] Shared mode cannot share React with CDN packages that use hooks or
+      context. It auto-falls back to isolated, which is correct but silent —
+      consider telling the user why the mode changed. A real fix needs a
+      document-level import map aliasing `react` to the app's instance
+
 ## Done — repo consolidation (2026-08-16)
 
 Full audit and evidence: [`BRANCH_WORKTREE_ARCHAEOLOGY_2026-08-16.md`](../../BRANCH_WORKTREE_ARCHAEOLOGY_2026-08-16.md).
@@ -53,19 +89,18 @@ both at `bf1f799`, one worktree, 0 unreachable commits.
 
 ### Follow-ups
 
-- [ ] Pick up `on-deck/fix-react-doc-imports-adagio/` — `src/lib/react-preview/`
-      `cdn.ts` and `import-parser.ts` do not exist on `development`, so React
-      preview documents cannot resolve external CDN imports. Highest-value
-      outstanding salvage
-- [ ] Exercise the tab system in a running app. Unit tests (22) and the
-      production build pass, but nothing visual was checked after
-      `src/components/ui/tabs/` was deleted
+- [x] Pick up `on-deck/fix-react-doc-imports-adagio/` — done, see
+      "Done — React preview CDN imports" below
+- [x] Exercise the tab system in a running app — verified in Chrome against
+      the production build: tab creation, switching, per-tab content, doctype
+      icons and the close affordance all work from the merged `@braisenly/ui`
+      package
 - [ ] `/Volumes/FLOUNDER` is at 100% capacity (914 MiB free). This blocked
       `pnpm install` mid-consolidation
 - [ ] `pnpm test` failed once non-reproducibly, immediately after `pnpm build`
       in the same shell; 4 later runs passed 49/49. Not isolated. Watch it in
       CI before trusting the suite as deterministic
-- [ ] Re-index jCodemunch — its index is dated 2026-07-05
+- [x] Re-index jCodemunch — reindexed, now 165 files / 10,373 symbols
 - [ ] Consider a root `predev`/`prebuild` hook that builds `@braisenly/ui`.
       A stale `design-system/ui/dist` made `tsc` report `onRenameTab` missing
       from source that declares it. `apps/tabbar-harness` already does this

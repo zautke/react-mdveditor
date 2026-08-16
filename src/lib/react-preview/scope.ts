@@ -14,6 +14,7 @@
 import * as React from 'react'
 import * as ReactJsxRuntime from 'react/jsx-runtime'
 import type { Scope } from 'react-runner'
+import { loadFromCdn } from './cdn'
 
 // ── Direct globals ──────────────────────────────────────────────────
 // These are available as bare identifiers inside user code,
@@ -54,4 +55,57 @@ const importMap: Record<(typeof REACT_PREVIEW_ALLOWED_IMPORTS)[number], unknown>
 export const defaultScope: Scope = {
   ...reactGlobals,
   import: importMap,
+}
+
+// ── Dynamic scope builder ───────────────────────────────────────────
+// Extends the default scope with packages fetched from the CDN at runtime,
+// so user code can `import { X } from 'some-npm-package'`.
+
+/** Provided by the runtime itself — never fetched from the CDN. */
+const NATIVE_PACKAGES = new Set<string>(REACT_PREVIEW_ALLOWED_IMPORTS)
+
+export interface BuiltScope {
+  scope: Scope
+  /** Human-readable messages for packages that failed to load. */
+  errors: string[]
+}
+
+/**
+ * Builds a scope whose import map also contains the requested external
+ * packages, each resolved from the CDN.
+ *
+ * Packages the runtime already provides are skipped. `loadFromCdn` caches
+ * and de-duplicates, so repeat calls for the same package are cheap.
+ *
+ * A package that fails to load does not fail the whole scope — it is
+ * reported in `errors` and simply stays absent from the import map, so the
+ * rest of the preview still renders.
+ */
+export async function buildScope(packages: string[]): Promise<BuiltScope> {
+  const toLoad = packages.filter((pkg) => !NATIVE_PACKAGES.has(pkg))
+  if (toLoad.length === 0) return { scope: defaultScope, errors: [] }
+
+  const externalImports: Record<string, unknown> = {}
+  const errors: string[] = []
+
+  const results = await Promise.allSettled(
+    toLoad.map(async (pkg) => ({ pkg, mod: await loadFromCdn(pkg) })),
+  )
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      externalImports[result.value.pkg] = result.value.mod
+    } else {
+      errors.push(
+        result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason),
+      )
+    }
+  }
+
+  return {
+    scope: { ...reactGlobals, import: { ...importMap, ...externalImports } },
+    errors,
+  }
 }

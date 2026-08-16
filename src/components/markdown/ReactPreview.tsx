@@ -16,13 +16,16 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRunner } from 'react-runner'
+import type { Scope } from 'react-runner'
 import type { RendererProps } from '@/lib/document-types/types'
 import {
   analyzeAndNormalizeReactSource,
   type PreviewDiagnostic,
   type PreviewDiagnosticCode,
 } from '@/lib/react-preview/compile'
-import { defaultScope } from '@/lib/react-preview/scope'
+import { buildScope, defaultScope } from '@/lib/react-preview/scope'
+import { extractImportSpecifiers } from '@/lib/react-preview/import-parser'
+import { CDN_BASE, pinnedCdnUrl } from '@/lib/react-preview/cdn'
 import {
   getMode as getSessionMode,
   setMode as setSessionMode,
@@ -49,6 +52,13 @@ const FALLBACK_ELIGIBLE_ERROR_PATTERNS = [
   /cannot find module/i,
   /cannot use import statement outside a module/i,
   /unexpected token\s+(?:import|export)/i,
+  // Two React copies. A CDN package builds against the CDN's React, while
+  // shared mode renders into the app's bundled React, so the package's hooks
+  // read a null dispatcher. Nothing the user can fix in their code — but the
+  // isolated iframe has exactly one React, so it renders fine there.
+  /invalid hook call/i,
+  /cannot read propert(?:y|ies).*\buse[A-Z]\w*/i,
+  /reactcurrentdispatcher/i,
 ]
 
 const fallbackAttemptedKeys = new Set<string>()
@@ -86,12 +96,43 @@ function isFallbackEligibleError(error: string): boolean {
  * 3. Transpiles and renders the user's code
  * 4. Posts resize events to the parent for auto-height
  */
-function buildIframeDoc(code: string): string {
+function buildIframeDoc(code: string, externalPackages: string[] = []): string {
   // Escape the code for embedding inside a JS template literal
   const escapedCode = code
     .replace(/\\/g, '\\\\')
     .replace(/`/g, '\\`')
     .replace(/\$/g, '\\$')
+
+  // Fetch each bare npm import the user's code references, keyed by specifier
+  // so the `require` shim below can hand it back. Failures are reported per
+  // package instead of taking down the whole preview.
+  const externalLoader = externalPackages.length
+    ? `
+    const externals = {};
+    const externalErrors = [];
+    // Flag namespaces as ES modules so the CJS interop below unwraps \`default\`
+    // instead of wrapping the namespace. See withEsModuleInterop in cdn.ts.
+    const withEsModuleInterop = (mod) =>
+      mod !== null && typeof mod === 'object' ? { __esModule: true, ...mod } : mod;
+    await Promise.all(${JSON.stringify(externalPackages)}.map(async (pkg, i) => {
+      try {
+        externals[pkg] = withEsModuleInterop(await import(${JSON.stringify(
+          externalPackages.map((pkg) => pinnedCdnUrl(pkg)),
+        )}[i]));
+      } catch (err) {
+        externalErrors.push(
+          'Failed to load "' + pkg + '" from ${CDN_BASE}: ' + (err && err.message ? err.message : String(err))
+        );
+      }
+    }));
+    if (externalErrors.length > 0) {
+      const warn = document.createElement('pre');
+      warn.style.cssText = 'color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:0.75rem 1rem;white-space:pre-wrap;font-size:0.8rem;';
+      warn.textContent = externalErrors.join('\\n');
+      document.body.insertBefore(warn, document.getElementById('root'));
+    }`
+    : `
+    const externals = {};`
 
   return `<!DOCTYPE html>
 <html>
@@ -113,6 +154,7 @@ function buildIframeDoc(code: string): string {
     const { useState, useEffect, useRef, useMemo, useCallback, useContext,
             useReducer, useId, Fragment, createElement, createContext,
             forwardRef, memo, lazy, Suspense } = React;
+${externalLoader}
 
     const userCode = \`${escapedCode}\`;
 
@@ -128,6 +170,11 @@ function buildIframeDoc(code: string): string {
         if (mod === 'react') return React;
         if (mod === 'react-dom') return ReactDOM;
         if (mod === 'react/jsx-runtime') return ReactJsxRuntime;
+        if (mod in externals) return externals[mod];
+        // Deep import into a package that was loaded at its root, e.g.
+        // 'lucide-react/icons/x' when 'lucide-react' is present.
+        const root = mod.startsWith('@') ? mod.split('/').slice(0, 2).join('/') : mod.split('/')[0];
+        if (root in externals) return externals[root];
         throw new Error('Module not found: ' + mod);
       };
 
@@ -198,6 +245,14 @@ function hasBlockingDiagnostics(diagnostics: readonly PreviewDiagnostic[]): bool
 
 // ── Shared-mode renderer ────────────────────────────────────────────
 
+/**
+ * Rendered while external packages are still being fetched. `useRunner` is a
+ * hook and cannot be skipped, so we feed it a benign module rather than let it
+ * evaluate the real code against a scope that does not yet have the imports —
+ * which would surface a spurious "module not found" for a moment.
+ */
+const SCOPE_LOADING_PLACEHOLDER = 'export default function PreviewLoading() { return null }'
+
 function SharedPreview({
   code,
   onErrorChange,
@@ -205,9 +260,52 @@ function SharedPreview({
   code: string
   onErrorChange: (error: string | null) => void
 }) {
+  // Bare npm specifiers in the user's code, resolved from the CDN below.
+  const packages = useMemo(() => extractImportSpecifiers(code), [code])
+  // Stable dependency — `packages` is a fresh array each render.
+  const packagesKey = packages.join(' ')
+
+  const [scope, setScope] = useState<Scope>(defaultScope)
+  const [scopeErrors, setScopeErrors] = useState<string[]>([])
+  const [isLoadingScope, setIsLoadingScope] = useState(false)
+
+  useEffect(() => {
+    if (packages.length === 0) {
+      setScope(defaultScope)
+      setScopeErrors([])
+      setIsLoadingScope(false)
+      return
+    }
+
+    // Guards against an earlier, slower fetch overwriting a later one.
+    let cancelled = false
+    setIsLoadingScope(true)
+
+    buildScope(packages)
+      .then(({ scope: nextScope, errors }) => {
+        if (cancelled) return
+        setScope(nextScope)
+        setScopeErrors(errors)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setScopeErrors([err instanceof Error ? err.message : String(err)])
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingScope(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // `packages` is derived from `packagesKey`; depending on the key keeps this
+    // from re-firing on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packagesKey])
+
   const { element, error } = useRunner({
-    code,
-    scope: defaultScope,
+    code: isLoadingScope ? SCOPE_LOADING_PLACEHOLDER : code,
+    scope,
   })
 
   const normalizedError = error ? String(error) : null
@@ -222,6 +320,40 @@ function SharedPreview({
 
   return (
     <>
+      {isLoadingScope && (
+        <div
+          role="status"
+          style={{
+            padding: '0.5rem 1rem',
+            marginBottom: '0.5rem',
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            color: '#475569',
+            fontSize: '0.8rem',
+          }}
+        >
+          {`Loading ${packages.length} package${packages.length === 1 ? '' : 's'} from CDN: ${packages.join(', ')}`}
+        </div>
+      )}
+      {scopeErrors.length > 0 && (
+        <div
+          style={{
+            padding: '0.75rem 1rem',
+            marginBottom: '0.5rem',
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: '6px',
+            color: '#b45309',
+            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+            fontSize: '0.8rem',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}
+        >
+          {scopeErrors.join('\n')}
+        </div>
+      )}
       {normalizedError && (
         <div
           style={{
@@ -255,6 +387,14 @@ function IsolatedPreview({ code }: { code: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState<number>(MIN_HEIGHT)
 
+  // Same bare specifiers shared mode resolves; the iframe fetches them itself
+  // since it has its own module registry.
+  const externalPackages = useMemo(() => extractImportSpecifiers(code), [code])
+  const srcDoc = useMemo(
+    () => buildIframeDoc(code, externalPackages),
+    [code, externalPackages],
+  )
+
   const handleMessage = useCallback((event: MessageEvent<unknown>) => {
     if (isResizeMessage(event.data)) {
       setHeight(Math.max(event.data.height, MIN_HEIGHT))
@@ -269,7 +409,7 @@ function IsolatedPreview({ code }: { code: string }) {
   return (
     <iframe
       ref={iframeRef}
-      srcDoc={buildIframeDoc(code)}
+      srcDoc={srcDoc}
       sandbox="allow-scripts"
       title="React Preview (Isolated)"
       style={{

@@ -25,14 +25,14 @@ Ranked by value to `development` as of 2026-08-16.
 
 | # | Lane | Why | Archive tag |
 |---|---|---|---|
-| 1 | [`fix-react-doc-imports-adagio/`](fix-react-doc-imports-adagio/) | **Working feature absent from `development`.** `src/lib/react-preview/cdn.ts` and `import-parser.ts` do not exist on `development` — React components in preview cannot resolve external CDN imports without them. Not a stale interim. | `archive/2026-08-16/fix-react-doc-imports-adagio` |
-| 2 | [`2026-02-24-consolidation/`](2026-02-24-consolidation/) | Four legacy lanes already triaged in Feb with a per-lane behavior-replacement risk map. Read its `README.md` before applying any of them. | see that README |
-| 3 | [`stash-6a8ee83/`](stash-6a8ee83/) | Tab-system variant work, uncommitted. **Historical only** — see note below. | `archive/2026-08-16/stash-0-tab-variants` |
-| 4 | [`unreachable/`](unreachable/) | Dangling objects recovered from `git fsck`. Mostly superseded. | `archive/2026-08-16/unreachable/*` |
+| — | ~~[`fix-react-doc-imports-adagio/`](fix-react-doc-imports-adagio/)~~ | **PICKED UP 2026-08-16.** `cdn.ts` and `import-parser.ts` were restored byte-identical and integrated against development's current preview architecture; see `feat(react-preview): resolve external npm imports from the CDN`. Kept here for provenance — the bundle's `ReactPreview.tsx` was *not* used, it predates the diagnostics/shared-isolated split. | `archive/2026-08-16/fix-react-doc-imports-adagio` |
+| 1 | [`2026-02-24-consolidation/`](2026-02-24-consolidation/) | Four legacy lanes already triaged in Feb with a per-lane behavior-replacement risk map. Read its `README.md` before applying any of them. | see that README |
+| 2 | [`stash-6a8ee83/`](stash-6a8ee83/) | Tab-system variant work, uncommitted. **Historical only** — see note below. | `archive/2026-08-16/stash-0-tab-variants` |
+| 3 | [`unreachable/`](unreachable/) | Dangling objects recovered from `git fsck`. Mostly superseded. | `archive/2026-08-16/unreachable/*` |
 
 ## Lane summaries
 
-### 1. `fix-react-doc-imports-adagio/`
+### `fix-react-doc-imports-adagio/` — picked up 2026-08-16
 
 Base `b42622433530d2673c021649cd0e4fabab243be0`. Two commits:
 
@@ -44,15 +44,21 @@ ef32ad9f0e32962d01aee72d36c9d8f578b414da  (interim)
 Adds `src/lib/react-preview/cdn.ts`, `src/lib/react-preview/import-parser.ts`, rewrites
 `ReactPreview.tsx`, and ships two test samples exercising external imports.
 
-`development` has `src/lib/react-preview/{compile,scope,session-state}.ts` but **not**
-`cdn.ts` or `import-parser.ts`. The two new files are additive and should apply cleanly;
-`ReactPreview.tsx` has diverged and needs hunk-level pickup.
+**Resolved.** `cdn.ts` and `import-parser.ts` were restored byte-identical and wired
+into `buildScope()`; `compile.ts` no longer blocks bare npm specifiers. The bundle's
+`ReactPreview.tsx` was deliberately *not* applied — it predates development's
+diagnostics system and shared/isolated split, so the integration was written fresh.
+
+Integrating surfaced three bugs, two of them latent in this bundle: side-effect imports
+were dropped by a greedy regex group, and default imports resolved to the module
+namespace because `import()` namespaces carry no `__esModule`. Both are fixed in
+`development` with tests. Anyone re-reading these patches should not reintroduce them.
 
 Conflicts against `development`: `.gitignore`, `.serena/.gitignore`, `.serena/project.yml`,
 `src/components/markdown/ReactPreview.tsx`. The `.serena/*` and `.gitignore` conflicts are
 noise — take `development`'s side.
 
-### 2. `2026-02-24-consolidation/`
+### `2026-02-24-consolidation/`
 
 Absorbed verbatim from the `consolidate/feature-branch-harvest-2026-02-24` branch, which
 was deleted in this consolidation. Covers `off-dev-021326`, `feat/handle-frontmatter`,
@@ -67,7 +73,7 @@ Note `feat/use-design-system` also collides file-vs-directory on `design-system`
 path is now a real pnpm workspace, so its `full.patch` cannot be applied directly at all.
 Use `source-only.patch`.
 
-### 3. `stash-6a8ee83/`
+### `stash-6a8ee83/`
 
 ```
 6a8ee83be475db62cc5e5d40f1409374f1803e30
@@ -81,7 +87,7 @@ WIP on development: 543ed0a docs: branch audit and cleanup plan (2026-02-24)
 Exported before that merge specifically so the content survives; kept for reference on
 what the variants looked like mid-refactor.
 
-### 4. `unreachable/`
+### `unreachable/`
 
 Recovered from `git fsck --unreachable`. All tagged under
 `archive/2026-08-16/unreachable/`.
