@@ -376,6 +376,7 @@ function App() {
         title: plugin.defaultTitle(docs.length + 1),
         content: text,
         kind: plugin.kind,
+        persistedToFileSystem: false,
       }
       return [...docs, newDoc]
     })

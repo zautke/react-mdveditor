@@ -2,6 +2,7 @@ import path from 'path'
 import { existsSync, readFileSync } from 'fs'
 import { homedir } from 'os'
 import { defineConfig, loadEnv } from 'vite'
+import type { UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { mdeServerPlugin } from './src/lib/vite-plugin-mde-server'
@@ -53,7 +54,7 @@ function loadDevHttpsConfig(env: Record<string, string | undefined>) {
   return undefined
 }
 
-export default defineConfig(async ({ mode, command }) => {
+export default defineConfig(async ({ mode, command }): Promise<UserConfig> => {
   const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') }
   const appPort = parsePort(env.MDE_APP_PORT, 5200)
   const devPort = parsePort(env.MDE_DEV_PORT, 5250)
