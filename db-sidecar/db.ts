@@ -35,6 +35,8 @@ export interface KvStore {
   upsert(key: string, value: unknown): void
   /** Delete one app-facing key (no-op if absent). */
   remove(key: string): void
+  /** Verify the underlying SQLite connection is usable. */
+  health(): void
   /** Close the underlying database handle. */
   close(): void
 }
@@ -166,7 +168,9 @@ export function openKvStore(dbPath: string): KvStore {
 
   // `timeout` waits on a locked database instead of failing immediately.
   const db = new DatabaseSync(dbPath, { timeout: 5000 })
-  db.exec('PRAGMA journal_mode = WAL;')
+  // The sidecar binds the exact database file into Docker. DELETE mode keeps all
+  // durable state in that file rather than a container-local WAL sibling.
+  db.exec('PRAGMA journal_mode = DELETE;')
   db.exec('PRAGMA busy_timeout = 5000;')
   createSchema(db)
 
@@ -344,6 +348,10 @@ export function openKvStore(dbPath: string): KvStore {
         default:
           return
       }
+    },
+
+    health() {
+      db.prepare('SELECT 1').get()
     },
 
     close() {

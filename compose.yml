@@ -54,7 +54,9 @@ services:
       MDE_DB_SIDECAR_INTERNAL_PORT: ${MDE_DB_SIDECAR_INTERNAL_PORT}
       MDE_DB_PATH: /data/mdeditor.db
     volumes:
-      - db-sidecar-data:/data
+      - type: bind
+        source: ${MDE_DB_HOST_PATH}
+        target: /data/mdeditor.db
     healthcheck:
       test:
         - CMD
@@ -69,8 +71,5 @@ services:
       retries: 3
       start_period: 5s
     ports:
-      - "${MDE_DB_SIDECAR_PORT}:${MDE_DB_SIDECAR_INTERNAL_PORT}"
+      - "127.0.0.1:${MDE_DB_SIDECAR_PORT}:${MDE_DB_SIDECAR_INTERNAL_PORT}"
     restart: unless-stopped
-
-volumes:
-  db-sidecar-data:
