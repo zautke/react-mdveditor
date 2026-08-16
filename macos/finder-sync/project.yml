@@ -1,0 +1,68 @@
+# xcodegen spec for the "Open in MDE" Finder Sync extension.
+#
+# SwiftPM cannot build an .appex, so we generate a real .xcodeproj here. The host
+# app exists only to register the embedded extension with LaunchServices; the
+# extension provides the inline (first-level) Finder context-menu item.
+#
+# Regenerate + build with build.sh.
+name: MDEFinder
+options:
+  bundleIdPrefix: com.braisenly.mde
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: NO
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  MDEFinder:
+    type: application
+    platform: macOS
+    sources:
+      - Host
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.braisenly.mde.finder
+    info:
+      path: Host/Info.plist
+      properties:
+        CFBundleName: MDEFinder
+        CFBundleDisplayName: MDE Finder
+        LSUIElement: true
+    dependencies:
+      - target: OpenInMDEFinder
+        embed: true
+
+  OpenInMDEFinder:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.braisenly.mde.finder.OpenInMDEFinder
+    entitlements:
+      path: Extension/OpenInMDEFinder.entitlements
+      properties:
+        # macOS 26+ (verified via pkd: "plug-ins must be sandboxed") REQUIRES a
+        # sandboxed FinderSync appex. A sandboxed appex cannot Process-exec, so
+        # the menu action runs the launcher via NSUserUnixTask (the sanctioned
+        # escape) from ~/Library/Application Scripts/<bundle-id>/.
+        com.apple.security.app-sandbox: true
+    info:
+      path: Extension/Info.plist
+      properties:
+        CFBundleDisplayName: Open in MDE
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.FinderSync
+          NSExtensionPrincipalClass: MDEFinderSync
+    dependencies:
+      - sdk: FinderSync.framework

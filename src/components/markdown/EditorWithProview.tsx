@@ -10,6 +10,7 @@ import { documentTypeRegistry } from '@/lib/document-types'
 import { validateFile } from '@/lib/file-validation'
 import { isHttpUrl } from '@/lib/url-validation'
 import { UrlInputModal } from '@/components/markdown/UrlInputModal'
+import { OpenInMdePanel } from '@/components/markdown/OpenInMdePanel'
 import { SettingsDialog } from '@/components/ui/settings-dialog'
 import { PersistenceStatus } from '@/components/ui/persistence-status'
 import { useUserSettings } from '@/lib/user-settings'
@@ -340,6 +341,33 @@ function App() {
     })
     setActiveDocId(newId)
   }, [])
+
+  // createDocFromText — create a new document from raw text (Open-in-MDE panel).
+  // Kind is auto-detected from content; mirrors handleNewTab's id/title flow.
+  const createDocFromText = useCallback((text: string) => {
+    const kind = documentTypeRegistry.detect(text) ?? 'markdown'
+    const plugin = documentTypeRegistry.get(kind)
+    const newId = generateDocId()
+    setDocuments(docs => {
+      const newDoc: EditorDocument = {
+        id: newId,
+        title: plugin.defaultTitle(docs.length + 1),
+        content: text,
+        kind: plugin.kind,
+      }
+      return [...docs, newDoc]
+    })
+    setActiveDocId(newId)
+  }, [])
+
+  // Bridge: expose createDocFromText as window.mdeCreateDoc so a `.tsx` document
+  // rendered in a tab (e.g. examples/open-in-mde-button.tsx) can create new docs.
+  useEffect(() => {
+    ;(window as unknown as { mdeCreateDoc?: (t: string) => void }).mdeCreateDoc = createDocFromText
+    return () => {
+      delete (window as unknown as { mdeCreateDoc?: (t: string) => void }).mdeCreateDoc
+    }
+  }, [createDocFromText])
 
   // openExternalFiles — stable callback for CLI file injection via /api/mde-open or HMR
   const openExternalFiles = useCallback((files: MdeFilePayload[]) => {
@@ -832,6 +860,9 @@ function App() {
         aria-hidden="true"
         tabIndex={-1}
       />
+
+      {/* Open-in-MDE quick-capture strip — text → new document */}
+      <OpenInMdePanel onOpenInMde={createDocFromText} />
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden" role="group" aria-label="Editor and preview panes">

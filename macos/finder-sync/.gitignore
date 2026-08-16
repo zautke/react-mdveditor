@@ -1,0 +1,4 @@
+# xcodegen output + xcodebuild artifacts (regenerate with build.sh)
+MDEFinder.xcodeproj/
+build/
+*.dSYM/

@@ -16,8 +16,9 @@ resolve_script_dir() {
 }
 
 SCRIPT_DIR="$(resolve_script_dir)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 export MDE_CLI_NAME="${MDE_CLI_NAME:-mdeo}"
 
-exec node "$REPO_ROOT/bin/mde.mjs" "$@"
+# Thin wrapper: mdeo now delegates to the shared open_in_mde primitive, which
+# handles extension gating + batching and forwards to bin/mde.mjs.
+exec "$SCRIPT_DIR/open-in-mde.sh" "$@"
